@@ -54,7 +54,7 @@ export class UpdateSantriDto {
     @ApiProperty({ required: false }) @IsOptional() @IsString() nik?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsString() noKk?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsDateString() tanggalMasuk?: string;
-    @ApiProperty({ required: false }) @IsOptional() tanggalKeluar?: string | null;
+    @ApiProperty({ required: false }) @IsOptional() @IsDateString() tanggalKeluar?: string | null;
     @ApiProperty({ required: false }) @IsOptional() @IsString() jenjangPendidikan?: string;
     @ApiProperty({ enum: JalurPendidikan, required: false }) @IsOptional() @IsEnum(JalurPendidikan) jalurPendidikan?: JalurPendidikan;
 
@@ -78,8 +78,8 @@ export class UpdateSantriDto {
     @ApiProperty({ required: false }) @IsOptional() @IsString() rtRw?: string;
 
     // Penempatan (Int IDs, allow null to unassign)
-    @ApiProperty({ required: false }) @IsOptional() kelasId?: number | null;
-    @ApiProperty({ required: false }) @IsOptional() kamarId?: number | null;
+    @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kelasId?: number | null;
+    @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kamarId?: number | null;
     @ApiProperty({ required: false }) @IsOptional() @IsString() foto?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl?: string;
 }

@@ -10,9 +10,17 @@ import { PrismaModule } from '../prisma/prisma.module';
     imports: [
         PassportModule,
         PrismaModule,
-        JwtModule.register({
-            secret: process.env.JWT_SECRET || 'your_super_secret_jwt_key',
-            signOptions: { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },
+        JwtModule.registerAsync({
+            useFactory: () => {
+                const secret = process.env.JWT_SECRET;
+                if (!secret) throw new Error('JWT_SECRET is not defined in environment variables');
+                return {
+                    secret,
+                    signOptions: {
+                        expiresIn: process.env.JWT_EXPIRES_IN || '8h',
+                    },
+                };
+            },
         }),
     ],
     controllers: [AuthController],

@@ -8,7 +8,7 @@ import { useAuthStore } from '../stores/authStore';
 import { Lock, User, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
-    username: z.string().min(3, 'Username minimal 3 karakter'),
+    username: z.string().trim().min(3, 'Username minimal 3 karakter'),
     password: z.string().min(6, 'Password minimal 6 karakter'),
 });
 
@@ -124,11 +124,6 @@ export default function LoginPage() {
                                 ) : 'Masuk'}
                             </button>
                         </form>
-
-                        <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-                            <p className="text-xs text-gray-500 font-medium mb-2">Akun Demo:</p>
-                            <p className="text-xs text-gray-600"><span className="font-medium">Admin:</span> admin / Admin1234</p>
-                        </div>
                     </div>
                 </div>
             </div>
