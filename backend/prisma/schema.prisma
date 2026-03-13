@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  STAF_PENDATAAN
+  STAF_MADRASAH
+  PEMBIMBING_KAMAR
+  WALI_KELAS
+}
+
+enum Gender {
+  L
+  P
+}
+
+enum StatusSantri {
+  ACTIVE
+  INACTIVE
+}
+
+enum JalurPendidikan {
+  FORMAL
+  MAHAD_ALY
+  TAHFIDZ
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  username  String   @unique
+  password  String
+  role      Role     @default(STAF_PENDATAAN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kamarBimbing     Kamar[]        @relation("PembimbingKamar")
+  kelasWali        Kelas[]        @relation("WaliKelas")
+  nilaiCreated     Nilai[]        @relation("NilaiCreator")
+  sentMessages     ChatMessage[]  @relation("SentMessages")
+  receivedMessages ChatMessage[]  @relation("ReceivedMessages")
+}
+
+// ─── Kamar Cascade: Kompleks → Gedung → Kamar ────────────────────────────────
+
+model Kompleks {
+  id        Int      @id @default(autoincrement())
+  nama      String
+  gedungs   Gedung[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Gedung {
+  id         Int      @id @default(autoincrement())
+  nama       String
+  kompleksId Int
+  kompleks   Kompleks @relation(fields: [kompleksId], references: [id], onDelete: Cascade)
+  kamars     Kamar[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Kamar {
+  id           Int      @id @default(autoincrement())
+  nama         String
+  kapasitas    Int?
+  gedungId     Int
+  gedung       Gedung   @relation(fields: [gedungId], references: [id], onDelete: Cascade)
+  pembimbingId String?
+  pembimbing   User?    @relation("PembimbingKamar", fields: [pembimbingId], references: [id])
+  santris      Santri[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ─── Kelas Cascade: Jenjang → Tingkat → Kelas ────────────────────────────────
+
+model Jenjang {
+  id        Int       @id @default(autoincrement())
+  nama      String
+  tingkats  Tingkat[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Tingkat {
+  id        Int      @id @default(autoincrement())
+  nama      String
+  jenjangId Int
+  jenjang   Jenjang  @relation(fields: [jenjangId], references: [id], onDelete: Cascade)
+  kelas     Kelas[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Kelas {
+  id          Int      @id @default(autoincrement())
+  nama        String
+  tahunAjaran String?
+  tingkatId   Int
+  tingkat     Tingkat  @relation(fields: [tingkatId], references: [id], onDelete: Cascade)
+  waliKelasId String?
+  waliKelas   User?    @relation("WaliKelas", fields: [waliKelasId], references: [id])
+  santris     Santri[]
+  nilais      Nilai[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ─── Santri ───────────────────────────────────────────────────────────────────
+
+model Santri {
+  id                String           @id @default(cuid())
+  nis               String           @unique
+  namaLengkap       String
+  gender            Gender
+  tanggalLahir      DateTime
+  tempatLahir       String
+  noHp              String?
+  nik               String?
+  noKk              String?
+  tanggalMasuk      DateTime?
+  tanggalKeluar     DateTime?
+  jenjangPendidikan String?
+  jalurPendidikan   JalurPendidikan?
+
+  // Data Orang Tua
+  namaAyah String?
+  namaIbu  String?
+  noHpAyah String?
+  noHpIbu  String?
+
+  // Data Wali
+  namaWali      String?
+  noHpWali      String?
+  deskripsiWali String?
+
+  // Alamat
+  provinsi      String?
+  kotaKabupaten String?
+  kecamatan     String?
+  kelurahan     String?
+  jalan         String?
+  rtRw          String?
+
+  // Status & Relasi
+  status    StatusSantri @default(ACTIVE)
+  kelasId   Int?
+  kamarId   Int?
+  foto      String?
+  kkFileUrl String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  kelas Kelas? @relation(fields: [kelasId], references: [id])
+  kamar Kamar? @relation(fields: [kamarId], references: [id])
+  nilai Nilai[]
+}
+
+// ─── Nilai ────────────────────────────────────────────────────────────────────
+
+model Nilai {
+  id            String   @id @default(cuid())
+  santriId      String
+  kelasId       Int
+  mataPelajaran String
+  semester      String
+  nilaiHarian   Float?
+  nilaiUTS      Float?
+  nilaiUAS      Float?
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  santri  Santri @relation(fields: [santriId], references: [id])
+  kelas   Kelas  @relation(fields: [kelasId], references: [id])
+  creator User   @relation("NilaiCreator", fields: [createdBy], references: [id])
+
+  @@unique([santriId, kelasId, mataPelajaran, semester])
+}
+
+// ─── Chat (Direct Messages) ───────────────────────────────────────────────────
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages",     fields: [senderId],   references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+}

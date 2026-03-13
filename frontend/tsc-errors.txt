@@ -1,0 +1,5 @@
+﻿src/pages/LaporanPage.tsx(70,84): error TS2339: Property 'name' does not exist on type 'Kelas'.
+src/pages/LaporanPage.tsx(83,84): error TS2339: Property 'name' does not exist on type 'Kelas'.
+src/pages/NilaiFormPage.tsx(65,85): error TS2339: Property 'name' does not exist on type 'Santri'.
+src/pages/NilaiFormPage.tsx(73,84): error TS2339: Property 'name' does not exist on type 'Kelas'.
+src/pages/NilaiListPage.tsx(68,95): error TS2339: Property 'name' does not exist on type 'Pick<Kelas, "id" | "nama">'.

@@ -1,0 +1,155 @@
+import { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import api from '../lib/api';
+import { Gedung } from '../types';
+import { useAuthStore } from '../stores/authStore';
+import { Plus, Pencil, Trash2, ChevronRight, ArrowLeft } from 'lucide-react';
+
+export default function GedungListPage() {
+    const { user } = useAuthStore();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const kompleksId = searchParams.get('kompleksId');
+    const kompleksNama = searchParams.get('kompleksNama') || 'Kompleks';
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+
+    const [data, setData] = useState<Gedung[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [editing, setEditing] = useState<Gedung | null>(null);
+    const [nama, setNama] = useState('');
+    const [saving, setSaving] = useState(false);
+    const [deleteTarget, setDeleteTarget] = useState<Gedung | null>(null);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const params = kompleksId ? { kompleksId } : {};
+            const r = await api.get('/gedung', { params });
+            setData(r.data.data);
+        } finally { setLoading(false); }
+    };
+
+    useEffect(() => { fetchData(); }, [kompleksId]);
+
+    const openCreate = () => { setEditing(null); setNama(''); setShowForm(true); };
+    const openEdit = (g: Gedung) => { setEditing(g); setNama(g.nama); setShowForm(true); };
+
+    const handleSave = async () => {
+        if (!nama.trim()) return;
+        setSaving(true);
+        try {
+            if (editing) await api.patch(`/gedung/${editing.id}`, { nama });
+            else await api.post('/gedung', { nama, kompleksId: parseInt(kompleksId!) });
+            setShowForm(false);
+            fetchData();
+        } finally { setSaving(false); }
+    };
+
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        await api.delete(`/gedung/${deleteTarget.id}`);
+        setDeleteTarget(null);
+        fetchData();
+    };
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => navigate('/kamar-management/kompleks')} className="w-8 h-8 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg flex items-center justify-center transition">
+                        <ArrowLeft size={16} />
+                    </button>
+                    <div>
+                        <div className="flex items-center gap-1 text-xs text-gray-400 mb-0.5">
+                            <span>Kompleks</span><ChevronRight size={10} /><span className="text-gray-600 font-medium">{kompleksNama}</span>
+                        </div>
+                        <h1 className="text-lg font-bold text-gray-900">Daftar Gedung</h1>
+                    </div>
+                </div>
+                {canEdit && kompleksId && (
+                    <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold transition">
+                        <Plus size={14} /> Tambah Gedung
+                    </button>
+                )}
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">No</th>
+                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Nama Gedung</th>
+                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Kompleks</th>
+                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Jumlah Kamar</th>
+                            <th className="px-4 py-2.5 text-center text-[10px] font-bold text-gray-500 uppercase">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {loading ? Array.from({ length: 4 }).map((_, i) => (
+                            <tr key={i} className="animate-pulse">{[1, 2, 3, 4, 5].map(j => <td key={j} className="px-4 py-3"><div className="h-3 bg-gray-100 rounded" /></td>)}</tr>
+                        )) : data.length === 0 ? (
+                            <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-gray-400">Belum ada gedung di kompleks ini</td></tr>
+                        ) : data.map((g, i) => (
+                            <tr key={g.id} className="hover:bg-gray-50 transition group">
+                                <td className="px-4 py-3 text-xs text-gray-400">{i + 1}</td>
+                                <td className="px-4 py-3">
+                                    <button onClick={() => navigate(`/kamar-management/kamar?gedungId=${g.id}&gedungNama=${g.nama}&kompleksNama=${kompleksNama}`)}
+                                        className="text-sm font-semibold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 transition">
+                                        {g.nama} <ChevronRight size={14} />
+                                    </button>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-gray-500">{g.kompleks?.nama || kompleksNama}</td>
+                                <td className="px-4 py-3">
+                                    <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-medium">
+                                        {g.kamars?.length ?? 0} Kamar
+                                    </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center justify-center gap-1">
+                                        {canEdit && (<>
+                                            <button onClick={() => openEdit(g)} className="w-7 h-7 bg-gray-100 hover:bg-blue-100 hover:text-blue-600 text-gray-400 rounded flex items-center justify-center transition opacity-0 group-hover:opacity-100"><Pencil size={13} /></button>
+                                            <button onClick={() => setDeleteTarget(g)} className="w-7 h-7 bg-gray-100 hover:bg-red-100 hover:text-red-500 text-gray-400 rounded flex items-center justify-center transition opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
+                                        </>)}
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {showForm && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setShowForm(false)}>
+                    <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-gray-900">{editing ? 'Edit Gedung' : 'Tambah Gedung'}</h3>
+                        <div>
+                            <label className="text-xs font-semibold text-gray-600 block mb-1">Nama Gedung</label>
+                            <input value={nama} onChange={e => setNama(e.target.value)} placeholder="Contoh: Gedung A"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" />
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowForm(false)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Batal</button>
+                            <button onClick={handleSave} disabled={saving || !nama.trim()} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50">
+                                {saving ? 'Menyimpan...' : 'Simpan'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
+                    <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-base font-bold text-gray-900">Hapus Gedung?</h3>
+                        <p className="text-sm text-gray-500">Menghapus <strong>"{deleteTarget.nama}"</strong> akan menghapus semua Kamar di dalamnya.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Batal</button>
+                            <button onClick={handleDelete} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition">Ya, Hapus</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
