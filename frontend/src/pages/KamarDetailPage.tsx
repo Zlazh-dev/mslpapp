@@ -126,6 +126,7 @@ export default function KamarDetailPage() {
         await api.delete(`/santri/${deleteTarget.id}`);
         setDeleting(false); setDeleteTarget(null);
         fetchSantri();
+        fetchKamar();
     };
 
     const startIndex = (page - 1) * LIMIT;
@@ -203,7 +204,13 @@ export default function KamarDetailPage() {
                     </div>
                     <div>
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pembimbing</p>
-                        <p className="text-sm font-medium text-gray-700 mt-0.5">{kamar.pembimbing?.name || <span className="text-gray-400 italic text-xs">Belum ditugaskan</span>}</p>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                            {kamar.pembimbings && kamar.pembimbings.length > 0 ? (
+                                kamar.pembimbings.map(p => <p key={p.id} className="text-sm font-medium text-gray-700">{p.name}</p>)
+                            ) : (
+                                <span className="text-gray-400 italic text-xs">Belum ditugaskan</span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -381,7 +388,7 @@ export default function KamarDetailPage() {
                     targetId={kamar.id as unknown as number}
                     targetName={kamar.nama}
                     onClose={() => setAssignOpen(false)}
-                    onAssigned={fetchSantri}
+                    onAssigned={() => { fetchSantri(); fetchKamar(); }}
                     accentColor="emerald"
                 />
             )}

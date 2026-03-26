@@ -6,9 +6,9 @@ import { Type } from 'class-transformer';
 export class CreateSantriDto {
     @ApiProperty() @IsString() nis: string;
     @ApiProperty() @IsString() namaLengkap: string;
-    @ApiProperty({ enum: Gender }) @IsEnum(Gender) gender: Gender;
-    @ApiProperty() @IsDateString() tanggalLahir: string;
-    @ApiProperty() @IsString() tempatLahir: string;
+    @ApiProperty({ enum: Gender, required: false }) @IsOptional() @IsEnum(Gender) gender?: Gender;
+    @ApiProperty({ required: false }) @IsOptional() @IsDateString() tanggalLahir?: string;
+    @ApiProperty({ required: false }) @IsOptional() @IsString() tempatLahir?: string;
 
     @ApiProperty({ required: false }) @IsOptional() @IsString() noHp?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsString() nik?: string;

@@ -144,9 +144,9 @@ export default function KamarManagementPage() {
     const fetchAllAssignments = async () => {
         try {
             const r = await api.get('/kamar');
-            const allKamar: { id: number; nama: string; pembimbingId: string | null }[] = r.data.data;
+            const allKamar: Kamar[] = r.data.data;
             const map = new Map<string, { kamarId: number; kamarNama: string }>();
-            allKamar.forEach(k => { if (k.pembimbingId) map.set(k.pembimbingId, { kamarId: k.id, kamarNama: k.nama }); });
+            allKamar.forEach(k => { k.pembimbings?.forEach(p => map.set(p.id, { kamarId: k.id, kamarNama: k.nama })); });
             setGlobalAssignMap(map);
         } catch { /* ignore */ }
     };
@@ -197,16 +197,16 @@ export default function KamarManagementPage() {
 
     const assignPembimbing = async (kamarId: number, userId: string) => {
         try {
-            await api.patch(`/kamar/${kamarId}`, { pembimbingId: userId });
+            await api.put(`/users/${userId}`, { kamarId: String(kamarId) });
             showMsg('Pembimbing berhasil di-assign');
             if (selGedung) await fetchKamar(selGedung);
             await Promise.all([fetchPembimbing(), fetchAllAssignments()]);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
     };
 
-    const removePembimbing = async (kamarId: number) => {
+    const removePembimbing = async (userId: string) => {
         try {
-            await api.patch(`/kamar/${kamarId}`, { pembimbingId: null });
+            await api.put(`/users/${userId}`, { kamarId: '' });
             showMsg('Pembimbing berhasil dihapus');
             if (selGedung) await fetchKamar(selGedung);
             await Promise.all([fetchPembimbing(), fetchAllAssignments()]);
@@ -399,7 +399,7 @@ export default function KamarManagementPage() {
                                                     const pct = kap > 0 ? Math.min(100, (terisi / kap) * 100) : 0;
                                                     const isOver = kap > 0 && terisi > kap;
                                                     const isDragOver = dropTarget === k.id;
-                                                    const pem = pembimbingList.find(p => p.id === k.pembimbingId);
+                                                    const pems = k.pembimbings || [];
                                                     return (
                                                         <tr key={k.id}
                                                             onDragOver={e => { e.preventDefault(); setDropTarget(k.id); }}
@@ -425,13 +425,17 @@ export default function KamarManagementPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-3 py-2">
-                                                                {pem ? (
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className="text-xs text-emerald-700 font-medium truncate max-w-[100px]">{pem.name}</span>
-                                                                        {canEdit && (
-                                                                            <button onClick={() => removePembimbing(k.id)}
-                                                                                className="text-gray-300 hover:text-red-500 text-[10px] transition opacity-0 group-hover/row:opacity-100">✕</button>
-                                                                        )}
+                                                                {pems.length > 0 ? (
+                                                                    <div className="flex flex-col gap-1">
+                                                                        {pems.map(pem => (
+                                                                            <div key={pem.id} className="flex items-center gap-1">
+                                                                                <span className="text-[10px] text-emerald-700 font-medium truncate max-w-[100px]">{pem.name}</span>
+                                                                                {canEdit && (
+                                                                                    <button onClick={() => removePembimbing(pem.id)}
+                                                                                        className="text-gray-300 hover:text-red-500 text-[10px] transition opacity-0 group-hover/row:opacity-100">✕</button>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
                                                                     </div>
                                                                 ) : (
                                                                     <span className={`text-xs italic ${isDragOver ? 'text-emerald-600 font-medium' : 'text-gray-300'}`}>
@@ -506,7 +510,7 @@ export default function KamarManagementPage() {
                                                 )}
                                             </div>
                                             {canEdit && assignInfo && (
-                                                <button onClick={() => removePembimbing(assignInfo.kamarId)}
+                                                <button onClick={() => removePembimbing(p.id)}
                                                     className="w-4 h-4 text-emerald-300 hover:text-red-500 flex items-center justify-center transition text-[10px] opacity-0 group-hover/sup:opacity-100 flex-shrink-0">✕</button>
                                             )}
                                         </div>

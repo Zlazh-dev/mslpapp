@@ -64,20 +64,27 @@ export default function UserListPage() {
                                         <tr key={u.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                                                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
                                                         <span className="text-primary-700 text-sm font-bold">{u.name.charAt(0)}</span>
                                                     </div>
-                                                    <span className="font-medium text-gray-900">{u.name}</span>
+                                                    <div>
+                                                        <span className="font-medium text-gray-900 block">{u.name}</span>
+                                                        {(u as any).santri && <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-sm border border-emerald-100 inline-block mt-0.5">Terkait Santri</span>}
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-gray-600 font-mono text-xs">{u.username}</td>
+                                            <td className="px-4 py-3 text-gray-600 font-mono text-xs">
+                                                {u.username || <span className="text-gray-400 italic">NIS: {(u as any).santri?.nis}</span>}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <Badge variant={roleColors[u.role] || 'gray'}>{roleLabels[u.role] || u.role}</Badge>
                                             </td>
-                                            <td className="px-4 py-3 text-gray-500 text-xs">
-                                                {u.kelasWali?.nama && <span>Kelas: {u.kelasWali.nama}</span>}
-                                                {u.kamarBimbing && u.kamarBimbing.length > 0 && <span> Kamar: {u.kamarBimbing.map(k => k.nama).join(', ')}</span>}
-                                                {!u.kelasWali && (!u.kamarBimbing || u.kamarBimbing.length === 0) && '-'}
+                                            <td className="px-4 py-3">
+                                                <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
+                                                    {u.kelasWali && u.kelasWali.length > 0 && <span>Kelas: {u.kelasWali.map(k => k.nama).join(', ')}</span>}
+                                                    {u.kamarBimbing && <span> Kamar: {u.kamarBimbing.nama}</span>}
+                                                    {(!u.kelasWali || u.kelasWali.length === 0) && !u.kamarBimbing && '-'}
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-1">

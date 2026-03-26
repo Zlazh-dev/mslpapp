@@ -14,6 +14,28 @@ export class SantriService {
         return { success: true, data: years };
     }
 
+    async generateNis(dateStr?: string) {
+        const date = dateStr ? new Date(dateStr) : new Date();
+        const year = date.getFullYear().toString().substring(2);
+
+        const highest = await this.prisma.santri.findFirst({
+            where: { nis: { startsWith: year } },
+            orderBy: { nis: 'desc' },
+            select: { nis: true }
+        });
+
+        let nextNumber = 1;
+        if (highest && highest.nis.length >= 5) {
+            const currentNumber = parseInt(highest.nis.substring(2));
+            if (!isNaN(currentNumber)) {
+                nextNumber = currentNumber + 1;
+            }
+        }
+
+        const newNis = `${year}${nextNumber.toString().padStart(3, '0')}`;
+        return { success: true, data: newNis };
+    }
+
     async findAll(query: QuerySantriDto) {
         const { search, kelasId, kamarId, status, jenjangPendidikan, nisYear, page = '1', limit = '10' } = query as any;
         const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -35,7 +57,7 @@ export class SantriService {
             this.prisma.santri.findMany({
                 where, skip, take: parseInt(limit),
                 include: {
-                    kelas: { select: { id: true, nama: true } },
+                    kelas: { select: { id: true, nama: true, tingkat: { select: { jenjang: { select: { id: true, nama: true } } } } } },
                     kamar: { select: { id: true, nama: true, gedung: { include: { kompleks: { select: { id: true, nama: true } } } } } },
                 },
                 orderBy: { nis: 'asc' },
@@ -58,6 +80,7 @@ export class SantriService {
                 kelas: { include: { tingkat: { include: { jenjang: true } } } },
                 kamar: { include: { gedung: { include: { kompleks: true } } } },
                 nilai: { orderBy: { mataPelajaran: 'asc' } },
+                user: { select: { id: true, username: true, role: true } },
             },
         });
         if (!santri) throw new NotFoundException('Santri tidak ditemukan');

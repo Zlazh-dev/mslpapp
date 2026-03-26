@@ -17,6 +17,8 @@ import { AkademikModule } from './akademik/akademik.module';
 import { LaporanModule } from './laporan/laporan.module';
 import { UploadModule } from './upload/upload.module';
 import { ChatModule } from './chat/chat.module';
+import { SettingsModule } from './settings/settings.module';
+import { BackupModule } from './backup/backup.module';
 
 @Module({
     imports: [
@@ -47,6 +49,8 @@ import { ChatModule } from './chat/chat.module';
         LaporanModule,
         UploadModule,
         ChatModule,
+        SettingsModule,
+        BackupModule,
     ],
     providers: [
         {

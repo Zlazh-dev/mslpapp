@@ -10,9 +10,9 @@ import { ChevronDown, Info, ArrowLeft, Save } from 'lucide-react';
 const schema = z.object({
     nis: z.string().min(1, 'NIS wajib diisi'),
     namaLengkap: z.string().min(1, 'Nama lengkap wajib diisi'),
-    gender: z.enum(['L', 'P'], { required_error: 'Gender wajib dipilih' }),
-    tanggalLahir: z.string().min(1, 'Tanggal lahir wajib diisi'),
-    tempatLahir: z.string().min(1, 'Tempat lahir wajib diisi'),
+    gender: z.enum(['L', 'P']).optional().or(z.literal('')),
+    tanggalLahir: z.string().optional().or(z.literal('')),
+    tempatLahir: z.string().optional().or(z.literal('')),
     noHp: z.string().optional().or(z.literal('')),
     nik: z.string().optional().or(z.literal('')),
     noKk: z.string().optional().or(z.literal('')),
@@ -41,7 +41,14 @@ const schema = z.object({
         return new Date(data.tanggalKeluar) > new Date(data.tanggalMasuk);
     }
     return true;
-}, { message: 'Tanggal keluar harus setelah tanggal masuk', path: ['tanggalKeluar'] });
+}, { message: 'Tanggal keluar harus setelah tanggal masuk', path: ['tanggalKeluar'] })
+    .refine(data => {
+        if (!data.tanggalLahir) return true;
+        const dob = new Date(data.tanggalLahir);
+        const tenYearsAgo = new Date();
+        tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+        return dob <= tenYearsAgo;
+    }, { message: 'Calon santri minimal harus berusia 10 tahun', path: ['tanggalLahir'] });
 
 type FormData = z.infer<typeof schema>;
 
@@ -91,14 +98,33 @@ export default function SantriFormPage() {
     const isEdit = Boolean(id);
 
     const [saving, setSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [generatingNis, setGeneratingNis] = useState(false);
 
-    const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<FormData>({
+    // Modal state
+    const [modal, setModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
+
+    const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(schema),
         defaultValues: { gender: undefined },
     });
 
     const tanggalKeluar = watch('tanggalKeluar');
+    const tanggalMasuk = watch('tanggalMasuk');
+
+    const handleGenerateNis = async () => {
+        setGeneratingNis(true);
+        try {
+            const params = tanggalMasuk ? { date: tanggalMasuk } : {};
+            const res = await api.get('/santri/generate-nis', { params });
+            if (res.data?.data) {
+                setValue('nis', res.data.data, { shouldValidate: true });
+            }
+        } catch (e: any) {
+            setModal({ show: true, title: 'Gagal', message: 'Gagal generate NIS otomatis dari server.' });
+        } finally {
+            setGeneratingNis(false);
+        }
+    };
 
     useEffect(() => {
         if (isEdit) {
@@ -136,31 +162,48 @@ export default function SantriFormPage() {
 
     const onSubmit = async (formData: FormData) => {
         setSaving(true);
-        setError(null);
         try {
             const payload: any = { ...formData };
             // Convert empty strings to null/undefined
-            ['noHp', 'nik', 'noKk', 'tanggalMasuk', 'tanggalKeluar', 'jalurPendidikan',
+            ['gender', 'tempatLahir', 'tanggalLahir', 'noHp', 'nik', 'noKk', 'tanggalMasuk', 'tanggalKeluar', 'jalurPendidikan',
                 'namaAyah', 'namaIbu', 'noHpAyah', 'noHpIbu', 'namaWali', 'noHpWali', 'deskripsiWali',
                 'provinsi', 'kotaKabupaten', 'kecamatan', 'kelurahan', 'jalan', 'rtRw'].forEach(k => {
                     if (payload[k] === '') payload[k] = isEdit ? null : undefined;
                 });
 
             if (isEdit) {
-                await api.patch(`/santri/${id}`, payload);
+                await api.put(`/santri/${id}`, payload);
             } else {
                 await api.post('/santri', payload);
             }
             navigate('/santri');
         } catch (e: any) {
-            setError(e.response?.data?.message || 'Terjadi kesalahan');
+            let errorMsg = e.response?.data?.message || 'Terjadi kesalahan sistem saat menyimpan data. Silakan coba lagi.';
+            if (Array.isArray(errorMsg)) {
+                errorMsg = errorMsg.join(', ');
+            }
+            // Translating common system messages
+            if (errorMsg.includes('must be a valid ISO 8601') || errorMsg.includes('must be one of the following')) {
+                errorMsg = 'Format data yang diisi tidak sesuai, atau belum lengkap.';
+            }
+            setModal({ show: true, title: 'Gagal Menyimpan', message: errorMsg });
         } finally {
             setSaving(false);
         }
     };
 
+    const onError = (errors: any) => {
+        const firstErrorKey = Object.keys(errors)[0];
+        let msg = errors[firstErrorKey]?.message;
+        if (!msg) {
+            const keyLabel = firstErrorKey.charAt(0).toUpperCase() + firstErrorKey.slice(1);
+            msg = `${keyLabel} belum diisi dengan benar.`;
+        }
+        setModal({ show: true, title: 'Data Tidak Valid', message: msg });
+    };
+
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit, onError)} className="space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3 flex-wrap">
                 <button type="button" onClick={() => navigate('/santri')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
@@ -175,29 +218,53 @@ export default function SantriFormPage() {
                 </button>
             </div>
 
-            {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">{error}</div>
+            {/* Error Modal */}
+            {modal.show && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm" onClick={() => setModal({ ...modal, show: false })}>
+                    <div className="bg-white rounded-2xl shadow-xl w-80 p-6 flex flex-col items-center gap-3 text-center transform transition-all" onClick={e => e.stopPropagation()}>
+                        <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mt-2">
+                            <svg className="w-7 h-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800">{modal.title}</h3>
+                            <p className="text-sm text-slate-500 mt-1">{modal.message}</p>
+                        </div>
+                        <button type="button" onClick={() => setModal({ ...modal, show: false })} className="w-full mt-3 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors shadow-sm">
+                            Mengerti
+                        </button>
+                    </div>
+                </div>
             )}
 
             {/* Section 1: Data Pribadi */}
             <AccordionSection title="1. Data Pribadi" badge="Wajib" defaultOpen>
                 <FormField label="NIS" error={errors.nis?.message} required>
-                    <input {...register('nis')} className="form-input" placeholder="Nomor Induk Santri" disabled={isEdit} />
+                    <div className="flex gap-2">
+                        <input {...register('nis')} className="form-input flex-1" placeholder="Nomor Induk Santri" disabled={isEdit} />
+                        {!isEdit && (
+                            <button type="button" onClick={handleGenerateNis} disabled={generatingNis}
+                                className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-lg text-sm font-semibold transition whitespace-nowrap disabled:opacity-50">
+                                {generatingNis ? '...' : 'Auto Generate'}
+                            </button>
+                        )}
+                    </div>
                 </FormField>
                 <FormField label="Nama Lengkap" error={errors.namaLengkap?.message} required>
                     <input {...register('namaLengkap')} className="form-input" placeholder="Nama lengkap santri" />
                 </FormField>
-                <FormField label="Jenis Kelamin" error={errors.gender?.message} required>
-                    <select {...register('gender')} className="form-input">
+                <FormField label="Jenis Kelamin" error={(errors as any).gender?.message}>
+                    <select {...register('gender' as any)} className="form-input">
                         <option value="">Pilih gender</option>
                         <option value="L">Laki-laki</option>
                         <option value="P">Perempuan</option>
                     </select>
                 </FormField>
-                <FormField label="Tempat Lahir" error={errors.tempatLahir?.message} required>
+                <FormField label="Tempat Lahir" error={errors.tempatLahir?.message}>
                     <input {...register('tempatLahir')} className="form-input" placeholder="Kota tempat lahir" />
                 </FormField>
-                <FormField label="Tanggal Lahir" error={errors.tanggalLahir?.message} required>
+                <FormField label="Tanggal Lahir" error={errors.tanggalLahir?.message}>
                     <input {...register('tanggalLahir')} type="date" className="form-input" />
                 </FormField>
                 <FormField label="No HP" error={errors.noHp?.message}>

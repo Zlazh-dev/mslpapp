@@ -119,7 +119,7 @@ export default function SantriListPage() {
     const exportExcel = async () => {
         setShowKebab(false);
         const XLSX = await import('xlsx');
-        const params: any = { limit: 1000, page: 1 };
+        const params: any = { limit: 999999, page: 1 };
         if (debouncedSearch) params.search = debouncedSearch;
         if (nisYear) params.nisYear = nisYear;
         if (filterKamar) params.kamarId = filterKamar;
@@ -333,7 +333,7 @@ export default function SantriListPage() {
                                         {kelas.map(k => (
                                             <button key={k.id} onClick={() => { setFilterKelas(String(k.id)); setPage(1); }}
                                                 className={`w-full text-left px-5 py-1.5 text-xs transition ${filterKelas === String(k.id) ? 'text-blue-600 font-semibold bg-blue-50' : 'text-gray-600 hover:bg-gray-100'}`}>
-                                                {k.nama}
+                                                {k.tingkat?.jenjang?.nama} — {k.nama}
                                             </button>
                                         ))}
                                     </FilterSection>
@@ -360,12 +360,8 @@ export default function SantriListPage() {
                 {/* Active Filter Chips */}
                 {activeFilterCount > 0 && (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        {filterKamar && (
-                            <Chip color="teal" label={kamar.find(k => String(k.id) === filterKamar)?.nama || 'Kamar'} onRemove={() => { setFilterKamar(''); setPage(1); }} />
-                        )}
-                        {filterKelas && (
-                            <Chip color="blue" label={kelas.find(k => String(k.id) === filterKelas)?.nama || 'Kelas'} onRemove={() => { setFilterKelas(''); setPage(1); }} />
-                        )}
+                        {filterKamar && (() => { const k = kamar.find(k => String(k.id) === filterKamar); return <Chip color="teal" label={k ? `${k.gedung?.nama} — ${k.nama}` : 'Kamar'} onRemove={() => { setFilterKamar(''); setPage(1); }} />; })()}
+                        {filterKelas && (() => { const k = kelas.find(k => String(k.id) === filterKelas); return <Chip color="blue" label={k ? `${k.tingkat?.jenjang?.nama} — ${k.nama}` : 'Kelas'} onRemove={() => { setFilterKelas(''); setPage(1); }} />; })()}
                         {filterGender && (
                             <Chip color="purple" label={GENDER_LABEL[filterGender] || filterGender} onRemove={() => { setFilterGender(''); setPage(1); }} />
                         )}
@@ -440,10 +436,24 @@ export default function SantriListPage() {
                                             : <span className="text-[10px] text-gray-300">—</span>}
                                     </td>
                                     <td className="px-4 py-2.5">
-                                        <span className="text-xs font-medium text-gray-700">{s.kelas?.nama || <span className="text-gray-300">—</span>}</span>
+                                        {s.kelas ? (
+                                            <div>
+                                                <span className="text-xs font-medium text-gray-700">{s.kelas.nama}</span>
+                                                {(s.kelas as any).tingkat?.jenjang?.nama && (
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">{(s.kelas as any).tingkat.jenjang.nama}</p>
+                                                )}
+                                            </div>
+                                        ) : <span className="text-gray-300">—</span>}
                                     </td>
                                     <td className="px-4 py-2.5">
-                                        <span className="text-xs text-gray-700">{s.kamar?.nama || <span className="text-gray-300">—</span>}</span>
+                                        {s.kamar ? (
+                                            <div>
+                                                <span className="text-xs text-gray-700">{s.kamar.nama}</span>
+                                                {s.kamar.gedung?.nama && (
+                                                    <p className="text-[10px] text-gray-400 mt-0.5">{s.kamar.gedung.nama}</p>
+                                                )}
+                                            </div>
+                                        ) : <span className="text-gray-300">—</span>}
                                     </td>
                                     <td className="px-4 py-2.5 whitespace-nowrap">
                                         <span className="text-xs text-gray-500">

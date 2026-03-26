@@ -18,6 +18,10 @@ export class SantriController {
     @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
     getAngkatan() { return this.santriService.getAngkatan(); }
 
+    @Get('generate-nis')
+    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    generateNis(@Query('date') date?: string) { return this.santriService.generateNis(date); }
+
     @Get()
     @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
     findAll(@Query() query: QuerySantriDto) { return this.santriService.findAll(query); }

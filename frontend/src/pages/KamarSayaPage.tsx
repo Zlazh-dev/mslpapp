@@ -40,7 +40,7 @@ export default function KamarSayaPage() {
         api.get('/kamar')
             .then(r => {
                 const list: Kamar[] = r.data?.data ?? r.data ?? [];
-                const mine = list.find((k: any) => k.pembimbingId === user.id);
+                const mine = list.find((k: any) => k.pembimbings?.some((p: any) => p.id === user.id));
                 if (mine) { setKamar(mine); }
                 else { setNoKamar(true); }
             })

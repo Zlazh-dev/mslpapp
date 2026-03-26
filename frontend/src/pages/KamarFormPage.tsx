@@ -11,7 +11,6 @@ const schema = z.object({
     name: z.string().min(1, 'Nama kamar wajib diisi'),
     gedung: z.string().min(1, 'Gedung wajib diisi'),
     kapasitas: z.coerce.number().min(1, 'Kapasitas minimal 1'),
-    pembimbingId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -28,16 +27,14 @@ export default function KamarFormPage() {
     });
 
     useEffect(() => {
-        api.get('/users').then(r => setUsers(r.data.data.filter((u: User) => u.role === 'PEMBIMBING_KAMAR' || u.role === 'ADMIN')));
-        if (isEdit) api.get(`/kamar/${id}`).then(r => reset({ ...r.data.data, pembimbingId: r.data.data.pembimbingId || '' }));
+        if (isEdit) api.get(`/kamar/${id}`).then(r => reset(r.data.data));
     }, [id]);
 
     const onSubmit = async (data: FormData) => {
         try {
             setError('');
-            const payload = { ...data, pembimbingId: data.pembimbingId || undefined };
-            if (isEdit) await api.put(`/kamar/${id}`, payload);
-            else await api.post('/kamar', payload);
+            if (isEdit) await api.put(`/kamar/${id}`, data);
+            else await api.post('/kamar', data);
             navigate('/kamar');
         } catch (err: any) { setError(err.response?.data?.message || 'Gagal menyimpan'); }
     };
@@ -61,13 +58,6 @@ export default function KamarFormPage() {
                     <label className="form-label">Kapasitas</label>
                     <input {...register('kapasitas')} type="number" className="form-input" placeholder="20" />
                     {errors.kapasitas && <p className="text-red-500 text-xs mt-1">{errors.kapasitas.message}</p>}
-                </div>
-                <div>
-                    <label className="form-label">Pembimbing Kamar</label>
-                    <select {...register('pembimbingId')} className="form-input">
-                        <option value="">-- Pilih Pembimbing --</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
                 </div>
                 <div className="flex gap-3 pt-2">
                     <button type="button" onClick={() => navigate(-1)} className="btn-secondary flex-1">Batal</button>

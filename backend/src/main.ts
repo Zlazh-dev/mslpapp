@@ -31,6 +31,7 @@ async function bootstrap() {
                 },
             },
             crossOriginEmbedderPolicy: false, // allow image uploads
+            crossOriginResourcePolicy: process.env.NODE_ENV === 'production' ? undefined : false, // Disable in dev only
         }),
     );
 

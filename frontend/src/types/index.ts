@@ -15,8 +15,8 @@ export interface User {
     username: string;
     role: Role;
     createdAt?: string;
-    kelasWali?: { id: number; nama: string } | null;
-    kamarBimbing?: { id: number; nama: string }[] | null;
+    kelasWali?: { id: number; nama: string }[] | null;
+    kamarBimbing?: { id: number; nama: string } | null;
 }
 
 // ── Kamar cascade ─────────────────────────────────────────────────────────────
@@ -45,9 +45,9 @@ export interface Kamar {
     nama: string;
     kapasitas?: number | null;
     gedungId: number;
-    gedung?: Gedung & { kompleks?: Pick<Kompleks, 'id' | 'nama'> };
-    pembimbingId?: string | null;
-    pembimbing?: Pick<User, 'id' | 'name'> | null;
+    gedung?: Gedung;
+    pembimbings?: Pick<User, 'id' | 'name'>[] | null;
+    santris?: Santri[];
     _count?: { santris: number };
     createdAt?: string;
     updatedAt?: string;
@@ -130,6 +130,7 @@ export interface Santri {
     kamar?: Kamar | null;
     foto?: string | null;
     kkFileUrl?: string | null;
+    user?: { id: string; username?: string | null; role: Role } | null;
     createdAt: string;
     updatedAt: string;
 }

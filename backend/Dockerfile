@@ -30,4 +30,4 @@ RUN npx prisma generate
 
 EXPOSE 3000
 
-CMD sh -c "npx prisma migrate deploy; npx prisma db seed 2>&1 || echo 'Seed warning (ok if db already seeded)'; exec node dist/src/main"
+CMD sh -c "npx prisma migrate deploy && npx prisma db seed; exec node dist/src/main"

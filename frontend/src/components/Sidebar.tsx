@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { Role } from '../types';
 import {
     LayoutDashboard, Users, Home,
-    GraduationCap, UserCheck, LogOut, MessageSquare,
+    GraduationCap, UserCheck, LogOut, MessageSquare, Printer, HardDrive,
 } from 'lucide-react';
 
 interface NavItem {
@@ -22,6 +22,8 @@ const navItems: NavItem[] = [
     { to: '/kelas-saya', label: 'Kelas Saya', icon: <GraduationCap size={18} />, roles: ['WALI_KELAS'] },
     { to: '/chat', label: 'Chat', icon: <MessageSquare size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS'] },
     { to: '/users', label: 'Pengguna', icon: <UserCheck size={18} />, roles: ['ADMIN'] },
+    { to: '/pengaturan/cetak', label: 'Pengaturan Cetak', icon: <Printer size={18} />, roles: ['ADMIN'] },
+    { to: '/pengaturan/backupdata', label: 'Backup Data', icon: <HardDrive size={18} />, roles: ['ADMIN'] },
 ];
 
 const roleLabels: Record<Role, string> = {

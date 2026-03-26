@@ -11,7 +11,7 @@ export class KamarService {
             where: gedungId ? { gedungId } : undefined,
             include: {
                 gedung: { include: { kompleks: { select: { id: true, nama: true } } } },
-                pembimbing: { select: { id: true, name: true } },
+                pembimbings: { select: { id: true, name: true } },
                 _count: { select: { santris: true } },
             },
             orderBy: { nama: 'asc' },
@@ -24,11 +24,8 @@ export class KamarService {
             where: { id },
             include: {
                 gedung: { include: { kompleks: true } },
-                pembimbing: { select: { id: true, name: true } },
-                santris: {
-                    select: { id: true, nis: true, namaLengkap: true, gender: true, status: true },
-                    orderBy: { namaLengkap: 'asc' },
-                },
+                pembimbings: { select: { id: true, name: true } },
+                _count: { select: { santris: true } },
             },
         });
         if (!data) throw new NotFoundException('Kamar tidak ditemukan');
@@ -53,7 +50,7 @@ export class KamarService {
                 nama: dto.nama,
                 kapasitas: dto.kapasitas,
                 gedungId: dto.gedungId,
-                pembimbingId: dto.pembimbingId || null,
+                pembimbings: dto.pembimbingIds?.length ? { connect: dto.pembimbingIds.map(id => ({ id })) } : undefined,
             },
         });
         return { success: true, message: 'Kamar berhasil dibuat', data };
@@ -63,22 +60,19 @@ export class KamarService {
         const existing = await this.prisma.kamar.findUnique({ where: { id } });
         if (!existing) throw new NotFoundException('Kamar tidak ditemukan');
 
-        // If assigning a new pembimbing, first unassign them from any other kamar (prevent double-assignment)
-        if (dto.pembimbingId && dto.pembimbingId !== existing.pembimbingId) {
-            await this.prisma.kamar.updateMany({
-                where: { pembimbingId: dto.pembimbingId, id: { not: id } },
-                data: { pembimbingId: null },
-            });
+        const dataPayload: any = {
+            ...(dto.nama !== undefined && { nama: dto.nama }),
+            ...(dto.kapasitas !== undefined && { kapasitas: dto.kapasitas }),
+            ...(dto.gedungId !== undefined && { gedungId: dto.gedungId }),
+        };
+
+        if (dto.pembimbingIds !== undefined) {
+            dataPayload.pembimbings = { set: dto.pembimbingIds.map(id => ({ id })) };
         }
 
         const data = await this.prisma.kamar.update({
             where: { id },
-            data: {
-                ...(dto.nama !== undefined && { nama: dto.nama }),
-                ...(dto.kapasitas !== undefined && { kapasitas: dto.kapasitas }),
-                ...(dto.gedungId !== undefined && { gedungId: dto.gedungId }),
-                ...('pembimbingId' in dto && { pembimbingId: dto.pembimbingId || null }),
-            },
+            data: dataPayload,
         });
         return { success: true, message: 'Kamar berhasil diperbarui', data };
     }

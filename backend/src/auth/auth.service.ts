@@ -14,7 +14,15 @@ export class AuthService {
     async login(loginDto: LoginDto) {
         const { username, password } = loginDto;
 
-        const user = await this.prisma.user.findUnique({ where: { username } });
+        const user = await this.prisma.user.findFirst({
+            where: {
+                OR: [
+                    { username: username },
+                    { santri: { nis: username } }
+                ]
+            },
+            include: { santri: true }
+        });
         if (!user) {
             throw new UnauthorizedException('Username atau password salah');
         }

@@ -21,6 +21,8 @@ import ChatPage from './pages/ChatPage';
 import UserListPage from './pages/UserListPage';
 import UserFormPage from './pages/UserFormPage';
 import SantriPublicPage from './pages/SantriPublicPage';
+import PrintSettingsPage from './pages/PrintSettingsPage';
+import BackupDataPage from './pages/BackupDataPage';
 
 function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles?: Role[] }) {
     const { isAuthenticated, user } = useAuthStore();
@@ -35,7 +37,7 @@ export default function App() {
     const { isAuthenticated } = useAuthStore();
 
     return (
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
                 <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
 
@@ -70,6 +72,10 @@ export default function App() {
                     <Route path="users" element={<PrivateRoute allowedRoles={['ADMIN']}><UserListPage /></PrivateRoute>} />
                     <Route path="users/baru" element={<PrivateRoute allowedRoles={['ADMIN']}><UserFormPage /></PrivateRoute>} />
                     <Route path="users/:id/edit" element={<PrivateRoute allowedRoles={['ADMIN']}><UserFormPage /></PrivateRoute>} />
+
+                    {/* Pengaturan */}
+                    <Route path="pengaturan/cetak" element={<PrivateRoute allowedRoles={['ADMIN']}><PrintSettingsPage /></PrivateRoute>} />
+                    <Route path="pengaturan/backupdata" element={<PrivateRoute allowedRoles={['ADMIN']}><BackupDataPage /></PrivateRoute>} />
                 </Route>
 
                 {/* Public routes — no auth required */}

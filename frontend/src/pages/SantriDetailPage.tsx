@@ -6,8 +6,8 @@ import { useAuthStore } from '../stores/authStore';
 import QRCode from 'qrcode';
 import {
     ArrowLeft, Edit2, Camera, MoreVertical, FileText, Upload, X,
-    User, Users, MapPin, GraduationCap, BookOpen,
-    QrCode, Printer, Download, Trash2
+    User as UserIcon, Users, MapPin, GraduationCap, BookOpen,
+    QrCode, Printer, Download, Trash2, KeyRound
 } from 'lucide-react';
 
 const BACKEND = import.meta.env.VITE_API_URL || '';
@@ -60,17 +60,120 @@ export default function SantriDetailPage() {
     const [showQr, setShowQr] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState('');
 
+    // Print Modal
+    const [printModal, setPrintModal] = useState<{ isOpen: boolean; templates: any[] }>({ isOpen: false, templates: [] });
+
     const generateQr = useCallback((santriId: string) => {
         const url = `${window.location.origin}/p/santri/${santriId}`;
         QRCode.toDataURL(url, { width: 300, margin: 2, color: { dark: '#065f46', light: '#ffffff' } })
             .then(setQrDataUrl);
     }, []);
 
-    const printBiodata = useCallback((s: Santri) => {
-        const JALUR: Record<string, string> = { FORMAL: 'Formal', TAHFIDZ: 'Tahfidz', MAHAD_ALY: "Ma'had Aly" };
+    const handleCetakClick = async (s: Santri) => {
+        try {
+            const res = await api.get('/settings/CETAK_TEMPLATES');
+            if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
+                setPrintModal({ isOpen: true, templates: res.data.data });
+            } else {
+                printBiodata(s, null);
+            }
+        } catch (e) {
+            printBiodata(s, null);
+        }
+    };
+
+    const printBiodata = useCallback(async (s: Santri, specificLayoutElements: any[] | null = null) => {
+        let customLayout = specificLayoutElements;
+        if (!customLayout) {
+            try {
+                const res = await api.get('/settings/CETAK_TEMPLATES');
+                if (res.data?.data && Array.isArray(res.data.data)) {
+                    const tpls = res.data.data;
+                    const def = tpls.find((t: any) => t.isDefault) || tpls[0];
+                    if (def && def.elements) {
+                        customLayout = def.elements;
+                    }
+                }
+                if (!customLayout) {
+                    // fallback to old single layout
+                    const resOld = await api.get('/settings/CETAK_BIODATA_LAYOUT');
+                    if (resOld.data?.data && Array.isArray(resOld.data.data) && resOld.data.data.length > 0) {
+                        customLayout = resOld.data.data;
+                    }
+                }
+            } catch (e) {
+                // fallback to original template if setting fails
+            }
+        }
+
         const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
-        const alamat = [s.jalan, s.rtRw && `RT/RW ${s.rtRw}`, s.kelurahan, s.kecamatan, s.kotaKabupaten, s.provinsi].filter(Boolean).join(', ') || '—';
-        const fotoUrl = s.foto ? `${BACKEND}${s.foto}` : null;
+        const alamatParts = [s.jalan, s.rtRw && `RT/RW ${s.rtRw}`, s.kelurahan, s.kecamatan, s.kotaKabupaten, s.provinsi].filter(Boolean);
+        const alamat = alamatParts.join(', ') || '—';
+        const fotoUrl = s.foto ? (s.foto.startsWith('http') ? s.foto : BACKEND + s.foto) : null;
+
+        if (customLayout) {
+            const elementsHtml = customLayout.map((el: any) => {
+                let text = '';
+                let imgHtml = '';
+
+                if (el.type === 'image' && el.value) {
+                    const imgUrl = el.value.startsWith('http') ? el.value : BACKEND + el.value;
+                    imgHtml = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:fill;" />`;
+                } else if (el.type === 'field' && el.field === 'foto') {
+                    // Special handling: render santri photo
+                    if (fotoUrl) {
+                        imgHtml = `<img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" />`;
+                    } else {
+                        // Fallback: initial letter styled box
+                        const ini = s.namaLengkap?.charAt(0)?.toUpperCase() || '?';
+                        imgHtml = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d1fae5,#6ee7b7);font-size:32px;font-weight:700;color:#065f46;">${ini}</div>`;
+                    }
+                } else if (el.type === 'text') {
+                    text = el.value || '';
+                } else if (el.type === 'field') {
+                    const keys = (el.field || '').split('.');
+                    let val: any = s;
+                    for (const k of keys) { val = val ? val[k] : undefined; }
+
+                    if (el.field === 'tanggalLahir' || el.field === 'tanggalMasuk' || el.field === 'tanggalKeluar') { val = fmtDate(val); }
+                    else if (el.field === 'gender') { val = val === 'L' ? 'Laki-laki' : 'Perempuan'; }
+                    else if (el.field === 'alamatFull') { val = alamat; }
+
+                    text = val || '';
+                }
+
+                const st = el.style || {};
+                const flexJc = st.textAlign === 'center' ? 'center' : (st.textAlign === 'right' ? 'flex-end' : 'flex-start');
+                // For true bounding box match, elements need box-sizing border-box.
+                const styleStr = `position:absolute; left:${el.x}px; top:${el.y}px; width:${el.w}px; height:${el.h}px; font-family:${st.fontFamily || 'Arial'}; font-size:${st.fontSize || 14}px; font-weight:${st.fontWeight || 'normal'}; color:${st.color || '#000'}; text-align:${st.textAlign || 'left'}; background-color:${st.backgroundColor || 'transparent'}; border:${st.border || 'none'}; opacity:${st.opacity ?? 1}; display:flex; align-items:center; justify-content:${flexJc}; overflow:hidden; box-sizing:border-box;`;
+
+                return `<div style="${styleStr}">${text}${imgHtml}</div>`;
+            }).join('');
+
+            const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+             <title>Biodata — ${s.namaLengkap}</title>
+             <style>
+               @media print {
+                 @page { margin: 0; size: A4; }
+                 body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                 .no-print { display: none !important; }
+               }
+               body { margin: 0; display: flex; justify-content: center; background: #e5e7eb; padding-bottom: 60px; }
+               .canvas-a4 { position: relative; width: 794px; height: 1123px; background: white; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.1); margin-top:20px; }
+             </style>
+             </head><body>
+                <div class="canvas-a4">${elementsHtml}</div>
+                <div class="no-print" style="position:fixed; bottom:20px; right:20px;">
+                   <button onclick="window.print()" style="padding:12px 24px; background:#065f46; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:bold; box-shadow:0 4px 6px rgba(0,0,0,0.2)">🖨️ Cetak</button>
+                </div>
+             </body></html>`;
+
+            const w = window.open('', '_blank', 'width=850,height=900');
+            if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500); }
+            return;
+        }
+
+        const JALUR: Record<string, string> = { FORMAL: 'Formal', TAHFIDZ: 'Tahfidz', MAHAD_ALY: "Ma'had Aly" };
 
         const row = (label: string, value: string) =>
             `<tr><td class="label">${label}</td><td class="val">${value}</td></tr>`;
@@ -169,6 +272,44 @@ ${row('Keterangan', s.deskripsiWali || '—')}
     // Nilai
     const [nilai, setNilai] = useState<any[]>([]);
     const [loadingNilai, setLoadingNilai] = useState(false);
+
+    // Create User Modal
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [userPassword, setUserPassword] = useState('');
+    const [userPasswordConfirm, setUserPasswordConfirm] = useState('');
+    const [userRole, setUserRole] = useState('STAF_PENDATAAN');
+    const [userError, setUserError] = useState('');
+    const [submittingUser, setSubmittingUser] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+
+    const handleCreateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (userPassword.length < 6) return setUserError('Password minimal 6 karakter');
+        if (userPassword !== userPasswordConfirm) return setUserError('Konfirmasi password tidak cocok');
+        if (!santri) return;
+
+        setSubmittingUser(true);
+        setUserError('');
+        try {
+            await api.post('/users', {
+                name: santri.namaLengkap,
+                password: userPassword,
+                role: userRole,
+                santriId: santri.id
+            });
+            setShowUserModal(false);
+            setUserPassword('');
+            setUserPasswordConfirm('');
+            fetchSantri();
+            setSuccessMessage('Akun user berhasil dibuat. User dapat login menggunakan NIS.');
+            setShowSuccessModal(true);
+        } catch (err: any) {
+            setUserError(err.response?.data?.message || 'Gagal membuat akun');
+        } finally {
+            setSubmittingUser(false);
+        }
+    };
 
     const fetchSantri = () => {
         api.get(`/santri/${id}`).then(r => {
@@ -299,7 +440,17 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-violet-600 hover:bg-violet-50 transition-colors">
                                     <QrCode size={14} /> Generate QR Code
                                 </button>
-                                <button onClick={() => { setShowKebab(false); printBiodata(santri); }}
+                                {santri.user ? (
+                                    <button disabled className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-gray-400 bg-gray-50 cursor-not-allowed">
+                                        <KeyRound size={14} /> Akun Login Aktif
+                                    </button>
+                                ) : (
+                                    <button onClick={() => { setShowKebab(false); setShowUserModal(true); }}
+                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors">
+                                        <KeyRound size={14} /> Jadikan User
+                                    </button>
+                                )}
+                                <button onClick={() => { setShowKebab(false); handleCetakClick(santri); }}
                                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
                                     <Printer size={14} /> Cetak Biodata
                                 </button>
@@ -391,7 +542,7 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                     {/* Wali */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-100">
-                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center"><User size={15} className="text-indigo-500" /></div>
+                            <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center"><UserIcon size={15} className="text-indigo-500" /></div>
                             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Wali</h3>
                         </div>
                         <div className="space-y-1.5">
@@ -424,7 +575,7 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                             <div className="p-6 space-y-6">
                                 <div>
                                     <div className="flex items-center gap-2.5 mb-4 pb-3 border-b border-slate-100">
-                                        <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center"><User size={15} className="text-teal-600" /></div>
+                                        <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center"><UserIcon size={15} className="text-teal-600" /></div>
                                         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Data Pribadi</h3>
                                     </div>
                                     <div className="space-y-1.5">
@@ -609,6 +760,109 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                                 <div className="animate-spin w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full" />
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* ── Add User Modal ── */}
+            {showUserModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm" onClick={() => setShowUserModal(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-800">Buat Akun Login User</h3>
+                            <button onClick={() => setShowUserModal(false)} className="p-1.5 hover:bg-slate-100 rounded-lg"><X size={16} className="text-slate-500" /></button>
+                        </div>
+                        <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+                            {userError && <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-200">{userError}</div>}
+
+                            <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-1 mb-2">
+                                <p className="text-sm font-semibold text-blue-900">{santri.namaLengkap}</p>
+                                <p className="text-xs text-blue-700">NIS: {santri.nis}</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Otoritas (Role)</label>
+                                <select value={userRole} onChange={e => setUserRole(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500">
+                                    <option value="STAF_PENDATAAN">Staf Pendataan</option>
+                                    <option value="STAF_MADRASAH">Staf Madrasah</option>
+                                    <option value="PEMBIMBING_KAMAR">Pembimbing Kamar</option>
+                                    <option value="ADMIN">Administrator</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Password</label>
+                                <input type="password" value={userPassword} onChange={e => setUserPassword(e.target.value)} required minLength={6}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Minimal 6 karakter" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">Konfirmasi Password</label>
+                                <input type="password" value={userPasswordConfirm} onChange={e => setUserPasswordConfirm(e.target.value)} required minLength={6}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="Ketik ulang password" />
+                            </div>
+
+                            <div className="pt-2 flex gap-3">
+                                <button type="button" onClick={() => setShowUserModal(false)} className="flex-1 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">Batal</button>
+                                <button type="submit" disabled={submittingUser} className="flex-1 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-70">
+                                    {submittingUser ? 'Menyimpan...' : 'Buat Akun'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Success Modal ── */}
+            {showSuccessModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-sm" onClick={() => setShowSuccessModal(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 flex flex-col items-center gap-4 text-center transform transition-all" onClick={e => e.stopPropagation()}>
+                        <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mt-2">
+                            <svg className="w-7 h-7 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-800">Berhasil!</h3>
+                            <p className="text-sm text-slate-500 mt-1">{successMessage}</p>
+                        </div>
+                        <button onClick={() => setShowSuccessModal(false)} className="w-full mt-2 py-2.5 rounded-xl bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 transition-colors shadow-sm">
+                            Tutup
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Print Template Dialog ── */}
+            {printModal.isOpen && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" onClick={() => setPrintModal(p => ({ ...p, isOpen: false }))}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                        <div className="px-6 py-4 border-b flex justify-between items-center bg-slate-50">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2"><Printer size={18} className="text-teal-600" /> Pilih Template Cetak</h3>
+                            <button onClick={() => setPrintModal(p => ({ ...p, isOpen: false }))} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition"><X size={18} /></button>
+                        </div>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 bg-slate-50/50">
+                            {printModal.templates.map(tpl => (
+                                <div
+                                    key={tpl.id}
+                                    onClick={() => {
+                                        setPrintModal(p => ({ ...p, isOpen: false }));
+                                        printBiodata(santri!, tpl.elements);
+                                    }}
+                                    className="bg-white border rounded-xl p-4 flex items-center justify-between cursor-pointer hover:border-teal-500 hover:ring-2 hover:ring-teal-100 shadow-sm group transition-all"
+                                >
+                                    <div>
+                                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-teal-700 transition">{tpl.name}</h4>
+                                        <p className="text-xs text-slate-500 mt-1.5">
+                                            {tpl.isDefault ? <span className="text-teal-700 font-semibold bg-teal-100/60 px-2 py-1 rounded-md">★ Template Default</span> : `Tersimpan: ${new Date(tpl.updatedAt).toLocaleDateString('id-ID')}`}
+                                        </p>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-teal-100 group-hover:text-teal-600 transition">
+                                        <Printer size={14} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}

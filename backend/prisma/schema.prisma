@@ -33,22 +33,34 @@ enum JalurPendidikan {
   TAHFIDZ
 }
 
+// ─── Setting ───────────────────────────────────────────────────────────────────
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
 // ─── User ─────────────────────────────────────────────────────────────────────
 
 model User {
   id        String   @id @default(cuid())
   name      String
-  username  String   @unique
+  username  String?  @unique
   password  String
   role      Role     @default(STAF_PENDATAAN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  kamarBimbing     Kamar[]        @relation("PembimbingKamar")
-  kelasWali        Kelas[]        @relation("WaliKelas")
-  nilaiCreated     Nilai[]        @relation("NilaiCreator")
-  sentMessages     ChatMessage[]  @relation("SentMessages")
-  receivedMessages ChatMessage[]  @relation("ReceivedMessages")
+  santriId         String?       @unique
+  santri           Santri?       @relation(fields: [santriId], references: [id])
+  kamarBimbingId   Int?
+  kamarBimbing     Kamar?        @relation("PembimbingKamar", fields: [kamarBimbingId], references: [id])
+  kelasWali        Kelas[]       @relation("WaliKelas")
+  nilaiCreated     Nilai[]       @relation("NilaiCreator")
+  sentMessages     ChatMessage[] @relation("SentMessages")
+  receivedMessages ChatMessage[] @relation("ReceivedMessages")
 }
 
 // ─── Kamar Cascade: Kompleks → Gedung → Kamar ────────────────────────────────
@@ -72,16 +84,15 @@ model Gedung {
 }
 
 model Kamar {
-  id           Int      @id @default(autoincrement())
-  nama         String
-  kapasitas    Int?
-  gedungId     Int
-  gedung       Gedung   @relation(fields: [gedungId], references: [id], onDelete: Cascade)
-  pembimbingId String?
-  pembimbing   User?    @relation("PembimbingKamar", fields: [pembimbingId], references: [id])
-  santris      Santri[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  nama        String
+  kapasitas   Int?
+  gedungId    Int
+  gedung      Gedung   @relation(fields: [gedungId], references: [id], onDelete: Cascade)
+  pembimbings User[]   @relation("PembimbingKamar")
+  santris     Santri[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ─── Kelas Cascade: Jenjang → Tingkat → Kelas ────────────────────────────────
@@ -124,9 +135,9 @@ model Santri {
   id                String           @id @default(cuid())
   nis               String           @unique
   namaLengkap       String
-  gender            Gender
-  tanggalLahir      DateTime
-  tempatLahir       String
+  gender            Gender?
+  tanggalLahir      DateTime?
+  tempatLahir       String?
   noHp              String?
   nik               String?
   noKk              String?
@@ -163,9 +174,10 @@ model Santri {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  kelas Kelas? @relation(fields: [kelasId], references: [id])
-  kamar Kamar? @relation(fields: [kamarId], references: [id])
+  kelas Kelas?  @relation(fields: [kelasId], references: [id])
+  kamar Kamar?  @relation(fields: [kamarId], references: [id])
   nilai Nilai[]
+  user  User?
 }
 
 // ─── Nilai ────────────────────────────────────────────────────────────────────
@@ -200,6 +212,6 @@ model ChatMessage {
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  sender   User @relation("SentMessages",     fields: [senderId],   references: [id], onDelete: Cascade)
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 }
