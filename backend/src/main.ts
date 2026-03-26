@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
+import * as express from 'express';
 
 async function bootstrap() {
     // Ensure required environment variables are present
@@ -12,6 +13,12 @@ async function bootstrap() {
     }
 
     const app = await NestFactory.create(AppModule);
+
+    // ──────────────────────────────────────────────
+    // Body Parser — increase limit for backup import
+    // ──────────────────────────────────────────────
+    app.use(express.json({ limit: '50mb' }));
+    app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
     // ──────────────────────────────────────────────
     // HTTP Security Headers (Helmet)
