@@ -176,13 +176,22 @@ export function CanvasEditor({
     };
 
     // Adder Helpers
-    const addElement = (type: CanvasElement['type']) => {
+    const addElement = (type: CanvasElement['type'], presetField?: string) => {
         const baseStyle: React.CSSProperties = { position: 'absolute', fontFamily: 'Arial', fontSize: 14, fontWeight: 'normal', color: '#000000', textAlign: 'left' };
         let newEl: CanvasElement = { id: 'el_' + Date.now(), type, x: 50, y: 50, w: 200, h: 40, style: { ...baseStyle } };
 
         if (type === 'rect') { newEl.style.backgroundColor = '#e5e7eb'; newEl.style.border = '1px solid #9ca3af'; newEl.w = 300; newEl.h = 100; }
         else if (type === 'text') { newEl.value = 'Teks Baru'; }
-        else if (type === 'field') { newEl.field = 'namaLengkap'; newEl.style.fontWeight = 'bold'; newEl.value = '[Data Santri]'; }
+        else if (type === 'field') { 
+            newEl.field = presetField || 'namaLengkap'; 
+            if (presetField === 'foto') {
+                newEl.w = 90;
+                newEl.h = 120;
+            } else {
+                newEl.style.fontWeight = 'bold'; 
+                newEl.value = '[Data Santri]'; 
+            }
+        }
 
         setElements(prev => [...prev, newEl]);
         setSelectedId(newEl.id);
@@ -232,7 +241,7 @@ export function CanvasEditor({
             <div className="flex flex-1 overflow-hidden">
                 <ToolsSidebar 
                     onAddElement={addElement} 
-                    onAddFoto={() => addElement('field')} // Should be customized or just let field default
+                    onAddFoto={() => addElement('field', 'foto')}
                     onAddQr={() => addElement('qrcode')}
                     onImageUpload={handleImageUpload} 
                     uploadingImage={uploadingImage} 
