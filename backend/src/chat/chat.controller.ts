@@ -95,4 +95,36 @@ export class ChatController {
         });
         return { success: true, data: msg };
     }
+    /** Toggle Important flag for a message */
+    @Post('message/:id/toggle-important')
+    async toggleImportant(@Param('id') msgId: string, @Request() req: any) {
+        const msg = await this.prisma.chatMessage.findUnique({ where: { id: msgId } });
+        if (!msg) return { success: false, message: 'Message not found' };
+        if (msg.senderId !== req.user.id && msg.receiverId !== req.user.id) {
+            return { success: false, message: 'Unauthorized' };
+        }
+        
+        const updated = await this.prisma.chatMessage.update({
+            where: { id: msgId },
+            data: { isImportant: !msg.isImportant }
+        });
+        return { success: true, data: updated };
+    }
+
+    /** Toggle Archive flag for a message */
+    @Post('message/:id/toggle-archive')
+    async toggleArchive(@Param('id') msgId: string, @Request() req: any) {
+        const msg = await this.prisma.chatMessage.findUnique({ where: { id: msgId } });
+        if (!msg) return { success: false, message: 'Message not found' };
+        if (msg.senderId !== req.user.id && msg.receiverId !== req.user.id) {
+            return { success: false, message: 'Unauthorized' };
+        }
+        
+        const isArchiving = !msg.isArchived;
+        const updated = await this.prisma.chatMessage.update({
+            where: { id: msgId },
+            data: { isArchived: isArchiving, archivedAt: isArchiving ? new Date() : null }
+        });
+        return { success: true, data: updated };
+    }
 }

@@ -1,6 +1,6 @@
 {
     "name": "mslpapp-frontend",
-    "version": "1.0.0",
+    "version": "1.2.0",
     "description": "Santri Data Management System - Frontend",
     "private": true,
     "type": "module",
@@ -18,10 +18,12 @@
         "jspdf-autotable": "^3.8.2",
         "lucide-react": "^0.364.0",
         "qrcode": "^1.5.4",
+        "qrcode.react": "^4.2.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-hook-form": "^7.51.0",
         "react-router-dom": "^6.22.3",
+        "recharts": "^3.8.1",
         "xlsx": "^0.18.5",
         "zod": "^3.22.4",
         "zustand": "^4.5.2"

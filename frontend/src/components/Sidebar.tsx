@@ -13,17 +13,47 @@ interface NavItem {
     roles: Role[];
 }
 
-const navItems: NavItem[] = [
-    { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS'] },
-    { to: '/santri', label: 'Data Santri', icon: <Users size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH'] },
-    { to: '/kamar', label: 'Manajemen Kamar', icon: <Home size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN'] },
-    { to: '/kelas', label: 'Manajemen Kelas', icon: <GraduationCap size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
-    { to: '/kamar-saya', label: 'Kamar Saya', icon: <Home size={18} />, roles: ['PEMBIMBING_KAMAR'] },
-    { to: '/kelas-saya', label: 'Kelas Saya', icon: <GraduationCap size={18} />, roles: ['WALI_KELAS'] },
-    { to: '/chat', label: 'Chat', icon: <MessageSquare size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS'] },
-    { to: '/users', label: 'Pengguna', icon: <UserCheck size={18} />, roles: ['ADMIN'] },
-    { to: '/pengaturan/cetak', label: 'Pengaturan Cetak', icon: <Printer size={18} />, roles: ['ADMIN'] },
-    { to: '/pengaturan/backupdata', label: 'Backup Data', icon: <HardDrive size={18} />, roles: ['ADMIN'] },
+interface NavGroup {
+    title: string;
+    items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+    {
+        title: 'Utama',
+        items: [
+            { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS'] }
+        ]
+    },
+    {
+        title: 'Data Master',
+        items: [
+            { to: '/santri', label: 'Data Santri', icon: <Users size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH'] }
+        ]
+    },
+    {
+        title: 'Manajemen Asrama',
+        items: [
+            { to: '/kamar', label: 'Data Kamar', icon: <Home size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN'] },
+            { to: '/kamar-saya', label: 'Kamar Bimbingan', icon: <Home size={18} />, roles: ['PEMBIMBING_KAMAR'] },
+            { to: '/kelas', label: 'Data Kelas', icon: <GraduationCap size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
+            { to: '/kelas-saya', label: 'Kelas Bimbingan', icon: <GraduationCap size={18} />, roles: ['WALI_KELAS'] },
+        ]
+    },
+    {
+        title: 'Komunikasi',
+        items: [
+            { to: '/chat', label: 'Kotak Masuk', icon: <MessageSquare size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS'] }
+        ]
+    },
+    {
+        title: 'Sistem Administrasi',
+        items: [
+            { to: '/users', label: 'Kelola Pengguna', icon: <UserCheck size={18} />, roles: ['ADMIN'] },
+            { to: '/pengaturan/cetak', label: 'Desain Cetak', icon: <Printer size={18} />, roles: ['ADMIN'] },
+            { to: '/pengaturan/backupdata', label: 'Backup / Pulih', icon: <HardDrive size={18} />, roles: ['ADMIN'] },
+        ]
+    }
 ];
 
 const roleLabels: Record<Role, string> = {
@@ -52,27 +82,38 @@ export default function Sidebar() {
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <div>
-                        <h1 className="text-white font-bold text-base leading-tight">MSLPAPP</h1>
+                        <h1 className="text-white font-bold text-base leading-tight">LPAPP</h1>
                         <p className="text-primary-200 text-xs">Manajemen Santri</p>
                     </div>
                 </div>
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
-                {navItems.map(item => {
-                    if (!user || !item.roles.includes(user.role)) return null;
+            <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
+                {navGroups.map((group, groupIdx) => {
+                    const visibleItems = group.items.filter(item => user && item.roles.includes(user.role));
+                    if (visibleItems.length === 0) return null;
+
                     return (
-                        <NavLink key={item.to} to={item.to}
-                            className={({ isActive }) =>
-                                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
-                                    ? 'bg-white/20 text-white'
-                                    : 'text-primary-100 hover:bg-white/10 hover:text-white'
-                                }`
-                            }>
-                            {item.icon}
-                            {item.label}
-                        </NavLink>
+                        <div key={groupIdx}>
+                            <h3 className="px-3 mb-1 text-[10px] font-bold tracking-widest text-primary-300 uppercase">
+                                {group.title}
+                            </h3>
+                            <div className="space-y-0.5">
+                                {visibleItems.map(item => (
+                                    <NavLink key={item.to} to={item.to}
+                                        className={({ isActive }) =>
+                                            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
+                                                ? 'bg-white/20 text-white'
+                                                : 'text-primary-100 hover:bg-white/10 hover:text-white'
+                                            }`
+                                        }>
+                                        {item.icon}
+                                        {item.label}
+                                    </NavLink>
+                                ))}
+                            </div>
+                        </div>
                     );
                 })}
             </nav>
@@ -92,3 +133,4 @@ export default function Sidebar() {
         </div>
     );
 }
+

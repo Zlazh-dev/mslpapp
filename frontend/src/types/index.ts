@@ -168,10 +168,29 @@ export interface ApiResponse<T> {
 }
 
 export interface DashboardStats {
-    totalSantri: number;
-    totalKelas: number;
-    totalKamar: number;
-    totalUsers: number;
-    santriActive: number;
-    santriInactive: number;
+    summary: {
+        totalSantri: number;
+        totalKelas: number;
+        totalKamar: number;
+        totalUsers: number;
+        santriActive: number;
+        santriInactive: number;
+    };
+    seriesData: {
+        name: string;
+        pendaftaran: number;
+        mutasi: number;
+    }[];
+    kelasDistribution: { name: string; count: number }[];
+    kamarDistribution: { name: string; count: number }[];
+    userDistribution: { role: Role; count: number }[];
+    anomalies: {
+        overcapacityRooms: number;
+        unassignedSantri: number;
+    };
+    systemHealth: {
+        version: string;
+        serviceStatus: string;
+        lastBackup: string;
+    };
 }

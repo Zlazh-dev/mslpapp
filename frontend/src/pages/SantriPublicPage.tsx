@@ -80,7 +80,7 @@ export default function SantriPublicPage() {
                 <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain opacity-90" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 <div>
                     <p className="text-xs text-teal-100">Profil Santri · Publik</p>
-                    <h1 className="text-base font-bold leading-tight">MSLPAPP</h1>
+                    <h1 className="text-base font-bold leading-tight">LPAPP</h1>
                 </div>
             </div>
 
@@ -214,10 +214,11 @@ export default function SantriPublicPage() {
                             </div>
                         )}
 
-                        <p className="text-center text-[10px] text-slate-300 pb-2">Data ini bersifat publik · MSLPAPP</p>
+                        <p className="text-center text-[10px] text-slate-300 pb-2">Data ini bersifat publik · LPAPP</p>
                     </div>
                 </div>
             </div>
         </div>
     );
 }
+

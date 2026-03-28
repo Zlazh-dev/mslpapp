@@ -112,6 +112,18 @@ export default function SantriDetailPage() {
         const fotoUrl = s.foto ? (s.foto.startsWith('http') ? s.foto : BACKEND + s.foto) : null;
 
         if (customLayout) {
+            // Pre-generate QR code data URLs for all qrcode elements
+            const qrDataUrls: Record<string, string> = {};
+            for (const el of customLayout) {
+                if (el.type === 'qrcode') {
+                    // Always point to public profile, ignoring legacy field values
+                    const qrValue = `${window.location.origin}/p/santri/${s.id}`;
+                    try {
+                        qrDataUrls[el.id] = await QRCode.toDataURL(qrValue, { width: Math.min(el.w, el.h) || 100, margin: 1 });
+                    } catch { /* skip if fails */ }
+                }
+            }
+
             const elementsHtml = customLayout.map((el: any) => {
                 let text = '';
                 let imgHtml = '';
@@ -128,6 +140,12 @@ export default function SantriDetailPage() {
                         const ini = s.namaLengkap?.charAt(0)?.toUpperCase() || '?';
                         imgHtml = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d1fae5,#6ee7b7);font-size:32px;font-weight:700;color:#065f46;">${ini}</div>`;
                     }
+                } else if (el.type === 'qrcode') {
+                    const dataUrl = qrDataUrls[el.id];
+                    const qrSize = Math.min(el.w, el.h) - 8;
+                    imgHtml = dataUrl
+                        ? `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;"><img src="${dataUrl}" style="width:${qrSize}px;height:${qrSize}px;" /><span style="font-size:8px;font-family:sans-serif;color:#6b7280;">Profil Publik</span></div>`
+                        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:10px;font-family:sans-serif;">QR Error</div>`;
                 } else if (el.type === 'text') {
                     text = el.value || '';
                 } else if (el.type === 'field') {
@@ -205,7 +223,7 @@ table{width:100%;border-collapse:collapse}
 </style></head><body>
 <div class="header">
   <img class="logo" src="${window.location.origin}/logo.png" onerror="this.style.display='none'" />
-  <div class="org"><h1>MSLPAPP — Manajemen Santri</h1><p>Data Biodata Santri</p></div>
+  <div class="org"><h1>LPAPP — Manajemen Santri</h1><p>Data Biodata Santri</p></div>
 </div>
 <div class="profile">
   ${fotoUrl ? `<img class="foto" src="${fotoUrl}" />` : `<div class="foto-placeholder">${s.namaLengkap.charAt(0)}</div>`}
@@ -251,7 +269,7 @@ ${row('Keterangan', s.deskripsiWali || '—')}
 </div>
 <div class="footer">
   <span>Dicetak: ${new Date().toLocaleString('id-ID')}</span>
-  <span>MSLPAPP — Data Santri</span>
+  <span>LPAPP — Data Santri</span>
 </div>
 <div class="no-print"><button onclick="window.print()">🖨️ Cetak</button></div>
 </body></html>`;
@@ -869,3 +887,4 @@ ${row('Keterangan', s.deskripsiWali || '—')}
         </div>
     );
 }
+

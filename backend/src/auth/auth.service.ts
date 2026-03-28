@@ -32,6 +32,12 @@ export class AuthService {
             throw new UnauthorizedException('Username atau password salah');
         }
 
+        // Rekam aktivitas login
+        await this.prisma.user.update({
+            where: { id: user.id },
+            data: { lastLoginAt: new Date() }
+        });
+
         const payload = {
             sub: user.id,
             username: user.username,

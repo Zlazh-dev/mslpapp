@@ -27,7 +27,7 @@ export default function BackupDataPage() {
             const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
             const a = document.createElement('a');
             a.href = url;
-            a.download = `mslpapp_backup_${date}.json`;
+            a.download = `LPAPP_backup_${date}.json`;
             a.click();
             window.URL.revokeObjectURL(url);
         } catch {
@@ -99,7 +99,7 @@ export default function BackupDataPage() {
                     <p className="font-semibold mb-1">Perhatian Sebelum Mengimpor</p>
                     <ul className="list-disc list-inside space-y-1 text-xs leading-relaxed">
                         <li>Proses impor akan <strong>menimpa (upsert)</strong> data yang sudah ada berdasarkan ID.</li>
-                        <li>File yang diimpor harus berasal dari aplikasi MSLPAPP.</li>
+                        <li>File yang diimpor harus berasal dari aplikasi LPAPP.</li>
                         <li>Data pengguna (akun login) <strong>tidak diimpor</strong> demi keamanan.</li>
                         <li>Pastikan Anda sudah memiliki backup terbaru sebelum melakukan impor.</li>
                     </ul>
@@ -178,7 +178,7 @@ export default function BackupDataPage() {
                         ) : (
                             <>
                                 <p className="text-sm font-medium text-slate-500">Klik untuk memilih file backup</p>
-                                <p className="text-xs text-slate-400 mt-1">Format: .json — hanya file dari MSLPAPP</p>
+                                <p className="text-xs text-slate-400 mt-1">Format: .json — hanya file dari LPAPP</p>
                             </>
                         )}
                     </div>
@@ -251,3 +251,4 @@ export default function BackupDataPage() {
         </div>
     );
 }
+

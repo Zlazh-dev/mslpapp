@@ -52,7 +52,7 @@ export default function LoginPage() {
                         <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
                             <span className="text-white text-3xl font-bold">M</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-white">MSLPAPP</h1>
+                        <h1 className="text-2xl font-bold text-white">LPAPP</h1>
                         <p className="text-primary-100 text-sm mt-1">Sistem Manajemen Data Santri</p>
                     </div>
 
@@ -130,3 +130,4 @@ export default function LoginPage() {
         </div>
     );
 }
+

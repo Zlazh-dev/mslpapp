@@ -36,7 +36,7 @@ export class BackupService {
             _meta: {
                 version: '1.0',
                 exportedAt: new Date().toISOString(),
-                appName: 'MSLPAPP',
+                appName: 'LPAPP',
             },
             santri,
             kamar,
@@ -52,8 +52,8 @@ export class BackupService {
     }
 
     async importBackup(data: any) {
-        if (!data?._meta?.appName || data._meta.appName !== 'MSLPAPP') {
-            throw new BadRequestException('File backup tidak valid atau bukan dari aplikasi MSLPAPP.');
+        if (!data?._meta?.appName || data._meta.appName !== 'LPAPP') {
+            throw new BadRequestException('File backup tidak valid atau bukan dari aplikasi LPAPP.');
         }
 
         const report: Record<string, number> = {};
@@ -181,3 +181,4 @@ export class BackupService {
         };
     }
 }
+

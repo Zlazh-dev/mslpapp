@@ -73,7 +73,7 @@ async function bootstrap() {
 
     if (process.env.NODE_ENV !== 'production') {
         const config = new DocumentBuilder()
-            .setTitle('MSLPAPP API')
+            .setTitle('LPAPP API')
             .setDescription('Santri Data Management System API')
             .setVersion('1.0')
             .addBearerAuth()
@@ -87,3 +87,4 @@ async function bootstrap() {
     console.log(`🚀 Application running on port ${port} [${process.env.NODE_ENV || 'development'}]`);
 }
 bootstrap();
+

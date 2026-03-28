@@ -1,0 +1,55 @@
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    /* Reveal only the print area and its children */
+    #print-area, #print-area * {
+        visibility: visible;
+    }
+    
+    #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: scale(1) !important;
+        overflow: hidden;
+        page-break-after: avoid; /* Prevent browser from breaking up elements */
+    }
+
+    /* Remove browser margins and headers/footers */
+    @page {
+        size: A4 portrait;
+        margin: 0; 
+    }
+    
+    /* Ensure no background colors are stripped by default */
+    * {
+        -webkit-print-color-adjust: exact !important; 
+        print-color-adjust: exact !important;
+    }
+}
+
+/* Print Preview Modal Styles mapping */
+.print-preview-container {
+    background-color: #525659;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    overflow: auto;
+    height: calc(100vh - 4rem);
+}
+
+.print-preview-page {
+    background: white;
+    width: 210mm;
+    height: 297mm;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    /* In browser view, scale down to fit screen if needed */
+    transform-origin: top center;
+}

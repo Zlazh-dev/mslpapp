@@ -52,6 +52,7 @@ model User {
   role      Role     @default(STAF_PENDATAAN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  lastLoginAt DateTime?  // Digunakan untuk melacak login terakhir
 
   santriId         String?       @unique
   santri           Santri?       @relation(fields: [santriId], references: [id])
@@ -61,6 +62,8 @@ model User {
   nilaiCreated     Nilai[]       @relation("NilaiCreator")
   sentMessages     ChatMessage[] @relation("SentMessages")
   receivedMessages ChatMessage[] @relation("ReceivedMessages")
+
+  @@index([lastLoginAt])
 }
 
 // ─── Kamar Cascade: Kompleks → Gedung → Kamar ────────────────────────────────
@@ -205,13 +208,19 @@ model Nilai {
 // ─── Chat (Direct Messages) ───────────────────────────────────────────────────
 
 model ChatMessage {
-  id         String   @id @default(cuid())
-  senderId   String
-  receiverId String
-  content    String
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String
+  isRead      Boolean   @default(false)
+  isImportant Boolean   @default(false)
+  isArchived  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now()) @updatedAt
+  archivedAt  DateTime?
 
   sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([receiverId, isImportant, isArchived, createdAt])
 }
