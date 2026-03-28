@@ -29,5 +29,4 @@ RUN npm install prisma --save-dev
 RUN npx prisma generate
 
 EXPOSE 3000
-
-CMD sh -c "npx prisma migrate deploy && npx prisma db seed; exec node dist/src/main"
+CMD sh -c "npx prisma migrate deploy; exec node dist/src/main"
