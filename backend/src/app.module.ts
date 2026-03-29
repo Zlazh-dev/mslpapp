@@ -22,12 +22,12 @@ import { BackupModule } from './backup/backup.module';
 
 @Module({
     imports: [
-        // ── Rate Limiting (global: 10 req / 60s per IP, auth login has tighter limit) ──
+        // ── Rate Limiting (global: 300 req / 60s per IP) ──
         ThrottlerModule.forRoot([
             {
                 name: 'global',
                 ttl: 60000,
-                limit: 60,
+                limit: 300,
             },
         ]),
         ServeStaticModule.forRoot({

@@ -157,10 +157,10 @@ export default function ChatPage() {
             pollRef.current = setInterval(() => {
                 fetchThread(activeContact.id, true);
                 fetchContacts();
-            }, 3000);
+            }, 10000);
         } else {
             // Poll contacts only to see unread badge if no thread active
-            pollRef.current = setInterval(() => { fetchContacts() }, 5000);
+            pollRef.current = setInterval(() => { fetchContacts() }, 20000);
         }
         return () => clearInterval(pollRef.current);
     }, [activeContact?.id, fetchThread, fetchContacts]);
