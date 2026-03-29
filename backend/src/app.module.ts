@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+// import { APP_GUARD } from '@nestjs/core';
+// import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { PrismaModule } from './prisma/prisma.module';
@@ -22,14 +22,6 @@ import { BackupModule } from './backup/backup.module';
 
 @Module({
     imports: [
-        // ── Rate Limiting (global: 2000 req / 60s per IP for school NAT) ──
-        ThrottlerModule.forRoot([
-            {
-                name: 'global',
-                ttl: 60000,
-                limit: 2000,
-            },
-        ]),
         ServeStaticModule.forRoot({
             rootPath: join(process.cwd(), 'uploads'),
             serveRoot: '/uploads',
@@ -52,11 +44,6 @@ import { BackupModule } from './backup/backup.module';
         SettingsModule,
         BackupModule,
     ],
-    providers: [
-        {
-            provide: APP_GUARD,
-            useClass: ThrottlerGuard,
-        },
-    ],
+    providers: [],
 })
 export class AppModule { }
