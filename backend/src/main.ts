@@ -5,6 +5,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
 import * as express from 'express';
+import { NestExpressApplication } from '@nestjs/platform-express';
 
 async function bootstrap() {
     // Ensure required environment variables are present
@@ -12,7 +13,8 @@ async function bootstrap() {
         throw new Error('FATAL: JWT_SECRET environment variable is not set. Server will not start.');
     }
 
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create<NestExpressApplication>(AppModule);
+    app.set('trust proxy', 1); // <--- CRITICAL: Parse real client IP behind NGINX / Docker Bridge
 
     // ──────────────────────────────────────────────
     // Body Parser — increase limit for backup import
