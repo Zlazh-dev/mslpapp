@@ -6,11 +6,11 @@ export class UsersRepository {
     constructor(private prisma: PrismaService) {}
 
     async findAll() {
-        return this.prisma.user.findMany({ include: { roles: true } });
+        return this.prisma.user.findMany({ include: { roles: true, santri: true, kelasWali: true, kamarBimbing: true } });
     }
 
     async findById(id: string) {
-        return this.prisma.user.findUnique({ where: { id }, include: { roles: true } });
+        return this.prisma.user.findUnique({ where: { id }, include: { roles: true, santri: true, kelasWali: true, kamarBimbing: true } });
     }
 
     async findByUsername(username: string) {
@@ -22,7 +22,7 @@ export class UsersRepository {
     }
 
     async update(id: string, data: any) {
-        return this.prisma.user.update({ where: { id }, data, include: { roles: true } });
+        return this.prisma.user.update({ where: { id }, data, include: { roles: true, santri: true, kelasWali: true, kamarBimbing: true } });
     }
 
     async delete(id: string) {
