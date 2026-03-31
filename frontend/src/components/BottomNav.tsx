@@ -16,7 +16,7 @@ export default function BottomNav({ onMenuClick }: { onMenuClick?: () => void })
     const isOther = !isWaliKelas && !isPembimbingKamar;
 
     return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 px-6 py-2 pb-safe flex items-center justify-around shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)]">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 z-50 px-4 py-2 flex items-center justify-around shadow-lg">
             <NavLink to="/dashboard" end className={({ isActive }) => `flex flex-col items-center justify-center gap-1 min-w-[64px] ${isActive ? 'text-emerald-600' : 'text-slate-500'}`}>
                 <Home size={22} className={location.pathname === '/dashboard' ? 'fill-emerald-100' : ''} />
                 <span className="text-[10px] font-semibold">Beranda</span>
