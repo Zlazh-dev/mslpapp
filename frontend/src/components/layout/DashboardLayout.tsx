@@ -21,7 +21,7 @@ export default function DashboardLayout() {
             </div>
 
             {/* Bottom Nav appears only on mobile */}
-            <BottomNav onMenuClick={() => setIsSidebarOpen(true)} />
+            <BottomNav onMenuClick={() => setIsSidebarOpen(prev => !prev)} />
         </div>
     );
 }
