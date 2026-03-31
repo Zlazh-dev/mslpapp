@@ -4,21 +4,22 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../lib/api';
-import { Kelas, Kamar, Role } from '../types';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Kelas, Kamar,  } from '../types';
+import { ArrowLeft, Save, ShieldCheck } from 'lucide-react';
 
 const schema = z.object({
     name: z.string().min(2, 'Nama minimal 2 karakter'),
     username: z.string().optional(),
     password: z.string().min(6).optional().or(z.literal('')),
-    role: z.enum(['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS']),
+    roles: z.array(z.string()).min(1, 'Pilih minimal satu role'),
     kelasId: z.string().optional(),
     kamarId: z.string().optional(),
+    santriNis: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
-const roles: { value: Role; label: string }[] = [
+const roleOptions: { value: string; label: string }[] = [
     { value: 'ADMIN', label: 'Administrator' },
     { value: 'STAF_PENDATAAN', label: 'Staf Pendataan' },
     { value: 'STAF_MADRASAH', label: 'Staf Madrasah' },
@@ -37,10 +38,10 @@ export default function UserFormPage() {
 
     const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
         resolver: zodResolver(schema),
-        defaultValues: { role: 'STAF_PENDATAAN' },
+        defaultValues: { roles: ['STAF_PENDATAAN'] },
     });
 
-    const selectedRole = watch('role');
+    const selectedRoles = watch('roles') || [];
 
     useEffect(() => {
         api.get('/kelas').then(r => setKelas(r.data.data));
@@ -49,7 +50,15 @@ export default function UserFormPage() {
             api.get(`/users/${id}`).then(r => {
                 const data = r.data.data;
                 if (data.santri) setLinkedSantri(data.santri);
-                reset({ ...data, username: data.username || '', password: '', kelasId: String(data.kelasWali?.[0]?.id || ''), kamarId: String(data.kamarBimbing?.id || '') });
+                reset({ 
+                    ...data, 
+                    roles: data.roles?.length ? data.roles : ['STAF_PENDATAAN'], 
+                    username: data.username || '', 
+                    password: '', 
+                    kelasId: String(data.kelasWali?.[0]?.id || ''), 
+                    kamarId: String(data.kamarBimbing?.id || ''),
+                    santriNis: data.santri?.nis || '' 
+                });
             });
         }
     }, [id]);
@@ -61,7 +70,12 @@ export default function UserFormPage() {
         }
         try {
             setError('');
-            const payload: any = { ...data, kelasId: data.kelasId || undefined, kamarId: data.kamarId || undefined };
+            const payload: any = { 
+                ...data, 
+                kelasId: data.kelasId || undefined, 
+                kamarId: data.kamarId || undefined, 
+                santriNis: data.santriNis?.trim() || undefined 
+            };
             if (!payload.username?.trim()) payload.username = '';
             if (!payload.password) delete payload.password;
             if (isEdit) await api.put(`/users/${id}`, payload);
@@ -94,18 +108,33 @@ export default function UserFormPage() {
                         <input type="text" disabled value={linkedSantri.nis} className="form-input bg-emerald-50 text-emerald-800 font-mono shadow-sm border-emerald-200" />
                     </div>
                 )}
+
                 <div>
                     <label className="form-label">{isEdit ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password'}</label>
                     <input {...register('password')} type="password" className="form-input" placeholder={isEdit ? '••••••••' : 'Minimal 6 karakter'} />
                     {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
                 </div>
                 <div>
-                    <label className="form-label">Role</label>
-                    <select {...register('role')} className="form-input">
-                        {roles.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
+                    <div className="flex items-center gap-2 mb-2">
+                        <ShieldCheck size={18} className="text-emerald-600 border-b-0" />
+                        <label className="form-label mb-0 text-gray-700 font-semibold">Tugas & Hak Akses (Role)</label>
+                    </div>
+                    {errors.roles && <p className="text-red-500 text-xs mb-2">{errors.roles.message}</p>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                        {roleOptions.map(r => (
+                            <label key={r.value} className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${selectedRoles.includes(r.value) ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                                <input 
+                                    type="checkbox" 
+                                    value={r.value}
+                                    {...register('roles')}
+                                    className="w-4 h-4 mt-0.5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer" 
+                                />
+                                <span className={`text-sm tracking-wide ${selectedRoles.includes(r.value) ? 'font-bold text-emerald-800' : 'font-medium text-gray-700'}`}>{r.label}</span>
+                            </label>
+                        ))}
+                    </div>
                 </div>
-                {selectedRole === 'WALI_KELAS' && (
+                {selectedRoles.includes('WALI_KELAS') && (
                     <div>
                         <label className="form-label">Kelas yang Diasuh</label>
                         <select {...register('kelasId')} className="form-input">
@@ -114,7 +143,7 @@ export default function UserFormPage() {
                         </select>
                     </div>
                 )}
-                {selectedRole === 'PEMBIMBING_KAMAR' && (
+                {selectedRoles.includes('PEMBIMBING_KAMAR') && (
                     <div>
                         <label className="form-label">Kamar yang Dibimbing</label>
                         <select {...register('kamarId')} className="form-input">

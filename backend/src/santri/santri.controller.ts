@@ -15,33 +15,33 @@ export class SantriController {
     constructor(private readonly santriService: SantriService) { }
 
     @Get('angkatan')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     getAngkatan() { return this.santriService.getAngkatan(); }
 
     @Get('generate-nis')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     generateNis(@Query('date') date?: string) { return this.santriService.generateNis(date); }
 
     @Get()
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findAll(@Query() query: QuerySantriDto) { return this.santriService.findAll(query); }
 
     @Get(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findOne(@Param('id') id: string) { return this.santriService.findOne(id); }
 
     @Post()
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     create(@Body() dto: CreateSantriDto) { return this.santriService.create(dto); }
 
     @Put(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     update(@Param('id') id: string, @Body() dto: UpdateSantriDto) {
         return this.santriService.update(id, dto);
     }
 
     @Delete(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     remove(@Param('id') id: string) { return this.santriService.remove(id); }
 }
 

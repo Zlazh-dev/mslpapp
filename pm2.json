@@ -1,0 +1,23 @@
+{
+  "apps": [
+    {
+      "name": "lpapp-backend",
+      "script": "dist/main.js",
+      "cwd": "/var/www/pesantren-lpapp/backend",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": 3000
+      }
+    },
+    {
+      "name": "lpapp-frontend",
+      "script": "npm",
+      "args": "run preview",
+      "cwd": "/var/www/pesantren-lpapp/frontend",
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": 4173
+      }
+    }
+  ]
+}

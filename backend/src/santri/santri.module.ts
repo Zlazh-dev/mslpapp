@@ -4,6 +4,7 @@ import { SantriController } from './santri.controller';
 import { SantriPublicController } from './santri.controller';
 import { SantriImportController } from './santri-import.controller';
 import { SantriService } from './santri.service';
+import { SantriRepository } from './santri.repository';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -12,6 +13,7 @@ import { PrismaModule } from '../prisma/prisma.module';
         MulterModule.register({ limits: { fileSize: 10 * 1024 * 1024 } }), // 10 MB
     ],
     controllers: [SantriImportController, SantriPublicController, SantriController],
-    providers: [SantriService],
+    providers: [SantriService, SantriRepository],
+    exports: [SantriRepository, SantriService],
 })
 export class SantriModule { }

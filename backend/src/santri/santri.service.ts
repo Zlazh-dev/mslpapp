@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { CreateSantriDto, UpdateSantriDto, QuerySantriDto } from './dto/santri.dto';
 import { StatusSantri } from '@prisma/client';
+import { SantriRepository } from './santri.repository';
 
 @Injectable()
 export class SantriService {
-    constructor(private prisma: PrismaService) { }
+    constructor(private readonly santriRepo: SantriRepository) { }
 
     async getAngkatan() {
-        const all = await this.prisma.santri.findMany({ select: { nis: true }, orderBy: { nis: 'asc' } });
+        const all = await this.santriRepo.findAllNisOnly();
         const years = [...new Set(all.map(s => s.nis.substring(0, 2)).filter(y => /^\d{2}$/.test(y)))];
         years.sort((a, b) => Number(b) - Number(a));
         return { success: true, data: years };
@@ -18,11 +18,7 @@ export class SantriService {
         const date = dateStr ? new Date(dateStr) : new Date();
         const year = date.getFullYear().toString().substring(2);
 
-        const highest = await this.prisma.santri.findFirst({
-            where: { nis: { startsWith: year } },
-            orderBy: { nis: 'desc' },
-            select: { nis: true }
-        });
+        const highest = await this.santriRepo.findHighestNisByYear(year);
 
         let nextNumber = 1;
         if (highest && highest.nis.length >= 5) {
@@ -53,17 +49,7 @@ export class SantriService {
         if (jenjangPendidikan) where.jenjangPendidikan = { contains: jenjangPendidikan, mode: 'insensitive' };
         if (nisYear) where.nis = { startsWith: nisYear };
 
-        const [data, total] = await Promise.all([
-            this.prisma.santri.findMany({
-                where, skip, take: parseInt(limit),
-                include: {
-                    kelas: { select: { id: true, nama: true, tingkat: { select: { jenjang: { select: { id: true, nama: true } } } } } },
-                    kamar: { select: { id: true, nama: true, gedung: { include: { kompleks: { select: { id: true, nama: true } } } } } },
-                },
-                orderBy: { nis: 'asc' },
-            }),
-            this.prisma.santri.count({ where }),
-        ]);
+        const [data, total] = await this.santriRepo.findAllWithRelationsAndCount(where, skip, parseInt(limit));
 
         return {
             success: true,
@@ -74,41 +60,31 @@ export class SantriService {
     }
 
     async findOne(id: string) {
-        const santri = await this.prisma.santri.findUnique({
-            where: { id },
-            include: {
-                kelas: { include: { tingkat: { include: { jenjang: true } } } },
-                kamar: { include: { gedung: { include: { kompleks: true } } } },
-                nilai: { orderBy: { mataPelajaran: 'asc' } },
-                user: { select: { id: true, username: true, role: true } },
-            },
-        });
+        const santri = await this.santriRepo.findByIdWithFullRelations(id);
         if (!santri) throw new NotFoundException('Santri tidak ditemukan');
         return { success: true, message: 'Data santri berhasil diambil', data: santri };
     }
 
     async create(dto: CreateSantriDto) {
-        const existing = await this.prisma.santri.findUnique({ where: { nis: dto.nis } });
+        const existing = await this.santriRepo.findByNis(dto.nis);
         if (existing) throw new ConflictException('NIS sudah terdaftar');
 
         const autoStatus: StatusSantri = dto.tanggalKeluar ? StatusSantri.INACTIVE : StatusSantri.ACTIVE;
 
-        const santri = await this.prisma.santri.create({
-            data: {
-                ...dto,
-                tanggalLahir: new Date(dto.tanggalLahir),
-                tanggalMasuk: dto.tanggalMasuk ? new Date(dto.tanggalMasuk) : undefined,
-                tanggalKeluar: dto.tanggalKeluar ? new Date(dto.tanggalKeluar) : undefined,
-                status: autoStatus,
-                kelasId: dto.kelasId ?? undefined,
-                kamarId: dto.kamarId ?? undefined,
-            },
+        const santri = await this.santriRepo.create({
+            ...dto,
+            tanggalLahir: new Date(dto.tanggalLahir),
+            tanggalMasuk: dto.tanggalMasuk ? new Date(dto.tanggalMasuk) : undefined,
+            tanggalKeluar: dto.tanggalKeluar ? new Date(dto.tanggalKeluar) : undefined,
+            status: autoStatus,
+            kelasId: dto.kelasId ?? undefined,
+            kamarId: dto.kamarId ?? undefined,
         });
         return { success: true, message: 'Santri berhasil ditambahkan', data: santri };
     }
 
     async update(id: string, dto: UpdateSantriDto) {
-        const existing = await this.prisma.santri.findUnique({ where: { id } });
+        const existing = await this.santriRepo.findById(id);
         if (!existing) throw new NotFoundException('Santri tidak ditemukan');
 
         const data: any = { ...dto };
@@ -131,14 +107,14 @@ export class SantriService {
         // Never allow manual status override
         delete data.status_override;
 
-        const santri = await this.prisma.santri.update({ where: { id }, data });
+        const santri = await this.santriRepo.update(id, data);
         return { success: true, message: 'Santri berhasil diperbarui', data: santri };
     }
 
     async remove(id: string) {
-        const existing = await this.prisma.santri.findUnique({ where: { id } });
+        const existing = await this.santriRepo.findById(id);
         if (!existing) throw new NotFoundException('Santri tidak ditemukan');
-        await this.prisma.santri.delete({ where: { id } });
+        await this.santriRepo.remove(id);
         return { success: true, message: 'Santri berhasil dihapus', data: null };
     }
 }

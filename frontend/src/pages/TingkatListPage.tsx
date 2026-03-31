@@ -11,7 +11,7 @@ export default function TingkatListPage() {
     const [searchParams] = useSearchParams();
     const jenjangId = searchParams.get('jenjangId');
     const jenjangNama = searchParams.get('jenjangNama') || 'Jenjang';
-    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.roles?.[0]);
 
     const [data, setData] = useState<Tingkat[]>([]);
     const [loading, setLoading] = useState(true);

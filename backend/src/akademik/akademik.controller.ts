@@ -15,26 +15,26 @@ export class AkademikController {
     constructor(private readonly akademikService: AkademikService) { }
 
     @Get()
-    @Roles(Role.ADMIN, Role.STAF_MADRASAH, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     findAll(@Query() query: QueryNilaiDto) { return this.akademikService.findAll(query); }
 
     @Get(':id')
-    @Roles(Role.ADMIN, Role.STAF_MADRASAH, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     findOne(@Param('id') id: string) { return this.akademikService.findOne(id); }
 
     @Post()
-    @Roles(Role.ADMIN, Role.STAF_MADRASAH, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     create(@Body() dto: CreateNilaiDto, @Request() req) {
         return this.akademikService.create(dto, req.user.id);
     }
 
     @Put(':id')
-    @Roles(Role.ADMIN, Role.STAF_MADRASAH, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     update(@Param('id') id: string, @Body() dto: UpdateNilaiDto) {
         return this.akademikService.update(id, dto);
     }
 
     @Delete(':id')
-    @Roles(Role.ADMIN, Role.STAF_MADRASAH)
+    @Roles('ADMIN', 'STAF_MADRASAH')
     remove(@Param('id') id: string) { return this.akademikService.remove(id); }
 }

@@ -1,10 +1,3 @@
-export type Role =
-    | 'ADMIN'
-    | 'STAF_PENDATAAN'
-    | 'STAF_MADRASAH'
-    | 'PEMBIMBING_KAMAR'
-    | 'WALI_KELAS';
-
 export type Gender = 'L' | 'P';
 export type StatusSantri = 'ACTIVE' | 'INACTIVE';
 export type JalurPendidikan = 'FORMAL' | 'MAHAD_ALY' | 'TAHFIDZ';
@@ -13,7 +6,7 @@ export interface User {
     id: string;
     name: string;
     username: string;
-    role: Role;
+    roles: string[];
     createdAt?: string;
     kelasWali?: { id: number; nama: string }[] | null;
     kamarBimbing?: { id: number; nama: string } | null;
@@ -130,7 +123,7 @@ export interface Santri {
     kamar?: Kamar | null;
     foto?: string | null;
     kkFileUrl?: string | null;
-    user?: { id: string; username?: string | null; role: Role } | null;
+    user?: { id: string; username?: string | null; roles: string[] } | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -183,7 +176,7 @@ export interface DashboardStats {
     }[];
     kelasDistribution: { name: string; count: number }[];
     kamarDistribution: { name: string; count: number }[];
-    userDistribution: { role: Role; count: number }[];
+    userDistribution: { role: string; count: number }[];
     anomalies: {
         overcapacityRooms: number;
         unassignedSantri: number;

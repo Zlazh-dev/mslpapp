@@ -14,13 +14,13 @@ export class SettingsController {
     constructor(private readonly settingsService: SettingsService) { }
 
     @Get(':key')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     async getSetting(@Param('key') key: string) {
         return this.settingsService.getSetting(key);
     }
 
     @Put(':key')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     async updateSetting(@Param('key') key: string, @Body() data: { value: any }) {
         return this.settingsService.upsertSetting(key, data.value);
     }

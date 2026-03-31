@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 export default function KompleksListPage() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     const [data, setData] = useState<Kompleks[]>([]);
     const [loading, setLoading] = useState(true);

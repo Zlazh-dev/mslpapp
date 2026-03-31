@@ -68,7 +68,7 @@ export default function KamarDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     const [kamar, setKamar] = useState<Kamar | null>(null);
     const [editOpen, setEditOpen] = useState(false);

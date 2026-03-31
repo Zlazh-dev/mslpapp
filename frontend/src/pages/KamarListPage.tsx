@@ -12,7 +12,7 @@ export default function KamarListPage() {
     const gedungId = searchParams.get('gedungId');
     const gedungNama = searchParams.get('gedungNama') || 'Gedung';
     const kompleksNama = searchParams.get('kompleksNama') || '';
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     const [data, setData] = useState<Kamar[]>([]);
     const [loading, setLoading] = useState(true);

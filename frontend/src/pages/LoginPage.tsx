@@ -50,15 +50,15 @@ export default function LoginPage() {
                     {/* Header */}
                     <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-8 text-center">
                         <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-                            <span className="text-white text-3xl font-bold">M</span>
+                            <span className="text-white text-3xl font-bold tracking-wider">L</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-white">LPAPP</h1>
-                        <p className="text-primary-100 text-sm mt-1">Sistem Manajemen Data Santri</p>
+                        <h1 className="text-2xl font-bold text-white tracking-wider">LPAPP</h1>
+                        <p className="text-primary-100 text-sm mt-1">Manajemen Santri</p>
                     </div>
 
                     {/* Form */}
                     <div className="p-8">
-                        <h2 className="text-xl font-semibold text-gray-900 mb-2">Masuk ke Sistem</h2>
+                        <h2 className="text-xl font-semibold text-gray-900 mb-2">Selamat Datang di LPAPP</h2>
                         <p className="text-gray-500 text-sm mb-6">Masukkan kredensial Anda untuk melanjutkan</p>
 
                         {error && (

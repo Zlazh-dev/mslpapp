@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { Kompleks, Gedung, Kamar, User } from '../types';
 import { useAuthStore } from '../stores/authStore';
-import { Plus, Trash2, GripVertical, Pencil, Check, X } from 'lucide-react';
+import { Plus, Trash2, GripVertical, Pencil, Check, X, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 type DeleteTarget = { type: 'kompleks' | 'gedung' | 'kamar'; id: number; nama: string };
 
@@ -76,7 +76,7 @@ function RenameModal({ title, initialValue, onSave, onClose }: { title: string; 
 export default function KamarManagementPage() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     // Selection state
     const [selKompleks, setSelKompleks] = useState<number | null>(null);
@@ -96,6 +96,8 @@ export default function KamarManagementPage() {
     const [addingKamar, setAddingKamar] = useState(false);
     const [newKamarNama, setNewKamarNama] = useState('');
     const [newKamarKap, setNewKamarKap] = useState('');
+    const [filterKamar, setFilterKamar] = useState('');
+    const [sortKamar, setSortKamar] = useState<{ key: 'nama' | 'terisi'; dir: 'asc' | 'desc' }>({ key: 'nama', dir: 'asc' });
 
     // Drag & drop for pembimbing
     const [draggingUser, setDraggingUser] = useState<string | null>(null);
@@ -137,7 +139,7 @@ export default function KamarManagementPage() {
 
     const fetchPembimbing = async () => {
         const r = await api.get('/users', { params: { limit: 200 } });
-        setPembimbingList((r.data.data as User[]).filter((u: User) => u.role === 'PEMBIMBING_KAMAR'));
+        setPembimbingList((r.data.data as User[]).filter((u: User) => u.roles?.includes('PEMBIMBING_KAMAR')));
     };
 
     // Fetch ALL kamars globally to build accurate assignment map
@@ -153,7 +155,7 @@ export default function KamarManagementPage() {
 
     useEffect(() => { fetchKompleks(); fetchPembimbing(); fetchAllAssignments(); }, []);
     useEffect(() => { if (selKompleks) fetchGedung(selKompleks); else setGedungList([]); setSelGedung(null); }, [selKompleks]);
-    useEffect(() => { if (selGedung) fetchKamar(selGedung); else setKamarList([]); }, [selGedung]);
+    useEffect(() => { if (selGedung) fetchKamar(selGedung); else setKamarList([]); setFilterKamar(''); }, [selGedung]);
 
     // ── CRUD handlers ──────────────────────────────────────────────────────────
 
@@ -357,12 +359,26 @@ export default function KamarManagementPage() {
 
                 {/* ── Panel 3: Kamar ──────────────────────────────────────────────── */}
                 <div className="flex-1 border-r border-gray-200 flex flex-col min-w-0">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                        <span className="text-xs font-semibold text-gray-700">Kamar</span>
-                        {canEdit && selGedung && (
-                            <button onClick={() => setAddingKamar(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
-                                <PlusIcon />
-                            </button>
+                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex flex-col gap-1.5 flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-gray-700">Kamar</span>
+                            {canEdit && selGedung && (
+                                <button onClick={() => setAddingKamar(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
+                                    <PlusIcon />
+                                </button>
+                            )}
+                        </div>
+                        {selGedung && kamarList.length > 0 && (
+                            <div className="relative">
+                                <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    value={filterKamar}
+                                    onChange={e => setFilterKamar(e.target.value)}
+                                    placeholder="Cari nama kamar..."
+                                    className="w-full pl-7 pr-2 py-1 rounded border border-gray-200 text-xs bg-white outline-none focus:border-emerald-400 placeholder-gray-400"
+                                />
+                            </div>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto">
@@ -386,14 +402,36 @@ export default function KamarManagementPage() {
                                         <table className="w-full">
                                             <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                                                 <tr>
-                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Nama</th>
-                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Terisi</th>
+                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">
+                                                        <button onClick={() => setSortKamar(s => ({ key: 'nama', dir: s.key === 'nama' && s.dir === 'asc' ? 'desc' : 'asc' }))}
+                                                            className="flex items-center gap-1 hover:text-emerald-600 transition">
+                                                            Nama
+                                                            {sortKamar.key === 'nama' ? (sortKamar.dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-30" />}
+                                                        </button>
+                                                    </th>
+                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">
+                                                        <button onClick={() => setSortKamar(s => ({ key: 'terisi', dir: s.key === 'terisi' && s.dir === 'asc' ? 'desc' : 'asc' }))}
+                                                            className="flex items-center gap-1 hover:text-emerald-600 transition">
+                                                            Terisi
+                                                            {sortKamar.key === 'terisi' ? (sortKamar.dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-30" />}
+                                                        </button>
+                                                    </th>
                                                     <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Pembimbing</th>
                                                     {canEdit && <th className="px-3 py-1.5 text-center text-[10px] font-medium text-gray-500 w-10">Aksi</th>}
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {kamarList.map(k => {
+                                                {kamarList
+                                                    .filter(k => !filterKamar || k.nama.toLowerCase().includes(filterKamar.toLowerCase()))
+                                                    .sort((a, b) => {
+                                                        const dir = sortKamar.dir === 'asc' ? 1 : -1;
+                                                        if (sortKamar.key === 'terisi') {
+                                                            return ((a._count?.santris ?? 0) - (b._count?.santris ?? 0)) * dir;
+                                                        }
+                                                        // Natural sort for nama: "1 AA" < "2 AA" < "10 AA"
+                                                        return a.nama.localeCompare(b.nama, 'id', { numeric: true, sensitivity: 'base' }) * dir;
+                                                    })
+                                                    .map(k => {
                                                     const terisi = k._count?.santris ?? 0;
                                                     const kap = k.kapasitas ?? 0;
                                                     const pct = kap > 0 ? Math.min(100, (terisi / kap) * 100) : 0;

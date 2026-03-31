@@ -4,26 +4,15 @@ import api from '../lib/api';
 import { DashboardStats } from '../types';
 import { Users, GraduationCap, Home, UserCheck, TrendingUp, TrendingDown, PlusCircle, Printer, Database, AlertCircle, Download, Activity, Server } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
-    return (
-        <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm flex items-center gap-4 transition hover:shadow-md">
-            <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center flex-shrink-0`}>
-                {icon}
-            </div>
-            <div>
-                <p className="text-gray-500 text-sm font-medium">{label}</p>
-                <p className="text-2xl font-bold text-gray-900 leading-tight">{value.toLocaleString()}</p>
-            </div>
-        </div>
-    );
-}
+// StatCard removed as requested.
 
 export default function DashboardPage() {
     const { user } = useAuthStore();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
+    const [distModel, setDistModel] = useState<'kelas' | 'kamar'>('kelas');
 
     useEffect(() => {
         api.get('/laporan/dashboard')
@@ -70,36 +59,65 @@ export default function DashboardPage() {
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="space-y-10 max-w-7xl mx-auto pb-10">
 
             {/* Header & Welcome */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pt-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Dashboard Utama</h1>
-                    <p className="text-gray-500 text-sm mt-1">Ringkasan data, analitik, dan kesehatan sistem pesantren.</p>
+                    <h1 className="text-3xl font-bold text-slate-800 tracking-tight">Dashboard Utama</h1>
+                    <p className="text-slate-500 text-sm mt-1.5 leading-relaxed">Ringkasan operasional dan tren pendaftaran pendidikan.</p>
+                    
+                    {/* Ringkasan Satu Baris */}
+                    {stats && (
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-5 p-4 rounded-xl border border-slate-100 bg-white/50 backdrop-blur shadow-sm">
+                            <div className="flex items-center gap-2">
+                                <Users size={16} className="text-slate-400" />
+                                <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Santri:</span> 
+                                <span className="text-sm font-bold text-slate-800">{stats.summary.totalSantri.toLocaleString()}</span>
+                            </div>
+                            <div className="w-px h-4 bg-slate-200 hidden sm:block"></div>
+                            <div className="flex items-center gap-2">
+                                <TrendingUp size={16} className="text-emerald-500" />
+                                <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Aktif:</span> 
+                                <span className="text-sm font-bold text-emerald-700">{stats.summary.santriActive.toLocaleString()}</span>
+                            </div>
+                            <div className="w-px h-4 bg-slate-200 hidden sm:block"></div>
+                            <div className="flex items-center gap-2">
+                                <GraduationCap size={16} className="text-teal-500" />
+                                <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Kelas:</span> 
+                                <span className="text-sm font-bold text-slate-800">{stats.summary.totalKelas.toLocaleString()}</span>
+                            </div>
+                            <div className="w-px h-4 bg-slate-200 hidden sm:block"></div>
+                            <div className="flex items-center gap-2">
+                                <Home size={16} className="text-indigo-400" />
+                                <span className="text-xs text-slate-500 uppercase tracking-wide font-medium">Kamar:</span> 
+                                <span className="text-sm font-bold text-slate-800">{stats.summary.totalKamar.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={exportToCSV} className="btn btn-secondary flex items-center gap-2 text-sm bg-white border border-gray-200">
+                    <button onClick={exportToCSV} className="btn flex items-center gap-2 text-sm bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-800 transition shadow-sm px-4 py-2 rounded-lg font-medium">
                         <Download size={16} /> Ekspor CSV
                     </button>
                 </div>
             </div>
 
             {/* Quick Actions */}
-            {(user?.role === 'ADMIN' || user?.role === 'STAF_PENDATAAN') && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <Link to="/santri/baru" className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition text-blue-800 font-medium">
-                        <PlusCircle size={20} className="text-blue-600" /> Registrasi Santri
+            {(user?.roles?.includes('ADMIN') || user?.roles?.includes('STAF_PENDATAAN')) && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Link to="/santri/baru" className="flex items-center justify-center gap-2.5 p-3.5 bg-white border border-slate-200 rounded-xl hover:border-emerald-300 hover:bg-emerald-50/50 transition text-slate-600 hover:text-emerald-700 font-medium text-sm shadow-sm">
+                        <PlusCircle size={18} className="text-emerald-500" /> Registrasi Santri
                     </Link>
-                    <Link to="/kamar" className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-100 rounded-xl hover:bg-orange-100 transition text-orange-800 font-medium">
-                        <Home size={20} className="text-orange-600" /> Kelola Kamar
+                    <Link to="/kamar" className="flex items-center justify-center gap-2.5 p-3.5 bg-white border border-slate-200 rounded-xl hover:border-teal-300 hover:bg-teal-50/50 transition text-slate-600 hover:text-teal-700 font-medium text-sm shadow-sm">
+                        <Home size={18} className="text-teal-500" /> Kelola Kamar
                     </Link>
-                    <Link to="/pengaturan/cetak" className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-100 rounded-xl hover:bg-emerald-100 transition text-emerald-800 font-medium">
-                        <Printer size={20} className="text-emerald-600" /> Desain Cetak ID
+                    <Link to="/pengaturan/cetak" className="flex items-center justify-center gap-2.5 p-3.5 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50/50 transition text-slate-600 hover:text-indigo-700 font-medium text-sm shadow-sm">
+                        <Printer size={18} className="text-indigo-500" /> Desain Cetak ID
                     </Link>
-                    {user?.role === 'ADMIN' && (
-                        <Link to="/pengaturan/backupdata" className="flex items-center gap-3 p-3 bg-purple-50 border border-purple-100 rounded-xl hover:bg-purple-100 transition text-purple-800 font-medium">
-                            <Database size={20} className="text-purple-600" /> Backup Database
+                    {user?.roles?.includes('ADMIN') && (
+                        <Link to="/pengaturan/backupdata" className="flex items-center justify-center gap-2.5 p-3.5 bg-white border border-slate-200 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition text-slate-600 hover:text-slate-800 font-medium text-sm shadow-sm">
+                            <Database size={18} className="text-slate-400" /> Backup Sistem
                         </Link>
                     )}
                 </div>
@@ -119,98 +137,59 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Stats grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <StatCard label="Total Santri" value={stats?.summary.totalSantri ?? 0} icon={<Users size={22} className="text-blue-600" />} color="bg-blue-100" />
-                <StatCard label="Santri Aktif" value={stats?.summary.santriActive ?? 0} icon={<TrendingUp size={22} className="text-emerald-600" />} color="bg-emerald-100" />
-                <StatCard label="Santri Tidak Aktif" value={stats?.summary.santriInactive ?? 0} icon={<TrendingDown size={22} className="text-rose-600" />} color="bg-rose-100" />
-
-                <StatCard label="Total Kelas" value={stats?.summary.totalKelas ?? 0} icon={<GraduationCap size={22} className="text-purple-600" />} color="bg-purple-100" />
-                <StatCard label="Total Kamar" value={stats?.summary.totalKamar ?? 0} icon={<Home size={22} className="text-orange-600" />} color="bg-orange-100" />
-                <StatCard label="Total Pengguna" value={stats?.summary.totalUsers ?? 0} icon={<UserCheck size={22} className="text-slate-600" />} color="bg-slate-100" />
-            </div>
+            {/* Stats grid (Removed per request) */}
 
             {/* Advanced Analytics Grid */}
             {stats && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Time Series Chart */}
-                    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-                        <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Activity size={18} className="text-gray-400" /> Tren Pendaftaran vs Mutasi (12 Bln)</h3>
-                        <div className="h-72">
+                    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 lg:p-8">
+                        <div className="mb-6">
+                            <h3 className="text-lg font-bold text-slate-800">Tren Pendaftaran Bulanan</h3>
+                            <p className="text-xs text-slate-500 mt-1">Volume santri baru vs mutasi dalam 12 bulan terakhir</p>
+                        </div>
+                        <div className="h-80">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={stats.seriesData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
-                                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                    <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                                    <Line type="monotone" name="Pendaftaran" dataKey="pendaftaran" stroke="#3b82f6" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                    <Line type="monotone" name="Mutasi/Keluar" dataKey="mutasi" stroke="#ef4444" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                <LineChart data={stats.seriesData} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
+                                    <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <RechartsTooltip contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)', fontSize: '12px', color: '#334155' }} />
+                                    <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} iconType="circle" />
+                                    <Line type="monotone" name="Pendaftaran Aktif" dataKey="pendaftaran" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#fff' }} activeDot={{ r: 6, fill: '#10b981' }} />
+                                    <Line type="monotone" name="Mutasi / Keluar" dataKey="mutasi" stroke="#cbd5e1" strokeWidth={2} dot={{ r: 3, fill: '#cbd5e1' }} activeDot={{ r: 5, fill: '#94a3b8' }} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Bar Chart - Kelas */}
-                    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
-                        <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><Users size={18} className="text-gray-400" /> Distribusi per Kelas (Top 10)</h3>
-                        <div className="h-72">
+                    {/* Bar Chart - Distribution */}
+                    <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 lg:p-8">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">Distribusi Demografi</h3>
+                                <p className="text-xs text-slate-500 mt-1">10 teratas formasi dengan kepadatan santri terbanyak</p>
+                            </div>
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button onClick={() => setDistModel('kelas')} className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${distModel === 'kelas' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
+                                    Per Kelas
+                                </button>
+                                <button onClick={() => setDistModel('kamar')} className={`px-3 py-1.5 text-xs font-semibold rounded-md transition ${distModel === 'kamar' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
+                                    Per Kamar
+                                </button>
+                            </div>
+                        </div>
+                        <div className="h-80">
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats.kelasDistribution} margin={{ top: 5, right: 20, bottom: 5, left: 0 }} layout="vertical">
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
-                                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
-                                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} width={100} />
-                                    <RechartsTooltip cursor={{ fill: '#F3F4F6' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                    <Bar dataKey="count" name="Jumlah" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+                                {/* Using BarChart for formatted values */}
+                                <BarChart data={distModel === 'kelas' ? stats.kelasDistribution : stats.kamarDistribution} margin={{ top: 5, right: 20, bottom: 5, left: 30 }} layout="vertical">
+                                    <CartesianGrid strokeDasharray="4 4" horizontal={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <YAxis type="category" dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} width={180} />
+                                    <RechartsTooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: '1px solid #f1f5f9', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)', fontSize: '12px' }} />
+                                    <Bar dataKey="count" name="Jumlah Santri" fill={distModel === 'kelas' ? "#0ea5e9" : "#6366f1"} radius={[0, 4, 4, 0]} barSize={24} />
                                 </BarChart>
                             </ResponsiveContainer>
-                        </div>
-                    </div>
-
-                    {/* Status Keaktifan (Pie) & System Health */}
-                    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex flex-col md:flex-row gap-6">
-                        <div className="flex-1">
-                            <h3 className="font-bold text-gray-800 mb-6 flex items-center gap-2"><UserCheck size={18} className="text-gray-400" /> Rasio Keaktifan</h3>
-                            <div className="h-56">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={[
-                                            { name: 'Aktif', value: stats.summary.santriActive },
-                                            { name: 'Non-Aktif', value: stats.summary.santriInactive }
-                                        ]} cx="50%" cy="50%" innerRadius={60} outerRadius={80} fill="#8884d8" paddingAngle={5} dataKey="value">
-                                            <Cell fill="#10b981" />
-                                            <Cell fill="#f43f5e" />
-                                        </Pie>
-                                        <RechartsTooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 border-t md:border-t-0 md:border-l border-gray-100 pt-6 md:pt-0 md:pl-6">
-                            <h3 className="font-bold text-gray-800 mb-5 flex items-center gap-2"><Server size={18} className="text-gray-400" /> Sistem & Monitoring</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Versi Aplikasi</p>
-                                    <div className="bg-gray-50 px-3 py-1.5 rounded-lg inline-flex text-sm font-semibold text-gray-700 font-mono">
-                                        {stats.systemHealth.version}
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Status Web Service</p>
-                                    <div className="bg-emerald-50 px-3 py-1.5 rounded-lg inline-flex items-center gap-2 text-sm font-semibold text-emerald-700">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                        {stats.systemHealth.serviceStatus}
-                                    </div>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Catatan Backup Terakhir</p>
-                                    <p className="text-sm font-medium text-gray-800 border-b border-dashed border-gray-300 pb-1 inline-block">
-                                        {new Date(stats.systemHealth.lastBackup).toLocaleString('id-ID')}
-                                    </p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

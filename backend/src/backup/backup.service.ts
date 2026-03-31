@@ -26,7 +26,7 @@ export class BackupService {
             this.prisma.jenjang.findMany(),
             this.prisma.tingkat.findMany(),
             this.prisma.user.findMany({
-                select: { id: true, name: true, username: true, role: true, createdAt: true, santriId: true }
+                select: { id: true, name: true, username: true, roles: { select: { name: true } }, createdAt: true, santriId: true }
             }),
             this.prisma.setting.findMany(),
             this.prisma.nilai.findMany(),

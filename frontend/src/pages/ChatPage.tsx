@@ -84,7 +84,7 @@ export default function ChatPage() {
     const [toastMessage, setToastMessage] = useState<{title: string, body: string} | null>(null);
 
     const bottomRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval>>();
     const msgCountRef = useRef(0);
 
@@ -166,8 +166,27 @@ export default function ChatPage() {
     }, [activeContact?.id, fetchThread, fetchContacts]);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     }, [messages]);
+
+    const handleInputFocus = () => {
+        // Wait for keyboard animation to finish on mobile devices
+        setTimeout(() => {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+    };
+
+    // Auto-resize logic
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto';
+            inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
+            // Trigger auto-scroll to bottom if textarea grows and pushes content
+            setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+        }
+    }, [draft]);
 
     // -- ACTIONS --
     const handleSelectContact = (contact: Contact) => {
@@ -246,7 +265,7 @@ export default function ChatPage() {
     });
 
     return (
-        <div className="relative flex h-[calc(100vh-120px)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="relative flex h-[calc(100dvh-160px)] md:h-[calc(100dvh-120px)] bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             
             {/* IN-APP TOAST */}
             {toastMessage && (
@@ -356,12 +375,21 @@ export default function ChatPage() {
                                 </div>
                             </div>
                             
-                            <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
-                                <button onClick={() => setThreadFilter('ALL')} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${threadFilter === 'ALL' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`}>Utama</button>
-                                <button onClick={() => setThreadFilter('IMPORTANT')} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex gap-1 items-center ${threadFilter === 'IMPORTANT' ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-amber-600'}`}><Star size={12}/> Penting</button>
-                                <button onClick={() => setThreadFilter('ARCHIVED')} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition flex gap-1 items-center ${threadFilter === 'ARCHIVED' ? 'bg-purple-100 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}><Archive size={12}/> Arsip</button>
-                                <div className="w-px h-5 bg-gray-300 mx-1"></div>
-                                <button onClick={exportThreadToCSV} title="Ekspor Riwayat Chat (CSV)" className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition"><Download size={14} /></button>
+                            <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100 overflow-x-auto hide-scrollbar shrink-0 max-w-[50%] sm:max-w-none">
+                                <button onClick={() => setThreadFilter('ALL')} className={`p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center ${threadFilter === 'ALL' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'}`} title="Utama">
+                                    <MessageSquare size={14} className="sm:hidden" />
+                                    <span className="hidden sm:inline">Utama</span>
+                                </button>
+                                <button onClick={() => setThreadFilter('IMPORTANT')} className={`p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 ${threadFilter === 'IMPORTANT' ? 'bg-amber-100 text-amber-800 shadow-sm' : 'text-gray-500 hover:text-amber-600'}`} title="Penting">
+                                    <Star size={14} className="sm:w-3 sm:h-3" />
+                                    <span className="hidden sm:inline">Penting</span>
+                                </button>
+                                <button onClick={() => setThreadFilter('ARCHIVED')} className={`p-1.5 sm:px-3 sm:py-1.5 text-xs font-semibold rounded-lg transition flex items-center justify-center gap-1 ${threadFilter === 'ARCHIVED' ? 'bg-purple-100 text-purple-800 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`} title="Arsip">
+                                    <Archive size={14} className="sm:w-3 sm:h-3" />
+                                    <span className="hidden sm:inline">Arsip</span>
+                                </button>
+                                <div className="w-px h-5 bg-gray-300 mx-0.5 sm:mx-1 shrink-0"></div>
+                                <button onClick={exportThreadToCSV} title="Ekspor (CSV)" className="p-1.5 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition shrink-0"><Download size={14} /></button>
                             </div>
                         </div>
 
@@ -387,18 +415,8 @@ export default function ChatPage() {
                                         return (
                                             <div key={m.id} className={`group flex ${isMe ? 'flex-row-reverse' : 'flex-row'} items-end gap-2 ${prevSame ? 'mt-1' : 'mt-4'}`}>
                                                 
-                                                {/* Hidden Actions that appear on hover */}
-                                                <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition duration-200 ${isMe ? 'mr-1' : 'ml-1'}`}>
-                                                    <button onClick={()=>toggleFlag(m.id,'important')} className={`p-1.5 rounded-full ${m.isImportant ? 'bg-amber-100 text-amber-500' : 'hover:bg-gray-200 text-gray-400'}`}>
-                                                        <Star size={13} fill={m.isImportant ? "currentColor" : "none"} />
-                                                    </button>
-                                                    <button onClick={()=>toggleFlag(m.id,'archive')} className={`p-1.5 rounded-full ${m.isArchived ? 'bg-purple-100 text-purple-600' : 'hover:bg-gray-200 text-gray-400'}`}>
-                                                        <Archive size={13} />
-                                                    </button>
-                                                </div>
-
                                                 <div className={`relative max-w-[70%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                                                    <div className={`px-3.5 py-2.5 text-[13px] leading-relaxed break-words shadow-sm ${isMe
+                                                    <div className={`px-3 py-1.5 text-[13px] leading-relaxed break-words shadow-sm ${isMe
                                                         ? 'bg-emerald-600 text-white rounded-2xl rounded-br-sm'
                                                         : 'bg-white border border-gray-100 text-gray-800 rounded-2xl rounded-bl-sm'
                                                         }`}>
@@ -412,6 +430,16 @@ export default function ChatPage() {
                                                         </div>
                                                     )}
                                                 </div>
+
+                                                {/* Hidden Actions that appear on hover */}
+                                                <div className={`flex items-center gap-1 opacity-0 group-hover:opacity-100 transition duration-200 ${isMe ? 'mr-1' : 'ml-1'}`}>
+                                                    <button onClick={()=>toggleFlag(m.id,'important')} className={`p-1.5 rounded-full ${m.isImportant ? 'bg-amber-100 text-amber-500' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                                        <Star size={13} fill={m.isImportant ? "currentColor" : "none"} />
+                                                    </button>
+                                                    <button onClick={()=>toggleFlag(m.id,'archive')} className={`p-1.5 rounded-full ${m.isArchived ? 'bg-purple-100 text-purple-600' : 'hover:bg-gray-200 text-gray-400'}`}>
+                                                        <Archive size={13} />
+                                                    </button>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -422,15 +450,17 @@ export default function ChatPage() {
 
                         {/* Input Area */}
                         {threadFilter === 'ALL' ? (
-                            <div className="px-5 py-4 bg-[#F0F2F5]">
-                                <div className="flex items-center gap-3 bg-white border border-transparent rounded-full px-5 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-400 transition-all">
-                                    <input
+                            <div className="sticky bottom-0 z-50 px-5 py-3 pb-[calc(16px+env(safe-area-inset-bottom))] bg-[#F0F2F5] md:bg-white border-t border-gray-200 shadow-[0_-4px_10px_-4px_rgba(0,0,0,0.05)]">
+                                <div className="flex items-end gap-3 bg-white border border-gray-300 md:border-transparent rounded-3xl px-5 py-2.5 shadow-sm focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-400 transition-all">
+                                    <textarea
                                         ref={inputRef}
                                         value={draft}
+                                        rows={1}
                                         onChange={e => setDraft(e.target.value)}
                                         onKeyDown={handleKey}
+                                        onFocus={handleInputFocus}
                                         placeholder={`Ketik pesan ke ${activeContact.name}...`}
-                                        className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400"
+                                        className="flex-1 text-sm bg-transparent outline-none text-gray-800 placeholder-gray-400 resize-none whitespace-pre-wrap break-words py-0.5 min-h-[22px] max-h-[120px] overflow-y-auto leading-relaxed hide-scrollbar"
                                         disabled={sending}
                                     />
                                     <button

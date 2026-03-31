@@ -1,4 +1,4 @@
-import { Bell, MessageSquare } from 'lucide-react';
+import { Menu, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -12,7 +12,11 @@ const roleLabels: Record<string, string> = {
     WALI_KELAS: 'Wali Kelas',
 };
 
-export default function Navbar() {
+interface NavbarProps {
+    onToggleSidebar?: () => void;
+}
+
+export default function Navbar({ onToggleSidebar }: NavbarProps) {
     const { user } = useAuthStore();
     const navigate = useNavigate();
     const [unread, setUnread] = useState(0);
@@ -31,13 +35,29 @@ export default function Navbar() {
     }, []);
 
     return (
-        <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 shadow-sm">
-            <div>
-                <p className="text-gray-500 text-sm">Selamat datang,</p>
-                <h2 className="text-gray-900 font-semibold text-sm">{user?.name}</h2>
-            </div>
+        <header className="h-14 md:h-16 bg-white border-b border-gray-100 flex items-center justify-between px-4 md:px-6 shadow-sm">
             <div className="flex items-center gap-3">
-                {/* Bell with unread badge */}
+                {/* Hamburger — mobile only */}
+                <button
+                    onClick={onToggleSidebar}
+                    className="md:hidden p-2 -ml-1 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                    aria-label="Toggle menu"
+                >
+                    <Menu size={22} />
+                </button>
+
+                {/* Logo text — mobile only */}
+                <span className="md:hidden text-sm font-bold tracking-wider text-primary-700">LPAPP</span>
+
+                {/* Welcome — desktop only */}
+                <div className="hidden md:block">
+                    <p className="text-gray-500 text-sm">Selamat datang,</p>
+                    <h2 className="text-gray-900 font-semibold text-sm">{user?.name}</h2>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-2 md:gap-3">
+                {/* Chat with unread badge */}
                 <button
                     onClick={() => navigate('/chat')}
                     className="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
@@ -50,15 +70,17 @@ export default function Navbar() {
                     )}
                 </button>
 
-                {/* Avatar only — no duplicate name */}
+                {/* Avatar */}
                 <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-sm font-semibold">
+                    <div className="w-8 h-8 md:w-9 md:h-9 bg-primary-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs md:text-sm font-semibold">
                             {user?.name?.charAt(0).toUpperCase()}
                         </span>
                     </div>
                     <div className="hidden sm:block">
-                        <p className="text-xs text-gray-500">{user ? roleLabels[user.role] : ''}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-[120px]">
+                            {user?.roles?.map(r => roleLabels[r] || r).join(', ')}
+                        </p>
                     </div>
                 </div>
             </div>

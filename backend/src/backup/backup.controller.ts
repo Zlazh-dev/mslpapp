@@ -17,7 +17,7 @@ export class BackupController {
     constructor(private readonly backupService: BackupService) { }
 
     @Get('export')
-    @Roles(Role.ADMIN)
+    @Roles('ADMIN')
     async exportBackup(@Res() res: Response) {
         const data = await this.backupService.exportBackup();
         const filename = `mslpapp_backup_${new Date().toISOString().slice(0, 10)}.json`;
@@ -28,7 +28,7 @@ export class BackupController {
     }
 
     @Post('import')
-    @Roles(Role.ADMIN)
+    @Roles('ADMIN')
     @HttpCode(HttpStatus.OK)
     async importBackup(@Body() data: any) {
         return this.backupService.importBackup(data);

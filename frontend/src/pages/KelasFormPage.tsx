@@ -28,7 +28,7 @@ export default function KelasFormPage() {
     });
 
     useEffect(() => {
-        api.get('/users').then(r => setUsers(r.data.data.filter((u: User) => u.role === 'WALI_KELAS' || u.role === 'ADMIN')));
+        api.get('/users').then(r => setUsers(r.data.data.filter((u: User) => u.roles?.includes('WALI_KELAS') || u.roles?.includes('ADMIN'))));
         if (isEdit) api.get(`/kelas/${id}`).then(r => reset({ ...r.data.data, waliKelasId: r.data.data.waliKelasId || '' }));
     }, [id]);
 

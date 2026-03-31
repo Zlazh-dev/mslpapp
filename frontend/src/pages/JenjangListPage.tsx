@@ -8,7 +8,7 @@ import { Plus, Pencil, Trash2, ChevronRight } from 'lucide-react';
 export default function JenjangListPage() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
-    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.roles?.[0]);
 
     const [data, setData] = useState<Jenjang[]>([]);
     const [loading, setLoading] = useState(true);

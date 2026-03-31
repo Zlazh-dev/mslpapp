@@ -14,22 +14,22 @@ export class KompleksController {
     constructor(private readonly svc: KompleksService) { }
 
     @Get()
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findAll() { return this.svc.findAll(); }
 
     @Get(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findOne(@Param('id', ParseIntPipe) id: number) { return this.svc.findOne(id); }
 
     @Post()
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     create(@Body() dto: CreateKompleksDto) { return this.svc.create(dto); }
 
     @Patch(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateKompleksDto) { return this.svc.update(id, dto); }
 
     @Delete(':id')
-    @Roles(Role.ADMIN)
+    @Roles('ADMIN')
     remove(@Param('id', ParseIntPipe) id: number) { return this.svc.remove(id); }
 }

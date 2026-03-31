@@ -5,6 +5,10 @@ import { User, Undo, Redo } from 'lucide-react';
 import { EditorHeader } from './HeaderBreadcrumb';
 import { ToolsSidebar, LayerSidebar, PropertiesSidebar } from './EditorSidebars';
 import api from '../../../lib/api';
+import { DragEndEvent } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
+import { getBoundingBox, getFullySelectedGroupIds, groupElements, ungroupElements } from '../utils/GroupingLogic';
+import { ShapeElement } from './ShapeElement';
 
 const BACKEND = import.meta.env.VITE_API_URL || '';
 const CANVAS_W = 794;
@@ -41,44 +45,65 @@ export function CanvasEditor({
     const [snapToGrid, setSnapToGrid] = useState(true);
     const [showGrid, setShowGrid] = useState(true);
     
-    const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0, elX: 0, elY: 0, elW: 0, elH: 0 });
+    const [dragStart, setDragStart] = useState<{
+        x: number, y: number,
+        elements: { id: string, x: number, y: number, w: number, h: number }[]
+    }>({ x: 0, y: 0, elements: [] });
     
     const [uploadingImage, setUploadingImage] = useState(false);
     const imageInputRef = useRef<HTMLInputElement>(null);
-    const clipboardRef = useRef<CanvasElement | null>(null);
+    const clipboardRef = useRef<CanvasElement[]>([]);
 
     // Keyboard shortcuts (Copy/Paste/Delete)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
 
+            // Layer movement shortcuts
+            if ((e.ctrlKey || e.metaKey) && e.key === '[') {
+                e.preventDefault();
+                if (selectedIds.length > 0) moveLayer(selectedIds[0], 'backward'); // simple logic for move layer
+            } else if ((e.ctrlKey || e.metaKey) && e.key === ']') {
+                e.preventDefault();
+                if (selectedIds.length > 0) moveLayer(selectedIds[0], 'forward');
+            } 
+
+            // Grouping Shortcuts
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    setElements(prev => ungroupElements(prev, selectedIds)); // Ungroup
+                } else {
+                    setElements(prev => groupElements(prev, selectedIds)); // Group
+                }
+            }
+            
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-                if (selectedId) {
-                    const el = elements.find(x => x.id === selectedId);
-                    if (el) clipboardRef.current = { ...el };
+                if (selectedIds.length > 0) {
+                    const els = elements.filter(x => selectedIds.includes(x.id));
+                    clipboardRef.current = els.map(el => ({ ...el })); // copy clones
                 }
             } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-                if (clipboardRef.current) {
-                    const newX = Math.min(clipboardRef.current.x + 20, CANVAS_W - clipboardRef.current.w);
-                    const newY = Math.min(clipboardRef.current.y + 20, CANVAS_H - clipboardRef.current.h);
-                    
-                    const clonedEl = {
-                        ...clipboardRef.current,
+                if (clipboardRef.current.length > 0) {
+                    const newElements = clipboardRef.current.map(el => ({
+                        ...el,
                         id: 'el_' + Date.now() + Math.random().toString(36).substr(2, 5),
-                        x: newX,
-                        y: newY
-                    };
-                    setElements(prev => [...prev, clonedEl]);
-                    setSelectedId(clonedEl.id);
-                    clipboardRef.current = clonedEl;
+                        x: Math.min(el.x + 20, CANVAS_W - el.w),
+                        y: Math.min(el.y + 20, CANVAS_H - el.h),
+                        groupId: undefined // break group id when pasting
+                    }));
+                    setElements(prev => [...prev, ...newElements]);
+                    setSelectedIds(newElements.map(e => e.id));
+                    clipboardRef.current = newElements.map(el => ({ ...el }));
                 }
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (selectedId) {
-                    setElements(prev => prev.filter(x => x.id !== selectedId));
-                    setSelectedId(null);
+                if (selectedIds.length > 0) {
+                    setElements(prev => prev.filter(x => !selectedIds.includes(x.id)));
+                    setSelectedIds([]);
                 }
             } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 if (e.shiftKey) {
@@ -99,64 +124,122 @@ export function CanvasEditor({
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedId, elements, canUndo, canRedo, undo, redo, onSave]);
+    }, [selectedIds, elements, canUndo, canRedo, undo, redo, onSave]);
+
+    const moveLayer = (id: string, direction: 'forward' | 'backward') => {
+        setElements(prev => {
+            const arr = [...prev];
+            const idx = arr.findIndex(x => x.id === id);
+            if (idx === -1) return prev;
+            if (direction === 'forward' && idx < arr.length - 1) {
+                // Swap with next
+                [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+            } else if (direction === 'backward' && idx > 0) {
+                // Swap with prev
+                [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
+            }
+            return arr;
+        });
+    };
+
+    const handleLayerDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            setElements((prev) => {
+                const reversed = [...prev].reverse();
+                const oldIndex = reversed.findIndex(e => e.id === active.id);
+                const newIndex = reversed.findIndex(e => e.id === over.id);
+                const newReversed = arrayMove(reversed, oldIndex, newIndex);
+                return newReversed.reverse();
+            });
+        }
+    };
 
     // Drag events
     const handlePointerDown = (e: React.PointerEvent, el: CanvasElement) => {
         e.stopPropagation();
-        setSelectedId(el.id);
+        
+        let newSelection = [...selectedIds];
+        if (e.shiftKey) {
+            if (newSelection.includes(el.id)) newSelection = newSelection.filter(id => id !== el.id);
+            else newSelection.push(el.id);
+        } else {
+            if (!newSelection.includes(el.id)) newSelection = [el.id]; // allow dragging multiple if already selected
+        }
+        
+        // Auto-select entire group
+        newSelection = getFullySelectedGroupIds(elements, newSelection);
+        setSelectedIds(newSelection);
+
         setIsDragging(true);
         setIsResizing(false);
-        setDragStart({ x: e.clientX, y: e.clientY, elX: el.x, elY: el.y, elW: el.w, elH: el.h });
+        
+        const selectionRecords = elements
+            .filter(x => newSelection.includes(x.id))
+            .map(x => ({ id: x.id, x: x.x, y: x.y, w: x.w, h: x.h }));
+            
+        setDragStart({ x: e.clientX, y: e.clientY, elements: selectionRecords });
         try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { }
     };
 
     const handleResizeDown = (e: React.PointerEvent, el: CanvasElement) => {
         e.stopPropagation();
-        setSelectedId(el.id);
+        
+        const newSelection = getFullySelectedGroupIds(elements, [el.id]);
+        setSelectedIds(newSelection);
+        
         setIsResizing(true);
         setIsDragging(false);
-        setDragStart({ x: e.clientX, y: e.clientY, elX: el.x, elY: el.y, elW: el.w, elH: el.h });
+        
+        const selectionRecords = elements
+            .filter(x => newSelection.includes(x.id))
+            .map(x => ({ id: x.id, x: x.x, y: x.y, w: x.w, h: x.h }));
+            
+        setDragStart({ x: e.clientX, y: e.clientY, elements: selectionRecords });
         try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { }
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
-        if (!selectedId || (!isDragging && !isResizing)) return;
+        if (selectedIds.length === 0 || (!isDragging && !isResizing)) return;
         const dx = (e.clientX - dragStart.x) / scale;
         const dy = (e.clientY - dragStart.y) / scale;
 
-        if (isDragging) {
-            let newX = dragStart.elX + dx;
-            let newY = dragStart.elY + dy;
-            if (snapToGrid) {
-                newX = Math.round(newX / 10) * 10;
-                newY = Math.round(newY / 10) * 10;
+        setElements(els => els.map(el => {
+            const record = dragStart.elements.find(r => r.id === el.id);
+            if (!record) return el;
+
+            if (isDragging) {
+                let newX = record.x + dx;
+                let newY = record.y + dy;
+                if (snapToGrid) {
+                    newX = Math.round(newX / 10) * 10;
+                    newY = Math.round(newY / 10) * 10;
+                }
+                newX = Math.max(0, Math.min(newX, CANVAS_W - record.w));
+                newY = Math.max(0, Math.min(newY, CANVAS_H - record.h));
+                return { ...el, x: newX, y: newY };
+            } else if (isResizing) {
+                // Resize applies symmetrically proportional mostly handled by direct properties, 
+                // but currently we just resize the one clicked if multi-select resize is tricky.
+                let newW = Math.max(10, record.w + dx);
+                let newH = Math.max(10, record.h + dy);
+
+                if (e.shiftKey) {
+                    const ratio = record.w / record.h;
+                    if (newW / newH > ratio) newW = newH * ratio;
+                    else newH = newW / ratio;
+                }
+
+                if (snapToGrid) {
+                    newW = Math.round(newW / 10) * 10;
+                    newH = Math.round(newH / 10) * 10;
+                }
+                newW = Math.min(newW, CANVAS_W - record.x);
+                newH = Math.min(newH, CANVAS_H - record.y);
+                return { ...el, w: newW, h: newH };
             }
-            // Mencegah elemen keluar dari area kanvas
-            newX = Math.max(0, Math.min(newX, CANVAS_W - dragStart.elW));
-            newY = Math.max(0, Math.min(newY, CANVAS_H - dragStart.elH));
-
-            updateSelected({ x: newX, y: newY });
-        } else if (isResizing) {
-            let newW = Math.max(10, dragStart.elW + dx);
-            let newH = Math.max(10, dragStart.elH + dy);
-
-            if (e.shiftKey) {
-                const ratio = dragStart.elW / dragStart.elH;
-                if (newW / newH > ratio) newW = newH * ratio;
-                else newH = newW / ratio;
-            }
-
-            if (snapToGrid) {
-                newW = Math.round(newW / 10) * 10;
-                newH = Math.round(newH / 10) * 10;
-            }
-            // Batasi resize mentok di tepi kanvas
-            newW = Math.min(newW, CANVAS_W - dragStart.elX);
-            newH = Math.min(newH, CANVAS_H - dragStart.elY);
-
-            updateSelected({ w: newW, h: newH });
-        }
+            return el;
+        }));
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
@@ -165,14 +248,14 @@ export function CanvasEditor({
         try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
     };
 
-    // Updaters
+    // Updaters (applies to first selection for simple property edits usually)
     const updateSelected = (updates: Partial<CanvasElement>) => {
-        if (!selectedId) return;
-        setElements(els => els.map(e => e.id === selectedId ? { ...e, ...updates } : e));
+        if (selectedIds.length === 0) return;
+        setElements(els => els.map(e => selectedIds.includes(e.id) ? { ...e, ...updates } : e));
     };
-    const updateStyle = (updates: React.CSSProperties) => {
-        if (!selectedId) return;
-        setElements(els => els.map(e => e.id === selectedId ? { ...e, style: { ...e.style, ...updates } } : e));
+    const updateStyle = (updates: Partial<CanvasElement['style']>) => {
+        if (selectedIds.length === 0) return;
+        setElements(els => els.map(e => selectedIds.includes(e.id) ? { ...e, style: { ...e.style, ...updates } } : e));
     };
 
     // Adder Helpers
@@ -180,7 +263,8 @@ export function CanvasEditor({
         const baseStyle: React.CSSProperties = { position: 'absolute', fontFamily: 'Arial', fontSize: 14, fontWeight: 'normal', color: '#000000', textAlign: 'left' };
         let newEl: CanvasElement = { id: 'el_' + Date.now(), type, x: 50, y: 50, w: 200, h: 40, style: { ...baseStyle } };
 
-        if (type === 'rect') { newEl.style.backgroundColor = '#e5e7eb'; newEl.style.border = '1px solid #9ca3af'; newEl.w = 300; newEl.h = 100; }
+        if (type === 'rect') { newEl.style.backgroundColor = '#e5e7eb'; newEl.style.borderWidth = 1; newEl.style.strokeColor = '#9ca3af'; newEl.w = 300; newEl.h = 100; }
+        else if (type === 'circle') { newEl.style.backgroundColor = '#e5e7eb'; newEl.w = 100; newEl.h = 100; }
         else if (type === 'text') { newEl.value = 'Teks Baru'; }
         else if (type === 'field') { 
             newEl.field = presetField || 'namaLengkap'; 
@@ -194,7 +278,7 @@ export function CanvasEditor({
         }
 
         setElements(prev => [...prev, newEl]);
-        setSelectedId(newEl.id);
+        setSelectedIds([newEl.id]);
     };
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,7 +304,8 @@ export function CanvasEditor({
         finally { setUploadingImage(false); if (e.target) e.target.value = ''; }
     };
 
-    const selectedEl = elements.find(e => e.id === selectedId);
+    const selectedEl = elements.find(e => e.id === selectedIds[0]); // For property sidebar (shows first element)
+    const boundingBox = getBoundingBox(elements, selectedIds);
 
     return (
         <div className="flex flex-col h-screen bg-gray-100 overflow-hidden font-sans">
@@ -235,7 +320,7 @@ export function CanvasEditor({
                 <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-gray-100 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-transparent" title="Undo (Ctrl+Z)"><Undo size={16}/></button>
                 <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-gray-100 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-transparent" title="Redo (Ctrl+Y)"><Redo size={16}/></button>
                 <div className="w-px h-4 bg-gray-200 mx-2"/>
-                <span className="text-xs text-gray-400">Tips: Gunakan Ctrl+C dan Ctrl+V untuk menyalin elemen. Posisi luar batas putih tidak akan tercetak.</span>
+                <span className="text-xs text-gray-400">Tips: Gunakan <b className="text-gray-600">Shift + Click</b> untuk multi-select. Gunakan <b className="text-gray-600">Ctrl + G</b> untuk Group elemen.</span>
             </div>
 
             <div className="flex flex-1 overflow-hidden">
@@ -248,9 +333,9 @@ export function CanvasEditor({
                     imageInputRef={imageInputRef} 
                 />
                 
-                <LayerSidebar elements={elements} selectedId={selectedId} onSelect={setSelectedId} />
+                <LayerSidebar elements={elements} selectedIds={selectedIds} onSelect={(id) => setSelectedIds([id])} onDragEnd={handleLayerDragEnd} onHoverLayer={setHoveredId} />
 
-                <div className="flex-1 overflow-auto bg-slate-200 flex items-start justify-center p-8 relative" onPointerDown={() => setSelectedId(null)}>
+                <div className="flex-1 overflow-auto bg-slate-200 flex items-start justify-center p-8 relative" onPointerDown={() => setSelectedIds([])}>
                     <div 
                         className="bg-white shadow-2xl relative border border-gray-200 print:shadow-none"
                         style={{ width: CANVAS_W, height: CANVAS_H, transform: `scale(${scale})`, transformOrigin: 'top center', overflow: 'hidden' }}
@@ -276,12 +361,14 @@ export function CanvasEditor({
                                 onPointerUp={handlePointerUp}
                                 style={{
                                     ...el.style,
+                                    backgroundColor: (el.type === 'rect' || el.type === 'circle') ? 'transparent' : el.style.backgroundColor,
+                                    border: (el.type === 'rect' || el.type === 'circle') ? 'none' : el.style.border,
                                     left: el.x,
                                     top: el.y,
                                     width: el.w,
                                     height: el.h,
-                                    cursor: isDragging && selectedId === el.id ? 'grabbing' : 'grab',
-                                    outline: selectedId === el.id ? '2px solid #3b82f6' : 'none',
+                                    cursor: isDragging && selectedIds.includes(el.id) ? 'grabbing' : 'grab',
+                                    outline: selectedIds.includes(el.id) && selectedIds.length === 1 ? '2px solid #3b82f6' : (hoveredId === el.id ? '2px dashed #93c5fd' : 'none'),
                                     outlineOffset: '2px',
                                     userSelect: 'none',
                                     display: 'flex',
@@ -308,7 +395,10 @@ export function CanvasEditor({
                                         <span style={{ fontSize: 8, fontFamily: 'sans-serif', color: '#6b7280' }}>Profil Publik</span>
                                     </div>
                                 )}
-                                {selectedId === el.id && (
+                                {(el.type === 'rect' || el.type === 'circle') && (
+                                    <ShapeElement el={el} />
+                                )}
+                                {selectedIds.length === 1 && selectedIds[0] === el.id && (
                                     <div
                                         onPointerDown={(e) => handleResizeDown(e, el)}
                                         style={{ position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, backgroundColor: '#3b82f6', cursor: 'nwse-resize', zIndex: 50, clipPath: 'polygon(100% 0, 100% 100%, 0 100%)' }}
@@ -316,14 +406,34 @@ export function CanvasEditor({
                                 )}
                             </div>
                         ))}
+
+                        {/* Bounding Box multi-select terpadu */}
+                        {selectedIds.length > 1 && boundingBox && (
+                            <div 
+                                style={{
+                                    position: 'absolute',
+                                    left: boundingBox.x,
+                                    top: boundingBox.y,
+                                    width: boundingBox.w,
+                                    height: boundingBox.h,
+                                    border: '2px dashed #3b82f6',
+                                    pointerEvents: 'none',
+                                    zIndex: 40
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
 
                 <PropertiesSidebar 
                     selectedEl={selectedEl} 
+                    multipleSelected={selectedIds.length > 1}
                     onUpdateSelected={updateSelected} 
                     onUpdateStyle={updateStyle} 
-                    onDeleteElement={(id) => { setElements(els => els.filter(x => x.id !== id)); setSelectedId(null); }} 
+                    onDeleteElement={(id) => { setElements(els => els.filter(x => x.id !== id)); setSelectedIds(selectedIds.filter(x => x !== id)); }} 
+                    onMoveLayer={(direction) => { if (selectedEl) moveLayer(selectedEl.id, direction); }}
+                    onGroup={() => setElements(prev => groupElements(prev, selectedIds))}
+                    onUngroup={() => setElements(prev => ungroupElements(prev, selectedIds))}
                 />
             </div>
         </div>

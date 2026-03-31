@@ -5,3 +5,16 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+compile-errors.txt
+errors.txt
+errors2.txt
+errors3.txt
+frontend-errors.txt
+replace.js
+replace-frontend.cjs
+local.yml
+ls_output.txt
+pm2_status.txt
+pm2_status2.json
+.agent/
+.cursorrules

@@ -14,28 +14,28 @@ export class KamarController {
     constructor(private readonly svc: KamarService) { }
 
     @Get()
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findAll(@Query('gedungId') gedungId?: string) {
         return this.svc.findAll(gedungId ? parseInt(gedungId) : undefined);
     }
 
     @Get(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findOne(@Param('id', ParseIntPipe) id: number) { return this.svc.findOne(id); }
 
     @Get(':id/santri')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     findSantri(@Param('id', ParseIntPipe) id: number) { return this.svc.findSantriByKamar(id); }
 
     @Post()
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     create(@Body() dto: CreateKamarDto) { return this.svc.create(dto); }
 
     @Patch(':id')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateKamarDto) { return this.svc.update(id, dto); }
 
     @Delete(':id')
-    @Roles(Role.ADMIN)
+    @Roles('ADMIN')
     remove(@Param('id', ParseIntPipe) id: number) { return this.svc.remove(id); }
 }

@@ -20,7 +20,7 @@ function completenessOf(s: Santri): number {
 export default function SantriListPage() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     // Filter state
     const [search, setSearch] = useState('');

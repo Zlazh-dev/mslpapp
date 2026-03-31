@@ -105,17 +105,35 @@ export class LaporanService {
             });
         }
 
-        const rawKelasDist = await this.prisma.kelas.findMany({ include: { _count: { select: { santris: true } } } });
-        const kelasDistribution = rawKelasDist.map(k => ({ name: k.nama, count: k._count.santris })).sort((a, b) => b.count - a.count);
+        const rawKelasDist = await this.prisma.kelas.findMany({ 
+            include: { 
+                _count: { select: { santris: true } },
+                tingkat: { include: { jenjang: true } }
+            } 
+        });
+        const kelasDistribution = rawKelasDist.map(k => ({ 
+            name: `${k.tingkat?.jenjang?.nama || 'Unknown'} - ${k.tingkat?.nama || 'Unknown'} - ${k.nama}`, 
+            count: k._count.santris 
+        })).sort((a, b) => b.count - a.count);
 
-        const rawKamarDist = await this.prisma.kamar.findMany({ include: { _count: { select: { santris: true } } } });
-        const kamarDistribution = rawKamarDist.map(k => ({ name: k.nama, count: k._count.santris })).sort((a, b) => b.count - a.count);
+        const rawKamarDist = await this.prisma.kamar.findMany({ 
+            include: { 
+                _count: { select: { santris: true } },
+                gedung: true
+            } 
+        });
+        const kamarDistribution = rawKamarDist.map(k => ({ 
+            name: `${k.gedung?.nama || 'Unknown'} - ${k.nama}`, 
+            count: k._count.santris 
+        })).sort((a, b) => b.count - a.count);
         
         const overcapacityRooms = rawKamarDist.filter(k => k.kapasitas && k._count.santris > k.kapasitas).length;
         const unassignedSantri = await this.prisma.santri.count({ where: { status: 'ACTIVE', OR: [{ kelasId: null }, { kamarId: null }] } });
 
-        const rawUsers = await this.prisma.user.groupBy({ by: ['role'], _count: { id: true } });
-        const userDistribution = rawUsers.map(u => ({ role: u.role, count: u._count.id }));
+        const allUsers = await this.prisma.user.findMany({ include: { roles: true } });
+        const rolesCount: Record<string, number> = {};
+        allUsers.forEach(u => u.roles.forEach(r => { rolesCount[r.name] = (rolesCount[r.name] || 0) + 1; }));
+        const userDistribution = Object.keys(rolesCount).map(role => ({ role, count: rolesCount[role] }));
 
         const systemHealth = {
             version: 'LPAPP v1.2.0',

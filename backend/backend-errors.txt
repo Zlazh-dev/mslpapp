@@ -1,0 +1,5 @@
+﻿src/santri/santri.repository.ts(32,83): error TS2353: Object literal may only specify known properties, and 'jenjang' does not exist in type 'KelasInclude<DefaultArgs>'.
+src/santri/santri.repository.ts(41,44): error TS2353: Object literal may only specify known properties, and 'jenjang' does not exist in type 'KelasInclude<DefaultArgs>'.
+src/santri/santri.service.ts(52,15): error TS2488: Type '{ data: { id: string; nis: string; namaLengkap: string; gender: Gender; tanggalLahir: Date; tempatLahir: string; noHp: string; nik: string; noKk: string; tanggalMasuk: Date; tanggalKeluar: Date; ... 21 more ...; updatedAt: Date; }[]; total: number; }' must have a '[Symbol.iterator]()' method that returns an iterator.
+src/santri/santri.service.ts(52,89): error TS2554: Expected 0-1 arguments, but got 3.
+src/santri/santri.service.ts(80,13): error TS2561: Object literal may only specify known properties, but 'kelasId' does not exist in type 'SantriCreateInput'. Did you mean to write 'kelas'?

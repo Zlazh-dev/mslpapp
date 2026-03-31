@@ -9,12 +9,11 @@ datasource db {
 
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
-enum Role {
-  ADMIN
-  STAF_PENDATAAN
-  STAF_MADRASAH
-  PEMBIMBING_KAMAR
-  WALI_KELAS
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  users       User[]
 }
 
 enum Gender {
@@ -33,6 +32,13 @@ enum JalurPendidikan {
   TAHFIDZ
 }
 
+enum StatusPresensi {
+  H
+  S
+  I
+  A
+}
+
 // ─── Setting ───────────────────────────────────────────────────────────────────
 
 model Setting {
@@ -49,7 +55,7 @@ model User {
   name      String
   username  String?  @unique
   password  String
-  role      Role     @default(STAF_PENDATAAN)
+  roles     Role[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lastLoginAt DateTime?  // Digunakan untuk melacak login terakhir
@@ -60,6 +66,7 @@ model User {
   kamarBimbing     Kamar?        @relation("PembimbingKamar", fields: [kamarBimbingId], references: [id])
   kelasWali        Kelas[]       @relation("WaliKelas")
   nilaiCreated     Nilai[]       @relation("NilaiCreator")
+  presensiCreated  PresensiKelas[] @relation("PengajarPresensi")
   sentMessages     ChatMessage[] @relation("SentMessages")
   receivedMessages ChatMessage[] @relation("ReceivedMessages")
 
@@ -128,6 +135,7 @@ model Kelas {
   waliKelas   User?    @relation("WaliKelas", fields: [waliKelasId], references: [id])
   santris     Santri[]
   nilais      Nilai[]
+  presensis   PresensiKelas[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -180,6 +188,8 @@ model Santri {
   kelas Kelas?  @relation(fields: [kelasId], references: [id])
   kamar Kamar?  @relation(fields: [kamarId], references: [id])
   nilai Nilai[]
+  presensis PresensiSiswa[]
+
   user  User?
 }
 
@@ -203,6 +213,33 @@ model Nilai {
   creator User   @relation("NilaiCreator", fields: [createdBy], references: [id])
 
   @@unique([santriId, kelasId, mataPelajaran, semester])
+}
+
+// ─── Presensi (Kehadiran) ───────────────────────────────────────────────────
+
+model PresensiKelas {
+  id          String   @id @default(cuid())
+  kelasId     Int
+  kelas       Kelas    @relation(fields: [kelasId], references: [id])
+  tanggal     DateTime
+  pengajarId  String?
+  pengajar    User?    @relation("PengajarPresensi", fields: [pengajarId], references: [id])
+  catatan     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  detail      PresensiSiswa[]
+}
+
+model PresensiSiswa {
+  id              String         @id @default(cuid())
+  presensiKelasId String
+  presensiKelas   PresensiKelas  @relation(fields: [presensiKelasId], references: [id], onDelete: Cascade)
+  santriId        String
+  santri          Santri         @relation(fields: [santriId], references: [id])
+  status          StatusPresensi
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 // ─── Chat (Direct Messages) ───────────────────────────────────────────────────

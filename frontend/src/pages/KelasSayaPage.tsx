@@ -16,7 +16,7 @@ function fmt(date?: string | null) {
 export default function KelasSayaPage() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     const [kelas, setKelas] = useState<Kelas | null>(null);
     const [loadingKelas, setLoadingKelas] = useState(true);

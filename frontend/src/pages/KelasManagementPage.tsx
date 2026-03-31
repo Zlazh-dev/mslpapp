@@ -64,7 +64,7 @@ function RenameModal({ title, initialValue, onSave, onClose }: { title: string; 
 export default function KelasManagementPage() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.roles?.[0]);
 
     const [selJenjang, setSelJenjang] = useState<number | null>(null);
     const [selTingkat, setSelTingkat] = useState<number | null>(null);
@@ -102,7 +102,7 @@ export default function KelasManagementPage() {
     const fetchKelas = async (tingkatId: number) => { const r = await api.get('/kelas', { params: { tingkatId } }); setKelasList(r.data.data); };
     const fetchWali = async () => {
         const r = await api.get('/users', { params: { limit: 200 } });
-        setWaliList((r.data.data as User[]).filter((u: User) => u.role === 'WALI_KELAS'));
+        setWaliList((r.data.data as User[]).filter((u: User) => u.roles?.includes('WALI_KELAS')));
     };
 
     // Fetch ALL kelas globally to build accurate wali assignment map

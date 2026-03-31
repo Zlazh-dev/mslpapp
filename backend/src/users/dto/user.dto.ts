@@ -1,6 +1,5 @@
-import { IsString, IsEnum, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsOptional, MinLength, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
 
 export class CreateUserDto {
     @ApiProperty()
@@ -22,9 +21,10 @@ export class CreateUserDto {
     @MinLength(6)
     password: string;
 
-    @ApiProperty({ enum: Role })
-    @IsEnum(Role)
-    role: Role;
+    @ApiProperty()
+    @IsArray()
+    @IsString({ each: true })
+    roles: string[];
 
     @ApiProperty({ required: false })
     @IsOptional()
@@ -35,6 +35,11 @@ export class CreateUserDto {
     @IsOptional()
     @IsString()
     kamarId?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    santriNis?: string;
 }
 
 export class UpdateUserDto {
@@ -53,10 +58,11 @@ export class UpdateUserDto {
     @IsString()
     password?: string;
 
-    @ApiProperty({ enum: Role, required: false })
+    @ApiProperty({ required: false })
     @IsOptional()
-    @IsEnum(Role)
-    role?: Role;
+    @IsArray()
+    @IsString({ each: true })
+    roles?: string[];
 
     @ApiProperty({ required: false })
     @IsOptional()
@@ -67,4 +73,9 @@ export class UpdateUserDto {
     @IsOptional()
     @IsString()
     kamarId?: string;
+
+    @ApiProperty({ required: false })
+    @IsOptional()
+    @IsString()
+    santriNis?: string;
 }

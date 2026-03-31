@@ -21,7 +21,7 @@ export class AuthService {
                     { santri: { nis: username } }
                 ]
             },
-            include: { santri: true }
+            include: { santri: true, roles: true }
         });
         if (!user) {
             throw new UnauthorizedException('Username atau password salah');
@@ -38,10 +38,12 @@ export class AuthService {
             data: { lastLoginAt: new Date() }
         });
 
+        const rolesStr = (user as any).roles ? (user as any).roles.map((r: any) => r.name) : [];
+
         const payload = {
             sub: user.id,
             username: user.username,
-            role: user.role,
+            roles: rolesStr,
         };
 
         const token = this.jwtService.sign(payload);
@@ -55,7 +57,7 @@ export class AuthService {
                     id: user.id,
                     name: user.name,
                     username: user.username,
-                    role: user.role,
+                    roles: rolesStr,
                 },
             },
         };
@@ -68,17 +70,22 @@ export class AuthService {
                 id: true,
                 name: true,
                 username: true,
-                role: true,
+                roles: { select: { name: true } },
                 createdAt: true,
                 kelasWali: { select: { id: true, nama: true } },
                 kamarBimbing: { select: { id: true, nama: true } },
             },
         });
 
+        const mappedUser = {
+            ...user,
+            roles: user?.roles.map(r => r.name) || [],
+        };
+
         return {
             success: true,
             message: 'Data user berhasil diambil',
-            data: user,
+            data: mappedUser,
         };
     }
 }

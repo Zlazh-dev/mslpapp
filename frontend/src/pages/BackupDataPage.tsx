@@ -16,6 +16,7 @@ export default function BackupDataPage() {
     const [importStatus, setImportStatus] = useState<ImportStatus>('idle');
     const [importReport, setImportReport] = useState<Record<string, number> | null>(null);
     const [importError, setImportError] = useState('');
+    const [importWarnings, setImportWarnings] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -58,6 +59,7 @@ export default function BackupDataPage() {
             const json = JSON.parse(text);
             const res = await api.post('/backup/import', json);
             setImportReport(res.data.report);
+            setImportWarnings(res.data.sampleErrors || []);
             setImportStatus('success');
         } catch (err: any) {
             const msg = err.response?.data?.message || err.message || 'Gagal mengimpor backup.';
@@ -198,6 +200,19 @@ export default function BackupDataPage() {
                                     </div>
                                 ))}
                             </div>
+                            {importWarnings.length > 0 && (
+                                <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <p className="text-xs font-semibold text-amber-700 mb-1">
+                                        <AlertTriangle size={12} className="inline mr-1" />
+                                        {importWarnings.length} data gagal diimpor:
+                                    </p>
+                                    <ul className="text-[11px] text-amber-600 space-y-0.5 list-disc list-inside">
+                                        {importWarnings.map((w, i) => (
+                                            <li key={i} className="truncate">{w}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                     )}
 

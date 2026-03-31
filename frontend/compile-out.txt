@@ -1,0 +1,3 @@
+﻿src/pages/pengaturan-cetak/components/CanvasEditor.tsx(10,10): error TS2305: Module '"../utils/GroupingLogic"' has no exported member 'getBoundingBox'.
+src/pages/pengaturan-cetak/components/ShapeElement.tsx(2,10): error TS2305: Module '"../../../types"' has no exported member 'CanvasElement'.
+src/pages/pengaturan-cetak/utils/GroupingLogic.ts(1,10): error TS2305: Module '"../../../types"' has no exported member 'CanvasElement'.

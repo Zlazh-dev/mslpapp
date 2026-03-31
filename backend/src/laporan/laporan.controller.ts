@@ -14,14 +14,14 @@ export class LaporanController {
     constructor(private readonly laporanService: LaporanService) { }
 
     @Get('dashboard')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN, Role.STAF_MADRASAH, Role.PEMBIMBING_KAMAR, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH', 'PEMBIMBING_KAMAR', 'WALI_KELAS')
     getDashboard() { return this.laporanService.getDashboardStats(); }
 
     @Get('santri')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     getSantri(@Query() query: any) { return this.laporanService.getSantriReport(query); }
 
     @Get('nilai')
-    @Roles(Role.ADMIN, Role.STAF_MADRASAH, Role.WALI_KELAS)
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     getNilai(@Query() query: any) { return this.laporanService.getNilaiReport(query); }
 }

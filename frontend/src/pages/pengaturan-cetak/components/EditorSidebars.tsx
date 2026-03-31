@@ -1,6 +1,11 @@
 import React from 'react';
-import { Type, Database, User, Square, Image as ImageIcon, QrCode, Layers, Trash2 } from 'lucide-react';
+import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown } from 'lucide-react';
 import { CanvasElement } from '../types';
+
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface ToolsSidebarProps {
     onAddElement: (type: CanvasElement['type']) => void;
@@ -26,6 +31,9 @@ export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onImageUpload, 
             <button onClick={() => onAddElement('rect')} title="Bentuk Kotak" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-amber-500 hover:bg-amber-100 hover:text-amber-600 transition group border border-gray-100">
                 <Square size={18} />
             </button>
+            <button onClick={() => onAddElement('circle')} title="Bentuk Lingkaran" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600 transition group border border-gray-100">
+                <Circle size={18} />
+            </button>
             <button onClick={() => imageInputRef.current?.click()} title="Unggah Gambar Statis" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-purple-500 hover:bg-purple-100 hover:text-purple-600 transition group border border-gray-100 relative">
                 <ImageIcon size={18} />
                 {uploadingImage && <span className="absolute -top-1 -right-1 w-3 h-3 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin bg-white" />}
@@ -40,70 +48,143 @@ export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onImageUpload, 
 
 interface LayerSidebarProps {
     elements: CanvasElement[];
-    selectedId: string | null;
+    selectedIds: string[];
     onSelect: (id: string) => void;
+    onHoverLayer: (id: string | null) => void;
+    onDragEnd: (event: DragEndEvent) => void;
 }
 
-export function LayerSidebar({ elements, selectedId, onSelect }: LayerSidebarProps) {
+function SortableLayerItem({ el, selectedIds, isFirstInGroup, isLastInGroup, onSelect, onHoverLayer }: { el: CanvasElement; selectedIds: string[]; isFirstInGroup?: boolean; isLastInGroup?: boolean; onSelect: (id: string) => void; onHoverLayer: (id: string | null) => void }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: el.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 50 : 1,
+    };
+
+    let icon = <Type size={12} className="text-blue-500"/>;
+    let title = el.value || 'Teks';
+    
+    if (el.type === 'field' && el.field === 'foto') {
+        icon = <User size={12} className="text-rose-500"/>;
+        title = 'Foto Profil Santri';
+    } else if (el.type === 'field') { 
+        icon = <Database size={12} className="text-emerald-500"/>; 
+        title = `[ ${el.field} ]`; 
+    } else if (el.type === 'rect') { 
+        icon = <Square size={12} className="text-amber-500"/>; 
+        title = 'Kotak/Garis Pembatas'; 
+    } else if (el.type === 'image') { 
+        icon = <ImageIcon size={12} className="text-purple-500"/>; 
+        title = 'Gambar / Logo'; 
+    } else if (el.type === 'qrcode') {
+        icon = <QrCode size={12} className="text-teal-500"/>;
+        title = 'QR Code Profil Publik';
+    }
+
+    const isSelected = selectedIds.includes(el.id);
+    const isGrouped = !!el.groupId;
+
     return (
-        <div className="w-64 bg-gray-50/50 border-r flex flex-col z-10 shrink-0">
-            <div className="p-4 border-b border-gray-100 bg-white shadow-sm relative z-10">
-                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-widest flex items-center gap-2"><Layers size={14} className="text-primary-500"/> Struktur Lapisan</h2>
-                <p className="text-[10px] text-gray-500 mt-1">Daftar elemen pada kanvas</p>
+        <div ref={setNodeRef} style={style} className={`flex flex-col relative ${isDragging ? 'z-50' : 'z-0'} ${isGrouped ? 'px-0.5' : ''}`}>
+            {isFirstInGroup && (
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-wider px-2 py-1 bg-slate-100 border border-b-0 border-slate-200 rounded-t-md mb-0.5 mt-1">
+                    <Layers size={10} className="text-slate-400" /> Group
+                </div>
+            )}
+            <div 
+                onMouseEnter={() => onHoverLayer(el.id)}
+                onMouseLeave={() => onHoverLayer(null)}
+                className={`w-full text-left px-1.5 py-1.5 flex items-center gap-1.5 text-[11px] transition border bg-white ${isSelected ? 'border-primary-200 shadow-sm font-semibold ring-1 ring-primary-500/20' : 'border-transparent hover:border-gray-200'} ${isDragging ? 'shadow-md border-primary-400 opacity-90' : ''} ${isGrouped ? 'ml-3 border-l w-[calc(100%-0.75rem)] rounded-none' : 'rounded-md'} ${isFirstInGroup ? '!rounded-tr-md' : ''} ${isLastInGroup ? '!rounded-b-md' : ''}`}
+            >
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-800 rounded bg-gray-50/50 hover:bg-slate-100 shrink-0 transition-colors">
+                    <GripVertical size={12} className={isDragging ? "text-primary-500" : ""} />
+                </div>
+                <button onClick={() => onSelect(el.id)} className="flex-1 flex items-center gap-2 truncate text-left focus:outline-none overflow-hidden py-0.5">
+                    <span className="shrink-0">{icon}</span>
+                    <span className={`truncate flex-1 ${isSelected ? 'text-primary-800 font-medium' : 'text-gray-600'}`} title={title}>{title}</span>
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 mr-1" />}
+                </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
-                {elements.length === 0 && (
-                    <div className="text-center py-8 px-4 border-2 border-dashed border-gray-200 rounded-xl m-2">
-                        <Layers size={24} className="text-gray-300 mx-auto mb-2" />
-                        <p className="text-[11px] text-gray-400">Kanvas kosong. Tambah alat di samping.</p>
-                    </div>
-                )}
-                {[...elements].reverse().map((el) => {
-                    let icon = <Type size={14} className="text-blue-500"/>;
-                    let title = el.value || 'Teks';
-                    
-                    if (el.type === 'field' && el.field === 'foto') {
-                        icon = <User size={14} className="text-rose-500"/>;
-                        title = 'Foto Profil Santri';
-                    } else if (el.type === 'field') { 
-                        icon = <Database size={14} className="text-emerald-500"/>; 
-                        title = `[ ${el.field} ]`; 
-                    } else if (el.type === 'rect') { 
-                        icon = <Square size={14} className="text-amber-500"/>; 
-                        title = 'Kotak/Garis Pembatas'; 
-                    } else if (el.type === 'image') { 
-                        icon = <ImageIcon size={14} className="text-purple-500"/>; 
-                        title = 'Gambar / Logo'; 
-                    } else if (el.type === 'qrcode') {
-                        icon = <QrCode size={14} className="text-teal-500"/>;
-                        title = 'QR Code Profil Publik';
-                    }
-                    
-                    return (
-                        <button 
-                            key={el.id} 
-                            onClick={() => onSelect(el.id)}
-                            className={`w-full text-left px-3 py-2 flex items-center gap-3 rounded-lg text-xs transition border ${selectedId === el.id ? 'bg-white border-blue-200 shadow-sm text-blue-700 font-semibold' : 'bg-transparent border-transparent hover:bg-gray-100 text-gray-600 hover:border-gray-200'}`}
-                        >
-                            <span className="shrink-0">{icon}</span>
-                            <span className="truncate flex-1" title={title}>{title}</span>
-                            {selectedId === el.id && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
-                        </button>
-                    );
-                })}
+            {isGrouped && !isLastInGroup && (
+                <div className="absolute left-1 top-0 bottom-0 w-3 border-l border-slate-200 -z-10" />
+            )}
+            {isLastInGroup && (
+                <div className="h-1.5 w-[calc(100%-0.75rem)] ml-3 bg-slate-50 border-x border-b border-slate-200 rounded-b-md mb-1 shadow-sm" />
+            )}
+        </div>
+    );
+}
+
+export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, onDragEnd }: LayerSidebarProps) {
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const reversedElements = [...elements].reverse();
+    const itemIds = reversedElements.map(e => e.id);
+
+    return (
+        <div className="w-64 bg-gray-50/50 border-r flex flex-col z-20 shrink-0 shadow-[2px_0_10px_-5px_rgba(0,0,0,0.05)] relative">
+            <div className="px-3 py-2 border-b border-gray-100 bg-white shadow-sm relative z-10">
+                <h2 className="text-[11px] font-bold text-gray-800 uppercase tracking-widest flex items-center gap-1.5"><Layers size={12} className="text-primary-500"/> Struktur Lapisan</h2>
+                <p className="text-[9px] text-gray-500 mt-0.5 leading-snug flex items-center gap-1">Seret <GripVertical size={10} className="text-gray-400" /> untuk pindah Z-Index.</p>
             </div>
+            <DndContext 
+                sensors={sensors} 
+                collisionDetection={closestCenter} 
+                onDragEnd={onDragEnd}
+                modifiers={[restrictToVerticalAxis]}
+            >
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                    {elements.length === 0 && (
+                        <div className="text-center py-6 px-3 border border-dashed border-gray-200 rounded-lg m-2">
+                            <Layers size={20} className="text-gray-300 mx-auto mb-1.5" />
+                            <p className="text-[10px] text-gray-400 leading-snug">Kanvas kosong. Tambah alat di samping.</p>
+                        </div>
+                    )}
+                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                        {reversedElements.map((el, idx) => {
+                            const isGrouped = !!el.groupId;
+                            const prevGroup = idx > 0 ? reversedElements[idx - 1].groupId : null;
+                            const nextGroup = idx < reversedElements.length - 1 ? reversedElements[idx + 1].groupId : null;
+                            
+                            const isFirstInGroup = isGrouped && el.groupId !== prevGroup;
+                            const isLastInGroup = isGrouped && el.groupId !== nextGroup;
+
+                            return (
+                                <SortableLayerItem 
+                                    key={el.id} 
+                                    el={el} 
+                                    selectedIds={selectedIds} 
+                                    isFirstInGroup={isFirstInGroup}
+                                    isLastInGroup={isLastInGroup}
+                                    onSelect={onSelect} 
+                                    onHoverLayer={onHoverLayer} 
+                                />
+                            );
+                        })}
+                    </SortableContext>
+                </div>
+            </DndContext>
         </div>
     );
 }
 
 interface PropertiesSidebarProps {
     selectedEl?: CanvasElement;
+    multipleSelected: boolean;
     onUpdateSelected: (updates: Partial<CanvasElement>) => void;
-    onUpdateStyle: (updates: React.CSSProperties) => void;
+    onUpdateStyle: (updates: Partial<CanvasElement['style']>) => void;
     onDeleteElement: (id: string) => void;
+    onMoveLayer: (direction: 'forward' | 'backward') => void;
+    onGroup: () => void;
+    onUngroup: () => void;
 }
 
-export function PropertiesSidebar({ selectedEl, onUpdateSelected, onUpdateStyle, onDeleteElement }: PropertiesSidebarProps) {
+export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelected, onUpdateStyle, onDeleteElement, onMoveLayer, onGroup, onUngroup }: PropertiesSidebarProps) {
     if (!selectedEl) {
         return (
             <div className="w-80 bg-white border-l flex flex-col items-center justify-center text-gray-400 p-8 text-center gap-3 shrink-0 z-10 overflow-y-auto">
@@ -116,7 +197,27 @@ export function PropertiesSidebar({ selectedEl, onUpdateSelected, onUpdateStyle,
     return (
         <div className="w-80 bg-white border-l flex flex-col z-10 overflow-y-auto shrink-0">
             <div className="p-4 space-y-5">
-                <h2 className="text-sm font-bold text-gray-800 pb-2 border-b">Properti Elemen</h2>
+                <div className="flex items-center justify-between pb-2 border-b">
+                    <h2 className="text-sm font-bold text-gray-800">Properti Elemen</h2>
+                    <div className="flex items-center gap-1">
+                         <button onClick={() => onMoveLayer('forward')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 border border-transparent shadow-sm hover:border-gray-200 bg-white group transition-all" title="Bawa ke Depan (Ctrl+])">
+                            <MoveUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
+                         </button>
+                         <button onClick={() => onMoveLayer('backward')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 border border-transparent shadow-sm hover:border-gray-200 bg-white group transition-all" title="Kirim ke Belakang (Ctrl+[)">
+                            <MoveDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
+                         </button>
+                    </div>
+                </div>
+
+                {multipleSelected && (
+                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-2 mb-4">
+                        <p className="text-xs text-blue-800 font-medium text-center">Multiple Elemen Terpilih</p>
+                        <div className="flex gap-2">
+                            <button onClick={onGroup} className="flex-1 py-1.5 bg-white border border-blue-200 text-blue-600 rounded text-xs font-medium hover:bg-blue-50">Grup (Ctrl+G)</button>
+                            <button onClick={onUngroup} className="flex-1 py-1.5 bg-white border border-blue-200 text-blue-600 rounded text-xs font-medium hover:bg-blue-50">Ungroup</button>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -148,15 +249,45 @@ export function PropertiesSidebar({ selectedEl, onUpdateSelected, onUpdateStyle,
                     <div>
                         <label className="text-xs text-gray-500 block mb-1">Variabel Database</label>
                         <select className="form-input text-sm shadow-none border-gray-200 w-full" value={selectedEl.field || ''} onChange={e => onUpdateSelected({ field: e.target.value })}>
-                            <option value="namaLengkap">Nama Lengkap</option>
-                            <option value="nis">NIS Santri</option>
-                            <option value="tanggalLahir">Tanggal Lahir</option>
-                            <option value="tempatLahir">Tempat Lahir</option>
-                            <option value="gender">Jenis Kelamin (L/P)</option>
-                            <option value="kamar.nama">Kamar</option>
-                            <option value="kelas.nama">Kelas</option>
-                            <option value="alamatFull">Alamat Lengkap</option>
-                            <option value="foto">Foto Profil (Bawaan)</option>
+                            <optgroup label="Data Pribadi">
+                                <option value="namaUser">Nama Pengguna / Santri</option>
+                                <option value="namaLengkap">Nama Lengkap</option>
+                                <option value="nis">NIS Santri</option>
+                                <option value="nik">NIK</option>
+                                <option value="noKk">No KK</option>
+                                <option value="tanggalLahir">Tanggal Lahir</option>
+                                <option value="tempatLahir">Tempat Lahir</option>
+                                <option value="gender">Jenis Kelamin</option>
+                                <option value="noHp">No HP / Telepon</option>
+                                <option value="foto">Foto Profil (Bawaan)</option>
+                            </optgroup>
+                            <optgroup label="Penempatan & Akademik">
+                                <option value="jenjangPendidikan">Jenjang Pendidikan</option>
+                                <option value="jalurPendidikan">Jalur Pendidikan</option>
+                                <option value="kelas.nama">Kelas</option>
+                                <option value="kamar.nama">Kamar</option>
+                                <option value="tanggalMasuk">Tanggal Masuk</option>
+                                <option value="tanggalKeluar">Tanggal Keluar</option>
+                                <option value="status">Status (ACTIVE/INACTIVE)</option>
+                            </optgroup>
+                            <optgroup label="Keluarga / Wali">
+                                <option value="namaAyah">Nama Ayah</option>
+                                <option value="noHpAyah">No HP Ayah</option>
+                                <option value="namaIbu">Nama Ibu</option>
+                                <option value="noHpIbu">No HP Ibu</option>
+                                <option value="namaWali">Nama Wali</option>
+                                <option value="noHpWali">No HP Wali</option>
+                                <option value="deskripsiWali">Ket. Wali</option>
+                            </optgroup>
+                            <optgroup label="AlamatDomisili">
+                                <option value="alamatFull">Alamat Lengkap Digabung</option>
+                                <option value="jalan">Jalan</option>
+                                <option value="rtRw">RT / RW</option>
+                                <option value="kelurahan">Kelurahan / Desa</option>
+                                <option value="kecamatan">Kecamatan</option>
+                                <option value="kotaKabupaten">Kota / Kabupaten</option>
+                                <option value="provinsi">Provinsi</option>
+                            </optgroup>
                         </select>
                     </div>
                 )}
@@ -218,11 +349,43 @@ export function PropertiesSidebar({ selectedEl, onUpdateSelected, onUpdateStyle,
                             <label className="text-xs text-gray-500 block mb-1">Warna Teks</label>
                             <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" value={selectedEl.style.color || '#000000'} onChange={e => onUpdateStyle({ color: e.target.value })} />
                         </div>
-                        <div className={selectedEl.type === 'rect' ? '' : 'opacity-40'}>
-                            <label className="text-xs text-gray-500 block mb-1">Background</label>
-                            <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" disabled={selectedEl.type !== 'rect'} value={selectedEl.style.backgroundColor || '#ffffff'} onChange={e => onUpdateStyle({ backgroundColor: e.target.value })} />
+                        <div className={(selectedEl.type === 'rect' || selectedEl.type === 'circle') ? '' : 'opacity-40'}>
+                            <label className="text-xs text-gray-500 block mb-1">Background Bentuk</label>
+                            <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" disabled={selectedEl.type !== 'rect' && selectedEl.type !== 'circle'} value={selectedEl.style.backgroundColor || '#ffffff'} onChange={e => onUpdateStyle({ backgroundColor: e.target.value })} />
                         </div>
                     </div>
+
+                    {(selectedEl.type === 'rect' || selectedEl.type === 'circle') && (
+                        <div className="pt-3 border-t space-y-3">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase">Garis Tepi (Stroke)</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs text-gray-500 block mb-1">Warna Garis</label>
+                                    <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" value={selectedEl.style.strokeColor || '#000000'} onChange={e => onUpdateStyle({ strokeColor: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 block mb-1">Tebal (px)</label>
+                                    <input type="number" min="0" className="form-input shadow-none text-sm py-1.5" value={selectedEl.style.strokeWidth || 0} onChange={e => onUpdateStyle({ strokeWidth: Number(e.target.value) })} />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs text-gray-500 block mb-1">Tipe Garis</label>
+                                    <select className="form-input text-sm shadow-none py-1.5" value={selectedEl.style.strokeStyle || 'solid'} onChange={e => onUpdateStyle({ strokeStyle: e.target.value as any })}>
+                                        <option value="solid">Solid</option>
+                                        <option value="dashed">Dashed</option>
+                                        <option value="dotted">Dotted</option>
+                                    </select>
+                                </div>
+                                {selectedEl.type === 'rect' && (
+                                    <div>
+                                        <label className="text-xs text-gray-500 block mb-1">Radius Sudut (px)</label>
+                                        <input type="number" min="0" className="form-input shadow-none text-sm py-1.5" value={parseInt(selectedEl.style.borderRadius as string || '0')} onChange={e => onUpdateStyle({ borderRadius: `${Number(e.target.value)}px` })} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="pt-6">

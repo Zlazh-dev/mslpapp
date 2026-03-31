@@ -70,7 +70,7 @@ export class SantriImportController {
 
     // ── GET /santri/import-template ──────────────────────────────────────────
     @Get('import-template')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     async downloadTemplate(@Res() res: Response) {
         const wb = new ExcelJS.Workbook();
         wb.creator = 'MSLP App';
@@ -151,7 +151,7 @@ export class SantriImportController {
 
     // ── POST /santri/import ───────────────────────────────────────────────────
     @Post('import')
-    @Roles(Role.ADMIN, Role.STAF_PENDATAAN)
+    @Roles('ADMIN', 'STAF_PENDATAAN')
     @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
     async importSantri(@UploadedFile() file: Express.Multer.File) {
         if (!file) throw new BadRequestException('File tidak ditemukan');

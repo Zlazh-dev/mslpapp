@@ -67,7 +67,7 @@ export default function KelasDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user } = useAuthStore();
-    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.roles?.[0]);
 
     const [kelas, setKelas] = useState<Kelas | null>(null);
     const [editOpen, setEditOpen] = useState(false);

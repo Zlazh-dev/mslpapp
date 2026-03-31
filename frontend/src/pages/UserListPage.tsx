@@ -77,7 +77,7 @@ export default function UserListPage() {
                                                 {u.username || <span className="text-gray-400 italic">NIS: {(u as any).santri?.nis}</span>}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <Badge variant={roleColors[u.role] || 'gray'}>{roleLabels[u.role] || u.role}</Badge>
+                                                <Badge variant={roleColors[u.roles?.[0] || ''] || 'gray'}>{roleLabels[u.roles?.[0] || ''] || u.roles?.[0]}</Badge>
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">

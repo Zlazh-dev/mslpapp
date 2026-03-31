@@ -1,16 +1,18 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { Role } from '../types';
+import { X } from 'lucide-react';
+
+import { useEffect, useState } from 'react';
 import {
     LayoutDashboard, Users, Home,
-    GraduationCap, UserCheck, LogOut, MessageSquare, Printer, HardDrive,
+    GraduationCap, UserCheck, LogOut, MessageSquare, Printer, HardDrive, Download
 } from 'lucide-react';
 
 interface NavItem {
     to: string;
     label: string;
     icon: React.ReactNode;
-    roles: Role[];
+    roles: string[];
 }
 
 interface NavGroup {
@@ -56,7 +58,7 @@ const navGroups: NavGroup[] = [
     }
 ];
 
-const roleLabels: Record<Role, string> = {
+const roleLabels: Record<string, string> = {
     ADMIN: 'Administrator',
     STAF_PENDATAAN: 'Staf Pendataan',
     STAF_MADRASAH: 'Staf Madrasah',
@@ -64,34 +66,72 @@ const roleLabels: Record<Role, string> = {
     WALI_KELAS: 'Wali Kelas',
 };
 
-export default function Sidebar() {
+interface SidebarProps {
+    isOpen?: boolean;
+    onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
+    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    useEffect(() => {
+        const handleBeforeInstallPrompt = (e: Event) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+        return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    }, []);
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+        }
+    };
 
     const handleLogout = () => { logout(); navigate('/login'); };
 
-    return (
+    const handleNavClick = () => {
+        // Close drawer on mobile when a link is clicked
+        if (onClose) onClose();
+    };
+
+    const sidebarContent = (
         <div className="w-64 bg-gradient-to-b from-primary-800 to-primary-900 flex flex-col h-full shadow-xl">
             {/* Logo */}
-            <div className="p-5 border-b border-primary-700/50">
+            <div className="p-5 border-b border-primary-700/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <img
                         src="/logo.png"
-                        alt="Logo Pesantren"
+                        alt="Logo LPAPP"
                         className="w-10 h-10 object-contain rounded"
                         onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <div>
-                        <h1 className="text-white font-bold text-base leading-tight">LPAPP</h1>
+                        <h1 className="text-white font-bold text-base leading-tight tracking-wider">LPAPP</h1>
                         <p className="text-primary-200 text-xs">Manajemen Santri</p>
                     </div>
                 </div>
+                {/* Close button - mobile only */}
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="md:hidden p-1.5 rounded-lg text-primary-200 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <X size={20} />
+                    </button>
+                )}
             </div>
 
             {/* Nav */}
             <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-4">
                 {navGroups.map((group, groupIdx) => {
-                    const visibleItems = group.items.filter(item => user && item.roles.includes(user.role));
+                    const visibleItems = group.items.filter(item => user && item.roles.some((r) => user.roles?.includes(r)));
                     if (visibleItems.length === 0) return null;
 
                     return (
@@ -102,6 +142,7 @@ export default function Sidebar() {
                             <div className="space-y-0.5">
                                 {visibleItems.map(item => (
                                     <NavLink key={item.to} to={item.to}
+                                        onClick={handleNavClick}
                                         className={({ isActive }) =>
                                             `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${isActive
                                                 ? 'bg-white/20 text-white'
@@ -116,21 +157,66 @@ export default function Sidebar() {
                         </div>
                     );
                 })}
+
+                {/* PWA Install Button */}
+                {deferredPrompt && (
+                    <div className="mt-4 px-3 pt-4 border-t border-primary-700/50">
+                        <button
+                            onClick={handleInstallClick}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-sm font-bold shadow-sm transition-colors animate-pulse"
+                        >
+                            <span className="flex items-center gap-2">
+                                <Download size={16} /> Instal LPAPP
+                            </span>
+                        </button>
+                        <p className="text-[10px] text-primary-200 mt-1.5 text-center leading-tight">
+                            Pasang ke HP agar bisa diakses fullscreen tanpa browser
+                        </p>
+                    </div>
+                )}
             </nav>
 
             {/* User info & logout */}
             <div className="p-4 border-t border-primary-700/50">
                 <div className="mb-3">
                     <p className="text-white text-sm font-semibold truncate">{user?.name}</p>
-                    <p className="text-primary-300 text-xs">{user ? roleLabels[user.role] : ''}</p>
+                    <p className="text-primary-300 text-xs truncate">
+                        {user?.roles?.map(r => roleLabels[r] || r).join(', ')}
+                    </p>
                 </div>
                 <button onClick={handleLogout}
                     className="flex items-center gap-2 w-full px-3 py-2 text-primary-100 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors">
                     <LogOut size={16} />
                     Keluar
                 </button>
+                <p className="text-primary-500 text-[9px] text-center mt-3">LPAPP v2.0.0</p>
             </div>
         </div>
     );
-}
 
+    return (
+        <>
+            {/* Desktop: always visible */}
+            <div className="hidden md:flex h-full shrink-0">
+                {sidebarContent}
+            </div>
+
+            {/* Mobile: drawer overlay */}
+            <div
+                className={`md:hidden fixed inset-0 z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            >
+                {/* Backdrop */}
+                <div
+                    className="absolute inset-0 bg-black/50"
+                    onClick={onClose}
+                />
+                {/* Drawer panel */}
+                <div
+                    className={`absolute inset-y-0 left-0 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                >
+                    {sidebarContent}
+                </div>
+            </div>
+        </>
+    );
+}

@@ -21,7 +21,7 @@ export class ChatController {
         const me = req.user.id;
         const users = await this.prisma.user.findMany({
             where: { id: { not: me } },
-            select: { id: true, name: true, role: true },
+            select: { id: true, name: true, roles: { select: { name: true } } },
             orderBy: { name: 'asc' },
         });
 

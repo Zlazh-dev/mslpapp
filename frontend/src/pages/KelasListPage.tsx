@@ -12,7 +12,7 @@ export default function KelasListPage() {
     const tingkatId = searchParams.get('tingkatId');
     const tingkatNama = searchParams.get('tingkatNama') || 'Tingkat';
     const jenjangNama = searchParams.get('jenjangNama') || '';
-    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_MADRASAH'].includes(user.roles?.[0]);
 
     const [data, setData] = useState<Kelas[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -34,7 +34,7 @@ export default function KelasListPage() {
                 api.get('/users', { params: { limit: 100 } }),
             ]);
             setData(r.data.data);
-            setUsers((ru.data.data as User[]).filter(u => u.role === 'WALI_KELAS'));
+            setUsers((ru.data.data as User[]).filter(u => u.roles?.includes('WALI_KELAS')));
         } finally { setLoading(false); }
     };
 

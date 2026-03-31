@@ -14,7 +14,7 @@ import './pengaturan-cetak/utils/printStyles.css';
 
 export default function PrintSettingsPage() {
     const { user } = useAuthStore();
-    const isAdmin = user?.role === 'ADMIN';
+    const isAdmin = !!user?.roles?.includes('ADMIN');
 
     // Data Hooks
     const { templates, loading, saving, loadTemplates, saveTemplates, duplicateTemplate, deleteTemplate, setAsDefault } = useTemplates();

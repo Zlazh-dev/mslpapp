@@ -11,7 +11,7 @@ export default function GedungListPage() {
     const [searchParams] = useSearchParams();
     const kompleksId = searchParams.get('kompleksId');
     const kompleksNama = searchParams.get('kompleksNama') || 'Kompleks';
-    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.role);
+    const canEdit = user && ['ADMIN', 'STAF_PENDATAAN'].includes(user.roles?.[0]);
 
     const [data, setData] = useState<Gedung[]>([]);
     const [loading, setLoading] = useState(true);
