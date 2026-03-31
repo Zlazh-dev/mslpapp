@@ -11,6 +11,7 @@ export default defineConfig({
             manifest: {
                 name: 'LPAPP - Manajemen Santri',
                 short_name: 'LPAPP',
+                start_url: '/',
                 theme_color: '#059669',
                 background_color: '#f8fafc',
                 display: 'standalone',

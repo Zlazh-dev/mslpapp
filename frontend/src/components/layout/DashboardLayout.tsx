@@ -14,15 +14,14 @@ export default function DashboardLayout() {
             <div className="flex-1 flex flex-col overflow-hidden w-full">
                 <Navbar onToggleSidebar={() => setIsSidebarOpen(true)} />
                 <main className="flex-1 overflow-y-auto w-full">
-                    {/* Add pb-20 to allow space for bottom nav on mobile */}
-                    <div className="p-4 md:p-6 pb-20 md:pb-6 animate-fade-in max-w-[1600px] mx-auto w-full">
+                    <div className="p-4 md:p-6 pb-24 md:pb-6 animate-fade-in max-w-[1600px] mx-auto w-full">
                         <Outlet />
                     </div>
                 </main>
             </div>
 
             {/* Bottom Nav appears only on mobile */}
-            <BottomNav />
+            <BottomNav onMenuClick={() => setIsSidebarOpen(true)} />
         </div>
     );
 }
