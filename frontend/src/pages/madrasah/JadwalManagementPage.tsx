@@ -48,8 +48,9 @@ export default function JadwalManagementPage() {
     // Print state
     const [printOpen, setPrintOpen] = useState(false);
 
-    // Filter state
-    const [filterJenjang, setFilterJenjang] = useState('');
+    // Sort state: column key + direction
+    const [sortCol, setSortCol] = useState<'kelas' | 'pengajar' | 'mapel' | ''>('');
+    const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
     // ─── FETCHERS ───────────────────────────────
     useEffect(() => {
@@ -148,13 +149,46 @@ export default function JadwalManagementPage() {
     const filteredMapel = masterMapels.filter(m =>
         m.nama.toLowerCase().includes(searchMapel.toLowerCase())
     );
+    // Sort & filter the kelas list
+    const sortedKelas = (() => {
+        const list = [...kelasList];
+        if (!sortCol) return list;
 
-    // Derive unique jenjang list from kelasList for filter pills
-    const jenjangList = [...new Set(kelasList.map(k => k.tingkat?.jenjang?.nama).filter(Boolean))] as string[];
+        return list.sort((a, b) => {
+            let va = '', vb = '';
+            if (sortCol === 'kelas') {
+                va = kelasLabel(a).toLowerCase();
+                vb = kelasLabel(b).toLowerCase();
+            } else if (sortCol === 'pengajar') {
+                const ja = jadwalList.find(j => j.kelas.id === a.id);
+                const jb = jadwalList.find(j => j.kelas.id === b.id);
+                va = (ja?.pengajar?.name || drafts.get(a.id)?.pengajarName || '').toLowerCase();
+                vb = (jb?.pengajar?.name || drafts.get(b.id)?.pengajarName || '').toLowerCase();
+            } else if (sortCol === 'mapel') {
+                const ja = jadwalList.find(j => j.kelas.id === a.id);
+                const jb = jadwalList.find(j => j.kelas.id === b.id);
+                va = (ja?.mataPelajaran || drafts.get(a.id)?.mapelName || '').toLowerCase();
+                vb = (jb?.mataPelajaran || drafts.get(b.id)?.mapelName || '').toLowerCase();
+            }
+            if (va < vb) return sortDir === 'asc' ? -1 : 1;
+            if (va > vb) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
+    })();
 
-    const filteredKelas = filterJenjang
-        ? kelasList.filter(k => k.tingkat?.jenjang?.nama === filterJenjang)
-        : kelasList;
+    const toggleSort = (col: 'kelas' | 'pengajar' | 'mapel') => {
+        if (sortCol === col) {
+            if (sortDir === 'asc') setSortDir('desc');
+            else { setSortCol(''); setSortDir('asc'); }
+        } else {
+            setSortCol(col); setSortDir('asc');
+        }
+    };
+
+    const SortIcon = ({ col }: { col: string }) => {
+        if (sortCol !== col) return <span className="ml-0.5 text-slate-300">↕</span>;
+        return <span className="ml-0.5 text-blue-500 font-bold">{sortDir === 'asc' ? '↑' : '↓'}</span>;
+    };
 
     // ─── DND ────────────────────────────────────
     const onDragStart = (e: DragStartEvent) => {
@@ -302,29 +336,16 @@ export default function JadwalManagementPage() {
                             className="px-2 py-0.5 text-[10px] font-semibold text-teal-600 hover:bg-teal-50 rounded flex items-center gap-1 transition shrink-0">
                             <Printer size={11} /> Cetak
                         </button>
-                        <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{filteredKelas.length}/{kelasList.length} kelas</span>
+                        <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{kelasList.length} kelas</span>
                     </div>
-
-                    {/* Filter bar */}
-                    {jenjangList.length > 1 && (
-                        <div className="border-b border-slate-200 bg-slate-50/80 px-3 py-1.5 flex items-center gap-1.5 shrink-0 overflow-x-auto">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Jenjang:</span>
-                            <button onClick={() => setFilterJenjang('')}
-                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition ${!filterJenjang ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-200'}`}>Semua</button>
-                            {jenjangList.map(j => (
-                                <button key={j} onClick={() => setFilterJenjang(j)}
-                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition whitespace-nowrap ${filterJenjang === j ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-200'}`}>{j}</button>
-                            ))}
-                        </div>
-                    )}
 
                     {/* Column header */}
                     <div className="bg-slate-50 border-b border-slate-200 shrink-0">
                         <div className="grid grid-cols-[36px_1fr_1fr_1fr_40px] min-w-[500px]">
                             <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
-                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Kelas</div>
-                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Pengajar</div>
-                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Mata Pelajaran</div>
+                            <button onClick={() => toggleSort('kelas')} className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider text-left hover:bg-slate-100 transition flex items-center">Kelas<SortIcon col="kelas" /></button>
+                            <button onClick={() => toggleSort('pengajar')} className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider text-left hover:bg-slate-100 transition flex items-center">Pengajar<SortIcon col="pengajar" /></button>
+                            <button onClick={() => toggleSort('mapel')} className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider text-left hover:bg-slate-100 transition flex items-center">Mata Pelajaran<SortIcon col="mapel" /></button>
                             <div className="px-2 py-[7px]"></div>
                         </div>
                     </div>
@@ -342,7 +363,7 @@ export default function JadwalManagementPage() {
                             </div>
                         ) : (
                             <div className="min-w-[500px]">
-                                {filteredKelas.map((k, idx) => {
+                                {sortedKelas.map((k, idx) => {
                                     const jadwal = jadwalList.find(j => j.kelas.id === k.id);
                                     const draft = drafts.get(k.id);
                                     const pengajarName = jadwal?.pengajar?.name || draft?.pengajarName;
