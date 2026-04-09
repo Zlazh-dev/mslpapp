@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,9 +36,12 @@ export default function UserFormPage() {
     const [error, setError] = useState('');
     const [linkedSantri, setLinkedSantri] = useState<any>(null);
 
+    const [searchParams] = useSearchParams();
+    const defaultRole = searchParams.get('role') || 'STAF_PENDATAAN';
+
     const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormData>({
         resolver: zodResolver(schema),
-        defaultValues: { roles: ['STAF_PENDATAAN'] },
+        defaultValues: { roles: [defaultRole] },
     });
 
     const selectedRoles = watch('roles') || [];

@@ -8,7 +8,7 @@ export interface User {
     username: string;
     roles: string[];
     createdAt?: string;
-    kelasWali?: { id: number; nama: string }[] | null;
+    kelasWali?: { id: number; nama: string; tingkat?: { nama: string; jenjang?: { nama: string } } }[] | null;
     kamarBimbing?: { id: number; nama: string } | null;
 }
 

@@ -33,7 +33,7 @@ export class SantriRepository {
                 where, 
                 skip, 
                 take, 
-                include: { kelas: true, kamar: { include: { gedung: true } } },
+                include: { kelas: { include: { tingkat: { include: { jenjang: true } } } }, kamar: { include: { gedung: true } } },
                 orderBy: { nis: 'asc' }
             }),
             this.prisma.santri.count({ where })
@@ -43,7 +43,7 @@ export class SantriRepository {
     async findByIdWithFullRelations(id: string) {
         return this.prisma.santri.findUnique({
             where: { id },
-            include: { kelas: true, kamar: { include: { gedung: true } } }
+            include: { kelas: { include: { tingkat: { include: { jenjang: true } } } }, kamar: { include: { gedung: true } } }
         });
     }
 

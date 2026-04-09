@@ -79,7 +79,10 @@ export default function UserListPage() {
                     <div className="min-w-[650px]">{users.map((u, idx) => {
                         const role = u.roles?.[0] || '';
                         const penugasan: string[] = [];
-                        if (u.kelasWali && u.kelasWali.length > 0) penugasan.push(`Kelas: ${u.kelasWali.map(k => k.nama).join(', ')}`);
+                        if (u.kelasWali && u.kelasWali.length > 0) {
+                            const labels = u.kelasWali.map(k => [k.tingkat?.jenjang?.nama, k.tingkat?.nama, k.nama].filter(Boolean).join(' '));
+                            penugasan.push(`Kelas: ${labels.join(', ')}`);
+                        }
                         if (u.kamarBimbing) penugasan.push(`Kamar: ${u.kamarBimbing.nama}`);
                         return (
                             <div key={u.id} className="grid grid-cols-[40px_1fr_120px_140px_1fr_60px] border-b border-slate-100 hover:bg-slate-50/80 transition group">
