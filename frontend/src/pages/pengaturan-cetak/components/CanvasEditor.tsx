@@ -390,7 +390,22 @@ export function CanvasEditor({
             {/* ── Main 3-panel layout ── */}
             <div className="flex flex-1 overflow-hidden">
                 {/* Left: Layer panel */}
-                <LayerSidebar elements={elements} selectedIds={selectedIds} onSelect={(id) => setSelectedIds([id])} onDragEnd={handleLayerDragEnd} onHoverLayer={setHoveredId} />
+                <LayerSidebar
+                    elements={elements}
+                    selectedIds={selectedIds}
+                    onSelect={(id, shiftKey) => {
+                        if (shiftKey) {
+                            setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+                        } else {
+                            setSelectedIds([id]);
+                        }
+                    }}
+                    onDragEnd={handleLayerDragEnd}
+                    onHoverLayer={setHoveredId}
+                    onGroup={() => setElements(prev => groupElements(prev, selectedIds))}
+                    onUngroup={() => setElements(prev => ungroupElements(prev, selectedIds))}
+                    onDelete={() => { setElements(els => els.filter(x => !selectedIds.includes(x.id))); setSelectedIds([]); }}
+                />
 
                 {/* Center: Canvas */}
                 <div className="flex-1 overflow-auto bg-slate-200 flex items-start justify-center p-8 relative" onPointerDown={() => setSelectedIds([])}>

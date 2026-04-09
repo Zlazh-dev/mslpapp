@@ -53,9 +53,12 @@ export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onAddTable, onI
 interface LayerSidebarProps {
     elements: CanvasElement[];
     selectedIds: string[];
-    onSelect: (id: string) => void;
+    onSelect: (id: string, shiftKey?: boolean) => void;
     onHoverLayer: (id: string | null) => void;
     onDragEnd: (event: DragEndEvent) => void;
+    onGroup: () => void;
+    onUngroup: () => void;
+    onDelete: () => void;
 }
 
 function getElementInfo(el: CanvasElement): { icon: React.ReactNode; title: string } {
@@ -69,9 +72,10 @@ function getElementInfo(el: CanvasElement): { icon: React.ReactNode; title: stri
     return { icon: <Type size={11} className="text-blue-400" />, title: el.value || 'Text' };
 }
 
-function SortableLayerItem({ el, selectedIds, isGroupChild, onSelect, onHoverLayer }: {
+function SortableLayerItem({ el, selectedIds, isGroupChild, onSelect, onHoverLayer, onContextMenu }: {
     el: CanvasElement; selectedIds: string[]; isGroupChild: boolean;
-    onSelect: (id: string) => void; onHoverLayer: (id: string | null) => void;
+    onSelect: (id: string, shiftKey?: boolean) => void; onHoverLayer: (id: string | null) => void;
+    onContextMenu: (e: React.MouseEvent, id: string) => void;
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: el.id });
     const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 1 };
@@ -84,7 +88,8 @@ function SortableLayerItem({ el, selectedIds, isGroupChild, onSelect, onHoverLay
             style={style}
             onMouseEnter={() => onHoverLayer(el.id)}
             onMouseLeave={() => onHoverLayer(null)}
-            onClick={(e) => { e.stopPropagation(); onSelect(el.id); }}
+            onClick={(e) => { e.stopPropagation(); onSelect(el.id, e.shiftKey); }}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (!isSelected) onSelect(el.id); onContextMenu(e, el.id); }}
             className={`flex items-center h-7 cursor-pointer select-none transition-colors group ${isGroupChild ? 'pl-7' : 'pl-2'} ${isSelected ? 'bg-blue-600/20' : 'hover:bg-slate-700/60'} ${isDragging ? 'opacity-60' : ''}`}
         >
             <div {...attributes} {...listeners} className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing pr-1 text-slate-500 hover:text-slate-300 transition-opacity shrink-0">
@@ -116,12 +121,13 @@ function GroupHeader({ groupId, isExpanded, onToggle, childCount }: {
     );
 }
 
-export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, onDragEnd }: LayerSidebarProps) {
+export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, onDragEnd, onGroup, onUngroup, onDelete }: LayerSidebarProps) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
     const toggleGroup = (groupId: string) => {
         setCollapsedGroups(prev => {
@@ -131,6 +137,19 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
             return next;
         });
     };
+
+    const handleContextMenu = (e: React.MouseEvent, id: string) => {
+        const rect = (e.currentTarget as HTMLElement).closest('.layer-panel-root')?.getBoundingClientRect();
+        setContextMenu({ x: e.clientX - (rect?.left || 0), y: e.clientY - (rect?.top || 0), id });
+    };
+
+    const closeContextMenu = () => setContextMenu(null);
+
+    // Determine if all selected items are already grouped
+    const allGrouped = selectedIds.length > 0 && selectedIds.every(id => {
+        const el = elements.find(e => e.id === id);
+        return el?.groupId;
+    });
 
     const reversedElements = [...elements].reverse();
     const itemIds = reversedElements.map(e => e.id);
@@ -153,7 +172,7 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
     }
 
     return (
-        <div className="w-56 bg-slate-800 border-r border-slate-700 flex flex-col z-20 shrink-0">
+        <div className="w-56 bg-slate-800 border-r border-slate-700 flex flex-col z-20 shrink-0 layer-panel-root relative" onClick={closeContextMenu}>
             <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/90 relative z-10 flex items-center justify-between">
                 <h2 className="text-[11px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
                     <Layers size={12} className="text-blue-400"/> Layers
@@ -193,6 +212,7 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
                                                 isGroupChild={true}
                                                 onSelect={onSelect}
                                                 onHoverLayer={onHoverLayer}
+                                                onContextMenu={handleContextMenu}
                                             />
                                         ))}
                                     </div>
@@ -206,12 +226,50 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
                                     isGroupChild={false}
                                     onSelect={onSelect}
                                     onHoverLayer={onHoverLayer}
+                                    onContextMenu={handleContextMenu}
                                 />
                             );
                         })}
                     </SortableContext>
                 </div>
             </DndContext>
+
+            {/* Right-click context menu */}
+            {contextMenu && (
+                <>
+                    <div className="fixed inset-0 z-[100]" onClick={closeContextMenu} />
+                    <div
+                        className="absolute z-[101] bg-slate-700 border border-slate-600 rounded-lg shadow-xl py-1 min-w-[140px] text-[11px] overflow-hidden"
+                        style={{ left: contextMenu.x, top: contextMenu.y }}
+                    >
+                        {selectedIds.length >= 2 && !allGrouped && (
+                            <button
+                                onClick={() => { onGroup(); closeContextMenu(); }}
+                                className="w-full text-left px-3 py-1.5 text-slate-300 hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2"
+                            >
+                                <Folder size={11} /> Group
+                                <span className="ml-auto text-[9px] text-slate-500">Ctrl+G</span>
+                            </button>
+                        )}
+                        {allGrouped && (
+                            <button
+                                onClick={() => { onUngroup(); closeContextMenu(); }}
+                                className="w-full text-left px-3 py-1.5 text-slate-300 hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2"
+                            >
+                                <Layers size={11} /> Ungroup
+                                <span className="ml-auto text-[9px] text-slate-500">Ctrl+Shift+G</span>
+                            </button>
+                        )}
+                        <button
+                            onClick={() => { onDelete(); closeContextMenu(); }}
+                            className="w-full text-left px-3 py-1.5 text-red-400 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-2"
+                        >
+                            <Trash2 size={11} /> Hapus
+                            <span className="ml-auto text-[9px] text-slate-500">Del</span>
+                        </button>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
