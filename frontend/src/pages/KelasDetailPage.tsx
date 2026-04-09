@@ -137,16 +137,18 @@ export default function KelasDetailPage() {
         </div>
     );
 
+    const kelasFullName = [kelas.tingkat?.jenjang?.nama, kelas.tingkat?.nama, kelas.nama].filter(Boolean).join(' ');
+
     return (
         <div className="space-y-4">
             {/* Breadcrumb */}
             <div className="flex items-center gap-2">
-                <button onClick={() => navigate('/kelas')}
+                <button onClick={() => navigate('/madrasah/kelas')}
                     className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition">
                     <ArrowLeft size={14} /> Manajemen Kelas
                 </button>
                 <span className="text-gray-300">/</span>
-                <span className="text-xs text-gray-700 font-medium">{kelas.nama}</span>
+                <span className="text-xs text-gray-700 font-medium">{kelasFullName}</span>
             </div>
 
             {/* Info Card */}
@@ -157,7 +159,7 @@ export default function KelasDetailPage() {
                             <GraduationCap size={22} className="text-blue-600" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold text-gray-900">{kelas.nama}</h1>
+                            <h1 className="text-lg font-bold text-gray-900">{kelasFullName}</h1>
                             <p className="text-xs text-gray-500 mt-0.5">
                                 {kelas.tingkat?.jenjang?.nama && `${kelas.tingkat.jenjang.nama} → `}
                                 {kelas.tingkat?.nama && `${kelas.tingkat.nama} → `}
