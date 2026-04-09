@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, Printer, AlertCircle } from 'lucide-react';
+import { X, Loader2, Printer, AlertCircle, ChevronRight } from 'lucide-react';
 import api from '../../../lib/api';
 
 interface PresensiPrintModalProps {
@@ -15,6 +15,16 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: Pres
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState('');
+    const [visible, setVisible] = useState(false);
+
+    // Animate in
+    useEffect(() => {
+        if (isOpen) {
+            requestAnimationFrame(() => setVisible(true));
+        } else {
+            setVisible(false);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         if (isOpen) {
@@ -26,19 +36,23 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: Pres
                     setTemplates(parsed);
                     if (parsed.length > 0) setSelectedTemplate(parsed[0]);
                 })
-                .catch(err => {
+                .catch(() => {
                     setError('Gagal memuat template');
                 })
                 .finally(() => setLoading(false));
         }
     }, [isOpen]);
 
+    const handleClose = () => {
+        setVisible(false);
+        setTimeout(onClose, 200);
+    };
+
     const buildFilename = () => {
         const templatePart = selectedTemplate?.name || 'Template';
         const kelasPart = kelasName || `Kelas_${kelasId}`;
         const now = new Date();
         const datePart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        // Sanitize: replace spaces/special chars with underscore
         const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9\u00C0-\u024F\u0600-\u06FF]/g, '_').replace(/_+/g, '_');
         return `${sanitize(templatePart)}_${sanitize(kelasPart)}_${datePart}.pdf`;
     };
@@ -50,7 +64,6 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: Pres
         setError('');
 
         try {
-            // Need to convert template.elements -> konva JSON
             const konvaModule = await import('../../pengaturan-cetak/utils/konvaExporter');
             const konvaJson = konvaModule.exportToKonvaJson(selectedTemplate.elements);
             
@@ -61,24 +74,19 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: Pres
 
             const res = await api.post('/pdf/presensi/kelas', body, { responseType: 'blob' });
             
-            // Create blob URL and open in new window for direct printing
             const blob = new Blob([res.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             
-            // Open PDF in new window and trigger print
             const printWindow = window.open(url, '_blank');
             if (printWindow) {
                 printWindow.addEventListener('load', () => {
-                    // Small delay to ensure PDF renders
                     setTimeout(() => {
                         printWindow.print();
                     }, 500);
                 });
-                // Set the document title so it appears as the filename in print dialog
                 const filename = buildFilename().replace('.pdf', '');
                 printWindow.document.title = filename;
             } else {
-                // Fallback: if popup blocked, download instead
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = buildFilename();
@@ -87,7 +95,6 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: Pres
                 document.body.removeChild(a);
             }
 
-            // Don't revoke immediately — the window needs it
             setTimeout(() => window.URL.revokeObjectURL(url), 60000);
         } catch (err: any) {
             console.error('Server print error:', err);
@@ -100,72 +107,102 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: Pres
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[250] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <>
+            {/* Backdrop */}
+            <div
+                className={`fixed inset-0 bg-black/20 backdrop-blur-[2px] z-[250] transition-opacity duration-200 ${visible ? 'opacity-100' : 'opacity-0'}`}
+                onClick={handleClose}
+            />
+
+            {/* Slide-in panel */}
+            <div
+                className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl z-[251] flex flex-col transition-transform duration-200 ease-out ${visible ? 'translate-x-0' : 'translate-x-full'}`}
+            >
+                {/* Header */}
+                <div className="px-5 py-4 border-b border-gray-100 flex items-start justify-between shrink-0">
                     <div>
-                        <h2 className="text-lg font-bold text-gray-800">Cetak Presensi Kelas</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            {kelasName ? `Kelas: ${kelasName}` : 'Pilih template desain yang mengandung tabel presensi'}
-                        </p>
+                        <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                            <Printer size={18} className="text-blue-600" />
+                            Cetak Presensi
+                        </h2>
+                        {kelasName && (
+                            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                <ChevronRight size={10} className="text-gray-300" />
+                                {kelasName}
+                            </p>
+                        )}
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
-                        <X size={18} />
+                    <button onClick={handleClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition">
+                        <X size={16} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-5">
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                    {/* Template selection */}
                     <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-2">Pilih Template</label>
+                        <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Pilih Template</label>
                         {loading ? (
-                            <div className="flex justify-center p-4"><Loader2 className="animate-spin text-gray-400" /></div>
+                            <div className="flex justify-center py-8"><Loader2 className="animate-spin text-gray-300" size={24} /></div>
+                        ) : templates.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-sm text-gray-400">Belum ada template</p>
+                                <p className="text-xs text-gray-300 mt-1">Buat template di Pengaturan → Cetak</p>
+                            </div>
                         ) : (
-                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                            <div className="space-y-1.5">
                                 {templates.map(t => (
                                     <button
                                         key={t.id}
                                         onClick={() => setSelectedTemplate(t)}
-                                        className={`w-full text-left px-4 py-3 border rounded-xl flex items-center justify-between transition ${
-                                            selectedTemplate?.id === t.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200 hover:border-gray-300'
+                                        className={`w-full text-left px-3.5 py-2.5 rounded-lg flex items-center justify-between transition group ${
+                                            selectedTemplate?.id === t.id
+                                                ? 'bg-blue-50 border border-blue-200 ring-1 ring-blue-100'
+                                                : 'border border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                                         }`}
                                     >
-                                        <div className="font-semibold text-sm text-gray-800">{t.name}</div>
-                                        {t.isDefault && <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded font-bold">Default</span>}
+                                        <div className="flex items-center gap-2.5">
+                                            <div className={`w-2 h-2 rounded-full shrink-0 ${selectedTemplate?.id === t.id ? 'bg-blue-500' : 'bg-gray-200'}`} />
+                                            <span className={`text-sm font-medium ${selectedTemplate?.id === t.id ? 'text-blue-700' : 'text-gray-700'}`}>{t.name}</span>
+                                        </div>
+                                        {t.isDefault && <span className="text-[9px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
-                    
-                    {error && (
-                        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-                            <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
-                            <p className="text-xs text-red-700">{error}</p>
+
+                    {/* Filename preview */}
+                    {selectedTemplate && (
+                        <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 border border-gray-100">
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide font-bold">Nama File</p>
+                            <p className="text-[11px] text-gray-600 font-mono mt-1 break-all leading-relaxed">{buildFilename()}</p>
                         </div>
                     )}
 
-                    {/* Preview filename */}
-                    {selectedTemplate && (
-                        <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
-                            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Nama File</p>
-                            <p className="text-xs text-slate-700 font-mono mt-0.5 truncate">{buildFilename()}</p>
+                    {/* Error */}
+                    {error && (
+                        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-lg">
+                            <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+                            <p className="text-xs text-red-600">{error}</p>
                         </div>
                     )}
                 </div>
 
-                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                    <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-200 rounded-xl transition">
+                {/* Footer */}
+                <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex gap-2 shrink-0">
+                    <button onClick={handleClose} className="flex-1 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-lg transition">
                         Batal
                     </button>
                     <button
                         onClick={handleGenerate}
                         disabled={!selectedTemplate || generating}
-                        className="px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
+                        className="flex-1 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        {generating ? <><Loader2 size={16} className="animate-spin" /> Memproses...</> : <><Printer size={16} /> Cetak</>}
+                        {generating ? <><Loader2 size={15} className="animate-spin" /> Memproses...</> : <><Printer size={15} /> Cetak</>}
                     </button>
                 </div>
             </div>
-        </div>
+        </>
     );
 }
