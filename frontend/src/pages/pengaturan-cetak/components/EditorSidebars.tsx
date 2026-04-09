@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2, ChevronRight, ChevronDown, Folder } from 'lucide-react';
-import { CanvasElement } from '../types';
+import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2, ChevronRight, ChevronDown, Folder, Plus, Minus, X } from 'lucide-react';
+import { CanvasElement, TableColumn, TableRow } from '../types';
 
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
@@ -436,21 +436,174 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                         </div>
                     )}
                     {selectedEl.type === 'table' && (
-                        <div className="space-y-1.5">
-                            <select className={inputCls} value={selectedEl.tableConfig?.dataType || 'presensi'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: e.target.value as any } })}>
-                                <option value="presensi">Presensi Santri</option>
-                                <option value="jadwal">Jadwal Pelajaran</option>
+                        <div className="space-y-2">
+                            {/* Mode selector */}
+                            <select className={inputCls} value={selectedEl.tableConfig?.dataType || 'custom'} onChange={e => {
+                                const dt = e.target.value as any;
+                                if (dt === 'custom' && !selectedEl.tableConfig?.columns) {
+                                    onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: dt, columns: [
+                                        { id: 'col_' + Date.now(), label: 'No', type: 'static', width: 15, align: 'center' },
+                                        { id: 'col_' + (Date.now()+1), label: 'Nama', type: 'db', field: 'namaLengkap', width: 55, align: 'left' },
+                                        { id: 'col_' + (Date.now()+2), label: 'NIS', type: 'db', field: 'nis', width: 30, align: 'center' },
+                                    ], rows: Array.from({ length: 5 }, (_, i) => ({ id: 'r_' + Date.now() + i, cells: {} })), borderStyle: 'solid', cellPadding: 6, tableFontSize: 11 } });
+                                } else {
+                                    onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: dt } });
+                                }
+                            }}>
+                                <option value="custom">Custom Table</option>
+                                <option value="presensi">Preset: Presensi</option>
+                                <option value="jadwal">Preset: Jadwal</option>
                             </select>
                             <div className="flex items-center gap-1.5">
                                 <label className="text-[10px] text-slate-400 shrink-0">Header</label>
-                                <input type="color" className="w-6 h-5 cursor-pointer rounded border border-slate-200" value={selectedEl.tableConfig?.headerColor || '#e5e7eb'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: selectedEl.tableConfig?.dataType || 'presensi', headerColor: e.target.value } })} />
+                                <input type="color" className="w-6 h-5 cursor-pointer rounded border border-slate-200" value={selectedEl.tableConfig?.headerColor || '#cbd5e1'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: selectedEl.tableConfig?.dataType || 'custom', headerColor: e.target.value } })} />
                             </div>
                         </div>
                     )}
                 </div>
             )}
+            {/* Custom Table: Column Manager */}
+            {selectedEl.type === 'table' && selectedEl.tableConfig?.dataType === 'custom' && (() => {
+                const tc = selectedEl.tableConfig!;
+                const cols = tc.columns || [];
+                const rows = tc.rows || [];
+                const DB_FIELDS = [
+                    { value: 'namaLengkap', label: 'Nama Lengkap' },
+                    { value: 'nis', label: 'NIS' },
+                    { value: 'nik', label: 'NIK' },
+                    { value: 'noKk', label: 'No KK' },
+                    { value: 'tanggalLahir', label: 'Tgl Lahir' },
+                    { value: 'tempatLahir', label: 'Tempat Lahir' },
+                    { value: 'gender', label: 'Gender' },
+                    { value: 'noHp', label: 'No HP' },
+                    { value: 'kelas.nama', label: 'Kelas' },
+                    { value: 'kamar.nama', label: 'Kamar' },
+                    { value: 'jenjangPendidikan', label: 'Jenjang' },
+                    { value: 'namaAyah', label: 'Nama Ayah' },
+                    { value: 'namaIbu', label: 'Nama Ibu' },
+                    { value: 'namaWali', label: 'Nama Wali' },
+                    { value: 'status', label: 'Status' },
+                ];
 
-            {/* Text styling */}
+                const updateCols = (newCols: TableColumn[]) => {
+                    onUpdateSelected({ tableConfig: { ...tc, columns: newCols } });
+                };
+
+                const updateCol = (colId: string, patch: Partial<TableColumn>) => {
+                    updateCols(cols.map(c => c.id === colId ? { ...c, ...patch } : c));
+                };
+
+                const addCol = () => {
+                    const newCol: TableColumn = { id: 'col_' + Date.now(), label: 'Kolom', type: 'static', width: 20, align: 'left' };
+                    updateCols([...cols, newCol]);
+                };
+
+                const removeCol = (colId: string) => {
+                    if (cols.length <= 1) return;
+                    updateCols(cols.filter(c => c.id !== colId));
+                };
+
+                const setRowCount = (count: number) => {
+                    const clamped = Math.max(1, Math.min(60, count));
+                    const current = rows.length;
+                    let newRows = [...rows];
+                    if (clamped > current) {
+                        for (let i = current; i < clamped; i++) {
+                            newRows.push({ id: 'r_' + Date.now() + '_' + i, cells: {} });
+                        }
+                    } else {
+                        newRows = newRows.slice(0, clamped);
+                    }
+                    onUpdateSelected({ tableConfig: { ...tc, rows: newRows } });
+                };
+
+                return (
+                    <>
+                        {/* Columns */}
+                        <div className={sectionCls}>
+                            <div className={sectionTitleCls}>
+                                Kolom
+                                <button onClick={addCol} className="p-0.5 hover:bg-blue-100 rounded text-blue-500 transition" title="Tambah kolom">
+                                    <Plus size={12} />
+                                </button>
+                            </div>
+                            <div className="space-y-1">
+                                {cols.map(col => (
+                                    <div key={col.id} className="bg-white border border-slate-200 rounded p-1.5 space-y-1">
+                                        <div className="flex items-center gap-1">
+                                            <input className={`${inputCls} flex-1`} value={col.label} onChange={e => updateCol(col.id, { label: e.target.value })} placeholder="Header" />
+                                            <input type="number" className={`${inputCls} w-10`} value={col.width} min={5} max={90} onChange={e => updateCol(col.id, { width: Number(e.target.value) })} title="Width %" />
+                                            <button onClick={() => removeCol(col.id)} className="p-0.5 text-slate-400 hover:text-red-500 transition" title="Hapus kolom">
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <select className={`${inputCls} flex-1`} value={col.type} onChange={e => {
+                                                const newType = e.target.value as 'db' | 'static';
+                                                updateCol(col.id, { type: newType, field: newType === 'db' ? 'namaLengkap' : undefined });
+                                            }}>
+                                                <option value="static">Statis</option>
+                                                <option value="db">DB Variable</option>
+                                            </select>
+                                            {col.type === 'db' && (
+                                                <select className={`${inputCls} flex-1`} value={col.field || ''} onChange={e => updateCol(col.id, { field: e.target.value })}>
+                                                    {DB_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                                </select>
+                                            )}
+                                            <select className={`${inputCls} w-12`} value={col.align || 'left'} onChange={e => updateCol(col.id, { align: e.target.value as any })} title="Align">
+                                                <option value="left">L</option>
+                                                <option value="center">C</option>
+                                                <option value="right">R</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Rows */}
+                        <div className={sectionCls}>
+                            <div className={sectionTitleCls}>Baris</div>
+                            <div className="flex items-center gap-1.5">
+                                <button onClick={() => setRowCount(rows.length - 1)} className="p-1 bg-white border border-slate-200 rounded hover:bg-slate-100 transition text-slate-500" disabled={rows.length <= 1}>
+                                    <Minus size={10} />
+                                </button>
+                                <input type="number" className={`${inputCls} w-12 text-center`} value={rows.length} min={1} max={60} onChange={e => setRowCount(Number(e.target.value))} />
+                                <button onClick={() => setRowCount(rows.length + 1)} className="p-1 bg-white border border-slate-200 rounded hover:bg-slate-100 transition text-slate-500" disabled={rows.length >= 60}>
+                                    <Plus size={10} />
+                                </button>
+                                <span className="text-[9px] text-slate-400 ml-1">max 60</span>
+                            </div>
+                        </div>
+
+                        {/* Table Styling */}
+                        <div className={sectionCls}>
+                            <div className={sectionTitleCls}>Tabel Style</div>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5">
+                                    <label className="text-[10px] text-slate-400 shrink-0">Border</label>
+                                    <select className={inputCls} value={tc.borderStyle || 'solid'} onChange={e => onUpdateSelected({ tableConfig: { ...tc, borderStyle: e.target.value as any } })}>
+                                        <option value="solid">Solid</option>
+                                        <option value="none">None</option>
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                    <div>
+                                        <label className={labelCls}>Padding</label>
+                                        <input type="number" className={inputCls} value={tc.cellPadding || 6} min={0} max={20} onChange={e => onUpdateSelected({ tableConfig: { ...tc, cellPadding: Number(e.target.value) } })} />
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Font</label>
+                                        <input type="number" className={inputCls} value={tc.tableFontSize || 11} min={6} max={24} onChange={e => onUpdateSelected({ tableConfig: { ...tc, tableFontSize: Number(e.target.value) } })} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                );
+            })()}
+
+
             <div className={sectionCls}>
                 <div className={sectionTitleCls}>Teks</div>
                 <div className="space-y-1.5">

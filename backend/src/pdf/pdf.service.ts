@@ -372,6 +372,55 @@ window.renderKonva = async (jsonStr, data, qrUris) => {
 
     /* ── 4. Final draw ───────────────────────────────────────────── */
     stage.draw();
+
+    /* ── 5. Custom tables: render HTML tables positioned over the canvas ── */
+    const allNodes = stage.find('Rect');
+    allNodes.forEach((rectNode) => {
+        const tc = rectNode.getAttr('tableConfig');
+        if (!tc || tc.dataType !== 'custom' || !tc.columns) return;
+
+        const x = rectNode.x();
+        const y = rectNode.y();
+        const w = rectNode.width();
+        const cols = tc.columns || [];
+        const rows = tc.rows || [];
+        const border = tc.borderStyle === 'none' ? 'none' : '1px solid #000';
+        const pad = (tc.cellPadding || 6) + 'px';
+        const fSize = (tc.tableFontSize || 11) + 'px';
+        const hColor = tc.headerColor || '#cbd5e1';
+
+        // Build header
+        const thHtml = cols.map(c =>
+            '<th style="width:' + c.width + '%;background:' + hColor + ';padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.label + '</th>'
+        ).join('');
+
+        // Build rows — for 'db' columns, substitute data placeholders
+        const trHtml = rows.map(row => {
+            const tds = cols.map(c => {
+                let cellVal = '';
+                if (c.type === 'db' && c.field) {
+                    cellVal = data[c.field] || '[' + c.field + ']';
+                } else {
+                    cellVal = (row.cells && row.cells[c.id]) || '';
+                }
+                return '<td style="padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + cellVal + '</td>';
+            }).join('');
+            return '<tr style="page-break-inside:avoid;break-inside:avoid;">' + tds + '</tr>';
+        }).join('');
+
+        const tableHtml = '<table style="width:' + w + 'px;border-collapse:collapse;font-size:' + fSize + ';font-family:Arial,sans-serif;table-layout:fixed;"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
+
+        // Create a positioned div over the canvas
+        const container = document.getElementById('konva-container');
+        const div = document.createElement('div');
+        div.style.cssText = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;z-index:10;box-sizing:border-box;';
+        div.innerHTML = tableHtml;
+        container.appendChild(div);
+
+        // Hide the Konva rect placeholder
+        rectNode.visible(false);
+        stage.draw();
+    });
 };
 </script>
 </body>

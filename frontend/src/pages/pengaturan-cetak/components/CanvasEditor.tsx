@@ -276,7 +276,25 @@ export function CanvasEditor({
                 newEl.value = '[Data Santri]'; 
             }
         } else if (type === 'table') {
-            newEl.tableConfig = { dataType: 'presensi', headerColor: '#cbd5e1' };
+            const defaultCols = [
+                { id: 'col_no', label: 'No', type: 'static' as const, width: 10, align: 'center' as const },
+                { id: 'col_nama', label: 'Nama', type: 'db' as const, field: 'namaLengkap', width: 50, align: 'left' as const },
+                { id: 'col_nis', label: 'NIS', type: 'db' as const, field: 'nis', width: 20, align: 'center' as const },
+                { id: 'col_ket', label: 'Ket.', type: 'static' as const, width: 20, align: 'left' as const },
+            ];
+            const defaultRows = Array.from({ length: 5 }, (_, i) => ({
+                id: `row_${Date.now()}_${i}`,
+                cells: { col_no: `${i + 1}` } as Record<string, string>,
+            }));
+            newEl.tableConfig = {
+                dataType: 'custom',
+                headerColor: '#cbd5e1',
+                columns: defaultCols,
+                rows: defaultRows,
+                borderStyle: 'solid',
+                cellPadding: 6,
+                tableFontSize: 11,
+            };
             newEl.w = CANVAS_W - 100;
             newEl.h = 200;
             newEl.x = 50;
@@ -469,13 +487,58 @@ export function CanvasEditor({
                                         <span style={{ fontSize: 8, fontFamily: 'sans-serif', color: '#6b7280' }}>Profil Publik</span>
                                     </div>
                                 )}
-                                {el.type === 'table' && (
+                                {el.type === 'table' && el.tableConfig?.dataType === 'custom' && el.tableConfig.columns && (
+                                    <div style={{ width: '100%', height: '100%', overflow: 'hidden', pointerEvents: 'none' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: `${el.tableConfig.tableFontSize || 11}px`, fontFamily: 'Arial, sans-serif', tableLayout: 'fixed' }}>
+                                            <thead>
+                                                <tr>
+                                                    {el.tableConfig.columns.map(col => (
+                                                        <th key={col.id} style={{
+                                                            width: `${col.width}%`,
+                                                            backgroundColor: el.tableConfig!.headerColor || '#cbd5e1',
+                                                            padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                            border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
+                                                            textAlign: col.align || 'left',
+                                                            fontWeight: 'bold',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                        }}>
+                                                            {col.label}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(el.tableConfig.rows || []).map(row => (
+                                                    <tr key={row.id}>
+                                                        {el.tableConfig!.columns!.map(col => (
+                                                            <td key={col.id} style={{
+                                                                padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                                border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
+                                                                textAlign: col.align || 'left',
+                                                                color: col.type === 'db' ? '#9ca3af' : '#1e293b',
+                                                                fontStyle: col.type === 'db' ? 'italic' : 'normal',
+                                                                whiteSpace: 'nowrap',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                            }}>
+                                                                {col.type === 'db' ? `[${col.field}]` : (row.cells[col.id] || '')}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                {el.type === 'table' && el.tableConfig?.dataType !== 'custom' && (
                                     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', pointerEvents: 'none' }}>
                                         <div style={{ padding: '8px', backgroundColor: el.tableConfig?.headerColor || '#cbd5e1', color: 'black', fontSize: '12px', fontWeight: 'bold', display: 'flex', justifyContent: 'center' }}>
-                                            Tabel Dinamis ({el.tableConfig?.dataType === 'jadwal' ? 'Jadwal Pelajaran' : 'Presensi Santri'})
+                                            Tabel Preset ({el.tableConfig?.dataType === 'jadwal' ? 'Jadwal' : 'Presensi'})
                                         </div>
                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '12px' }}>
-                                            [ Data akan di-generate oleh server ]
+                                            [ Data auto-generate dari server ]
                                         </div>
                                     </div>
                                 )}

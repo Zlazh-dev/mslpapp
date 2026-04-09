@@ -102,7 +102,46 @@ export function PrintPreviewModal({ isOpen, onClose, elements }: PrintPreviewMod
                                         />
                                     </div>
                                 )}
-                                {el.type === 'table' && (
+                                {el.type === 'table' && el.tableConfig?.dataType === 'custom' && el.tableConfig.columns && (
+                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: `${el.tableConfig.tableFontSize || 11}px`, fontFamily: 'Arial, sans-serif', tableLayout: 'fixed' }}>
+                                            <thead>
+                                                <tr>
+                                                    {el.tableConfig.columns.map(col => (
+                                                        <th key={col.id} style={{
+                                                            width: `${col.width}%`,
+                                                            backgroundColor: el.tableConfig!.headerColor || '#cbd5e1',
+                                                            padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                            border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
+                                                            textAlign: col.align || 'left',
+                                                            fontWeight: 'bold',
+                                                        }}>
+                                                            {col.label}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {(el.tableConfig.rows || []).map(row => (
+                                                    <tr key={row.id}>
+                                                        {el.tableConfig!.columns!.map(col => (
+                                                            <td key={col.id} style={{
+                                                                padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                                border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
+                                                                textAlign: col.align || 'left',
+                                                                color: col.type === 'db' ? '#9ca3af' : '#1e293b',
+                                                                fontStyle: col.type === 'db' ? 'italic' : 'normal',
+                                                            }}>
+                                                                {col.type === 'db' ? `[${col.field}]` : (row.cells[col.id] || '')}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                                {el.type === 'table' && el.tableConfig?.dataType !== 'custom' && (
                                     <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'sans-serif' }}>
                                             <thead>
@@ -117,11 +156,6 @@ export function PrintPreviewModal({ isOpen, onClose, elements }: PrintPreviewMod
                                                     <td style={{ padding: '6px', border: '1px solid #000', textAlign: 'center' }}>1</td>
                                                     <td style={{ padding: '6px', border: '1px solid #000' }}>Data 1</td>
                                                     <td style={{ padding: '6px', border: '1px solid #000' }}>Data 2</td>
-                                                </tr>
-                                                <tr>
-                                                    <td style={{ padding: '6px', border: '1px solid #000', textAlign: 'center' }}>2</td>
-                                                    <td style={{ padding: '6px', border: '1px solid #000' }}>Data 3</td>
-                                                    <td style={{ padding: '6px', border: '1px solid #000' }}>Data 4</td>
                                                 </tr>
                                             </tbody>
                                         </table>
