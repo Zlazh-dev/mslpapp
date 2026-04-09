@@ -129,10 +129,10 @@ export default function PrintSettingsPage() {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-gray-50 overflow-hidden print:bg-white">
+        <div className="flex flex-col h-[calc(100dvh-64px)] bg-gray-50 overflow-hidden print:bg-white">
             
             {view === 'landing' ? (
-                <div className="flex flex-col items-center justify-start p-6 overflow-y-auto h-screen print:hidden">
+                <div className="flex flex-col items-center justify-start p-6 overflow-y-auto h-full print:hidden">
                     <div className="max-w-5xl w-full py-8">
                         <HeaderBreadcrumb />
                         
@@ -161,7 +161,7 @@ export default function PrintSettingsPage() {
                     </div>
                 </div>
             ) : (
-                <div className="h-screen flex flex-col print:hidden">
+                <div className="h-full flex flex-col print:hidden">
                     <CanvasEditor 
                         templateName={activeTemplateName}
                         elements={elements}

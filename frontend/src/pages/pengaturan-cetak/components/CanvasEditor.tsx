@@ -314,7 +314,7 @@ export function CanvasEditor({
     const boundingBox = getBoundingBox(elements, selectedIds);
 
     return (
-        <div className="flex flex-col h-screen bg-gray-100 overflow-hidden font-sans">
+        <div className="flex flex-col h-full bg-gray-100 overflow-hidden font-sans">
             <EditorHeader 
                 templateName={templateName} onBack={onBack} onSave={onSave}
                 snapToGrid={snapToGrid} setSnapToGrid={setSnapToGrid}
