@@ -48,6 +48,9 @@ export default function JadwalManagementPage() {
     // Print state
     const [printOpen, setPrintOpen] = useState(false);
 
+    // Filter state
+    const [filterJenjang, setFilterJenjang] = useState('');
+
     // ─── FETCHERS ───────────────────────────────
     useEffect(() => {
         api.get('/kelas').then(r => { setKelasList(r.data.data || []); setLoadingKelas(false); }).catch(() => setLoadingKelas(false));
@@ -145,6 +148,13 @@ export default function JadwalManagementPage() {
     const filteredMapel = masterMapels.filter(m =>
         m.nama.toLowerCase().includes(searchMapel.toLowerCase())
     );
+
+    // Derive unique jenjang list from kelasList for filter pills
+    const jenjangList = [...new Set(kelasList.map(k => k.tingkat?.jenjang?.nama).filter(Boolean))] as string[];
+
+    const filteredKelas = filterJenjang
+        ? kelasList.filter(k => k.tingkat?.jenjang?.nama === filterJenjang)
+        : kelasList;
 
     // ─── DND ────────────────────────────────────
     const onDragStart = (e: DragStartEvent) => {
@@ -292,8 +302,21 @@ export default function JadwalManagementPage() {
                             className="px-2 py-0.5 text-[10px] font-semibold text-teal-600 hover:bg-teal-50 rounded flex items-center gap-1 transition shrink-0">
                             <Printer size={11} /> Cetak
                         </button>
-                        <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{kelasList.length} kelas</span>
+                        <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{filteredKelas.length}/{kelasList.length} kelas</span>
                     </div>
+
+                    {/* Filter bar */}
+                    {jenjangList.length > 1 && (
+                        <div className="border-b border-slate-200 bg-slate-50/80 px-3 py-1.5 flex items-center gap-1.5 shrink-0 overflow-x-auto">
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Jenjang:</span>
+                            <button onClick={() => setFilterJenjang('')}
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold transition ${!filterJenjang ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-200'}`}>Semua</button>
+                            {jenjangList.map(j => (
+                                <button key={j} onClick={() => setFilterJenjang(j)}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold transition whitespace-nowrap ${filterJenjang === j ? 'bg-blue-500 text-white' : 'text-slate-500 hover:bg-slate-200'}`}>{j}</button>
+                            ))}
+                        </div>
+                    )}
 
                     {/* Column header */}
                     <div className="bg-slate-50 border-b border-slate-200 shrink-0">
@@ -319,7 +342,7 @@ export default function JadwalManagementPage() {
                             </div>
                         ) : (
                             <div className="min-w-[500px]">
-                                {kelasList.map((k, idx) => {
+                                {filteredKelas.map((k, idx) => {
                                     const jadwal = jadwalList.find(j => j.kelas.id === k.id);
                                     const draft = drafts.get(k.id);
                                     const pengajarName = jadwal?.pengajar?.name || draft?.pengajarName;
