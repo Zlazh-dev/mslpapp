@@ -10,6 +10,12 @@ export class JadwalController {
     constructor(private readonly jadwalService: JadwalService) {}
 
     @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
+    @Get('hari/:hari')
+    findByHari(@Param('hari') hari: string) {
+        return this.jadwalService.findByHari(Number(hari));
+    }
+
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     @Get()
     findByKelas(@Query('kelasId') kelasId: string) {
         if (!kelasId) {

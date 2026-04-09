@@ -11,10 +11,36 @@ export class JadwalService {
             include: {
                 pengajar: {
                     select: { id: true, name: true, username: true }
+                },
+                kelas: {
+                    include: { tingkat: { include: { jenjang: true } } }
                 }
             },
             orderBy: [
                 { hari: 'asc' },
+                { mataPelajaran: 'asc' }
+            ]
+        });
+
+        return {
+            meta: { status: 200, message: 'Data jadwal berhasil diambil' },
+            data
+        };
+    }
+
+    async findByHari(hari: number) {
+        const data = await this.prisma.jadwalPelajaran.findMany({
+            where: { hari },
+            include: {
+                pengajar: {
+                    select: { id: true, name: true, username: true }
+                },
+                kelas: {
+                    include: { tingkat: { include: { jenjang: true } } }
+                }
+            },
+            orderBy: [
+                { kelas: { tingkat: { jenjang: { nama: 'asc' } } } },
                 { mataPelajaran: 'asc' }
             ]
         });
