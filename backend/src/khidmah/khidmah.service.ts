@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateModelKhidmahDto, UpdateModelKhidmahDto, CreateDataKhidmahDto } from './dto/khidmah.dto';
+import { CreateModelKhidmahDto, UpdateModelKhidmahDto, CreateDataKhidmahDto, UpdateDataKhidmahDto } from './dto/khidmah.dto';
 
 @Injectable()
 export class KhidmahService {
@@ -87,6 +87,23 @@ export class KhidmahService {
             });
         } catch (e: any) {
             if (e.code === 'P2002') throw new ConflictException(`Santri "${santri.namaLengkap}" sudah memiliki khidmah ini`);
+            throw e;
+        }
+    }
+
+    async updateData(id: string, dto: UpdateDataKhidmahDto) {
+        try {
+            return await this.prisma.dataKhidmah.update({
+                where: { id },
+                data: dto,
+                include: {
+                    santri: { select: { id: true, nis: true, namaLengkap: true } },
+                    modelKhidmah: { select: { id: true, nama: true } },
+                },
+            });
+        } catch (e: any) {
+            if (e.code === 'P2025') throw new NotFoundException('Data khidmah tidak ditemukan');
+            if (e.code === 'P2002') throw new ConflictException('Santri sudah memiliki khidmah ini');
             throw e;
         }
     }

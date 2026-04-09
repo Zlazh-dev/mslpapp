@@ -30,3 +30,11 @@ export class CreateDataKhidmahDto {
     @IsString() @IsOptional()
     keterangan?: string;
 }
+
+export class UpdateDataKhidmahDto {
+    @IsString() @IsOptional()
+    modelKhidmahId?: string;
+
+    @IsString() @IsOptional()
+    keterangan?: string;
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Trash2, Search, X, ClipboardList, Tags, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Search, X, ClipboardList, Tags, AlertCircle, Edit2 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +36,8 @@ export default function KhidmahPage() {
     const [dataList, setDataList] = useState<DataKhidmah[]>([]);
     const [filterModel, setFilterModel] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [showAssignModal, setShowAssignModal] = useState(false);
+    const [showAssignPanel, setShowAssignPanel] = useState(false);
+    const [editingData, setEditingData] = useState<DataKhidmah | null>(null);
     const [assignNis, setAssignNis] = useState('');
     const [assignModelId, setAssignModelId] = useState('');
     const [assignKeterangan, setAssignKeterangan] = useState('');
@@ -107,11 +108,47 @@ export default function KhidmahPage() {
                 keterangan: assignKeterangan.trim() || undefined,
             });
             showMsg('Khidmah berhasil ditambahkan');
-            setShowAssignModal(false);
-            setAssignNis(''); setAssignModelId(''); setAssignKeterangan('');
+            closePanel();
             await fetchData(filterModel || undefined);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal menambahkan'); }
         finally { setLoading(false); }
+    };
+
+    const updateKhidmah = async () => {
+        if (!editingData) return;
+        setLoading(true);
+        try {
+            await api.patch(`/khidmah/data/${editingData.id}`, {
+                modelKhidmahId: assignModelId || undefined,
+                keterangan: assignKeterangan.trim() || null,
+            });
+            showMsg('Khidmah berhasil diperbarui');
+            closePanel();
+            await fetchData(filterModel || undefined);
+        } catch (e: any) { showErr(e.response?.data?.message || 'Gagal memperbarui'); }
+        finally { setLoading(false); }
+    };
+
+    const openAddPanel = () => {
+        setEditingData(null);
+        setAssignNis('');
+        setAssignModelId(models[0]?.id || '');
+        setAssignKeterangan('');
+        setShowAssignPanel(true);
+    };
+
+    const openEditPanel = (d: DataKhidmah) => {
+        setEditingData(d);
+        setAssignNis(d.santri.nis);
+        setAssignModelId(d.modelKhidmah.id);
+        setAssignKeterangan(d.keterangan || '');
+        setShowAssignPanel(true);
+    };
+
+    const closePanel = () => {
+        setShowAssignPanel(false);
+        setEditingData(null);
+        setAssignNis(''); setAssignModelId(''); setAssignKeterangan('');
     };
 
     const handleDelete = async () => {
@@ -188,7 +225,7 @@ export default function KhidmahPage() {
                             <option value="">Semua Model</option>
                             {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
                         </select>
-                        <button onClick={() => { setShowAssignModal(true); setAssignModelId(models[0]?.id || ''); }} disabled={models.length === 0}
+                        <button onClick={openAddPanel} disabled={models.length === 0}
                             className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[11px] font-semibold transition disabled:opacity-50 shrink-0">
                             <Plus size={12} /> Tambah
                         </button>
@@ -235,7 +272,11 @@ export default function KhidmahPage() {
                                             <span className="px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded text-[10px] font-semibold">{d.modelKhidmah.nama}</span>
                                         </div>
                                         <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 truncate">{d.keterangan || <span className="text-slate-300 italic">—</span>}</div>
-                                        <div className="px-2 py-[7px] flex items-center justify-center">
+                                        <div className="px-2 py-[7px] flex items-center justify-center gap-0.5">
+                                            <button onClick={() => openEditPanel(d)}
+                                                className="p-1 text-slate-300 hover:text-blue-500 rounded transition opacity-0 group-hover:opacity-100">
+                                                <Edit2 size={11} />
+                                            </button>
                                             <button onClick={() => setDeleteTarget({ type: 'data', id: d.id, label: `${d.santri.namaLengkap} - ${d.modelKhidmah.nama}` })}
                                                 className="p-1 text-slate-300 hover:text-red-500 rounded transition opacity-0 group-hover:opacity-100">
                                                 <Trash2 size={12} />
@@ -351,43 +392,54 @@ export default function KhidmahPage() {
                 </div>
             )}
 
-            {/* ═══ Assign Modal ═══════════════════════════════════════ */}
-            {showAssignModal && (
-                <div className="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
-                    <div className="w-full max-w-xs rounded-xl bg-white shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-slate-800">Tambah Khidmah</h3>
-                            <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+            {/* ═══ Slide-in Panel: Tambah/Edit Khidmah ═════════════════════ */}
+            {showAssignPanel && <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[1px] z-40" onClick={closePanel} />}
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-[340px] bg-white shadow-2xl z-50 transform transition-transform duration-300 border-l border-slate-200 flex flex-col ${showAssignPanel ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="h-12 px-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                    <h2 className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <ClipboardList size={14} className="text-emerald-500" />
+                        {editingData ? 'Edit Khidmah' : 'Tambah Khidmah'}
+                    </h2>
+                    <button onClick={closePanel} className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 transition"><X size={14} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {editingData && (
+                        <div className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Santri</p>
+                            <p className="text-xs font-semibold text-slate-700">{editingData.santri.namaLengkap}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{editingData.santri.nis}</p>
                         </div>
-                        <div className="p-4 space-y-3">
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">NIS Santri *</label>
-                                <input type="text" autoFocus value={assignNis} onChange={e => setAssignNis(e.target.value)} placeholder="Masukkan NIS..."
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Model Khidmah *</label>
-                                <select value={assignModelId} onChange={e => setAssignModelId(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none">
-                                    {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Keterangan</label>
-                                <input type="text" value={assignKeterangan} onChange={e => setAssignKeterangan(e.target.value)} placeholder="Opsional..."
-                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
-                            </div>
+                    )}
+                    {!editingData && (
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">NIS Santri *</label>
+                            <input type="text" autoFocus value={assignNis} onChange={e => setAssignNis(e.target.value)} placeholder="Masukkan NIS..."
+                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
                         </div>
-                        <div className="p-3 border-t border-slate-100 flex gap-2">
-                            <button onClick={() => setShowAssignModal(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">Batal</button>
-                            <button onClick={assignKhidmah} disabled={!assignNis.trim() || !assignModelId || loading}
-                                className="flex-1 py-1.5 rounded-lg bg-emerald-500 text-xs font-semibold text-white hover:bg-emerald-600 transition disabled:opacity-50">
-                                {loading ? 'Menyimpan...' : 'Simpan'}
-                            </button>
-                        </div>
+                    )}
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Model Khidmah *</label>
+                        <select value={assignModelId} onChange={e => setAssignModelId(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none">
+                            {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
+                        </select>
+                        <p className="text-[9px] text-slate-400 mt-1">Satu santri bisa memiliki lebih dari satu model khidmah</p>
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Keterangan</label>
+                        <input type="text" value={assignKeterangan} onChange={e => setAssignKeterangan(e.target.value)} placeholder="Opsional..."
+                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
                     </div>
                 </div>
-            )}
+                <div className="p-3 border-t border-slate-200 flex gap-2 shrink-0">
+                    <button onClick={closePanel} className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">Batal</button>
+                    <button onClick={editingData ? updateKhidmah : assignKhidmah}
+                        disabled={(!editingData && !assignNis.trim()) || !assignModelId || loading}
+                        className="flex-1 py-2 rounded-lg bg-emerald-500 text-xs font-semibold text-white hover:bg-emerald-600 transition disabled:opacity-50">
+                        {loading ? 'Menyimpan...' : (editingData ? 'Perbarui' : 'Simpan')}
+                    </button>
+                </div>
+            </div>
 
             {/* ═══ Delete Confirm Modal ════════════════════════════════ */}
             {deleteTarget && (

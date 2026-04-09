@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { KhidmahService } from './khidmah.service';
-import { CreateModelKhidmahDto, UpdateModelKhidmahDto, CreateDataKhidmahDto } from './dto/khidmah.dto';
+import { CreateModelKhidmahDto, UpdateModelKhidmahDto, CreateDataKhidmahDto, UpdateDataKhidmahDto } from './dto/khidmah.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -56,6 +56,12 @@ export class KhidmahController {
     @Roles('ADMIN', 'STAF_PENDATAAN')
     createData(@Body() dto: CreateDataKhidmahDto) {
         return this.svc.createData(dto);
+    }
+
+    @Patch('data/:id')
+    @Roles('ADMIN', 'STAF_PENDATAAN')
+    updateData(@Param('id') id: string, @Body() dto: UpdateDataKhidmahDto) {
+        return this.svc.updateData(id, dto);
     }
 
     @Delete('data/:id')
