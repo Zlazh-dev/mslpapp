@@ -53,10 +53,8 @@ export default function KhidmahPage() {
     // ─── Fetchers ─────────────────────────────────────────────────────────────
 
     const fetchModels = async () => {
-        try {
-            const r = await api.get('/khidmah/model');
-            setModels(r.data);
-        } catch { showErr('Gagal memuat model khidmah'); }
+        try { const r = await api.get('/khidmah/model'); setModels(r.data); }
+        catch { showErr('Gagal memuat model khidmah'); }
     };
 
     const fetchData = async (modelId?: string) => {
@@ -146,290 +144,244 @@ export default function KhidmahPage() {
     // ═══════════════════════════════════════════════════════════════════════════
 
     return (
-        <div className="space-y-4">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-900">Data Khidmah</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Kelola kepengurusan dan tugas santri</p>
-                </div>
-            </div>
+        <div className="flex flex-col h-[calc(100dvh-64px)] bg-white text-slate-700 overflow-hidden">
+            {/* ── Toolbar ─────────────────────────────────────────── */}
+            <div className="h-10 border-b border-slate-200 flex items-center px-3 gap-2 shrink-0 bg-white overflow-x-auto">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest shrink-0">Data Khidmah</span>
+                <div className="w-px h-5 bg-slate-200 mx-0.5" />
 
-            {/* Tabs */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-                <button
-                    onClick={() => setActiveTab('data')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'data' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    <ClipboardList size={16} /> Daftar Khidmah
+                {/* Tabs */}
+                <button onClick={() => setActiveTab('data')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition ${activeTab === 'data' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                    <ClipboardList size={12} /> Daftar
                 </button>
-                <button
-                    onClick={() => setActiveTab('model')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'model' ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    <Tags size={16} /> Variabel Model
+                <button onClick={() => setActiveTab('model')}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-semibold transition ${activeTab === 'model' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:bg-slate-100'}`}>
+                    <Tags size={12} /> Variabel Model
                 </button>
+
+                <div className="flex-1" />
+                <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
+                    {activeTab === 'data' ? `${filteredData.length} data` : `${models.length} model`}
+                </span>
             </div>
 
             {/* Messages */}
-            {success && <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{success}</div>}
-            {error && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">{error}</div>}
+            {(success || error) && (
+                <div className={`px-3 py-1.5 text-[11px] shrink-0 ${success ? 'bg-emerald-50 text-emerald-700 border-b border-emerald-100' : 'bg-red-50 text-red-600 border-b border-red-100'}`}>
+                    {success || error}
+                </div>
+            )}
 
-            {/* ═══ Tab 1: Daftar Data Khidmah ═══════════════════════════════════ */}
+            {/* ═══ Tab 1: Daftar Data Khidmah ════════════════════════ */}
             {activeTab === 'data' && (
-                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    {/* Toolbar */}
-                    <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3">
-                        <div className="relative flex-1">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Cari nama santri atau NIS..."
-                                className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 placeholder-gray-400"
-                            />
+                <>
+                    {/* Filter bar */}
+                    <div className="border-b border-slate-200 bg-slate-50/80 px-3 py-2 flex items-center gap-2 shrink-0">
+                        <div className="flex-1 relative">
+                            <Search size={11} className="absolute left-2.5 top-[7px] text-slate-400" />
+                            <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Cari nama atau NIS..."
+                                className="w-full pl-7 pr-3 py-1 bg-white border border-slate-200 rounded text-[11px] text-slate-700 placeholder-slate-400 focus:border-emerald-400 outline-none" />
                         </div>
-                        <select
-                            value={filterModel}
-                            onChange={e => setFilterModel(e.target.value)}
-                            className="px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-emerald-400"
-                        >
-                            <option value="">Semua Model Khidmah</option>
-                            {models.map(m => (
-                                <option key={m.id} value={m.id}>{m.nama}</option>
-                            ))}
+                        <select value={filterModel} onChange={e => setFilterModel(e.target.value)}
+                            className="px-2 py-1 bg-white border border-slate-200 rounded text-[11px] text-slate-600 focus:border-emerald-400 outline-none">
+                            <option value="">Semua Model</option>
+                            {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
                         </select>
-                        <button
-                            onClick={() => { setShowAssignModal(true); setAssignModelId(models[0]?.id || ''); }}
-                            disabled={models.length === 0}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                        >
-                            <Plus size={16} /> Tambah Khidmah
+                        <button onClick={() => { setShowAssignModal(true); setAssignModelId(models[0]?.id || ''); }} disabled={models.length === 0}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[11px] font-semibold transition disabled:opacity-50 shrink-0">
+                            <Plus size={12} /> Tambah
                         </button>
                     </div>
 
-                    {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Santri</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">NIS</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Model Khidmah</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Keterangan</th>
-                                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-16">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredData.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="px-4 py-12 text-center">
-                                            <div className="flex flex-col items-center gap-2 text-gray-400">
-                                                <ClipboardList size={32} className="opacity-50" />
-                                                <p className="text-sm">{searchQuery || filterModel ? 'Tidak ada hasil' : 'Belum ada data khidmah'}</p>
-                                                {models.length === 0 && <p className="text-xs">Buat variabel model khidmah terlebih dahulu di tab "Variabel Model"</p>}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : filteredData.map(d => (
-                                    <tr key={d.id} className="hover:bg-gray-50 transition group">
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                    {d.santri.foto
-                                                        ? <img src={d.santri.foto} alt="" className="w-full h-full object-cover" />
-                                                        : <span className="text-xs font-bold text-emerald-600">{d.santri.namaLengkap.charAt(0)}</span>
-                                                    }
-                                                </div>
-                                                <span className="text-sm font-medium text-gray-900">{d.santri.namaLengkap}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-600 font-mono">{d.santri.nis}</td>
-                                        <td className="px-4 py-3">
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
-                                                {d.modelKhidmah.nama}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-sm text-gray-500">{d.keterangan || <span className="italic text-gray-300">—</span>}</td>
-                                        <td className="px-4 py-3 text-center">
-                                            <button
-                                                onClick={() => setDeleteTarget({ type: 'data', id: d.id, label: `${d.santri.namaLengkap} - ${d.modelKhidmah.nama}` })}
-                                                className="w-7 h-7 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-400 rounded-lg flex items-center justify-center transition opacity-0 group-hover:opacity-100 mx-auto"
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="px-4 py-3 border-t border-gray-100 bg-gray-50">
-                        <p className="text-xs text-gray-500">Total: {filteredData.length} data khidmah</p>
-                    </div>
-                </div>
-            )}
-
-            {/* ═══ Tab 2: Variabel Model Khidmah ═══════════════════════════════ */}
-            {activeTab === 'model' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Add new model */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
-                        <h3 className="text-sm font-bold text-gray-900">Tambah Model Khidmah Baru</h3>
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Nama Model *</label>
-                                <input
-                                    type="text"
-                                    value={newModelNama}
-                                    onChange={e => setNewModelNama(e.target.value)}
-                                    placeholder="Contoh: Pengajar, Keamanan, Ketua Kamar..."
-                                    onKeyDown={e => e.key === 'Enter' && createModel()}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 placeholder-gray-400"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-medium text-gray-600 mb-1">Deskripsi (opsional)</label>
-                                <input
-                                    type="text"
-                                    value={newModelDesc}
-                                    onChange={e => setNewModelDesc(e.target.value)}
-                                    placeholder="Keterangan singkat..."
-                                    onKeyDown={e => e.key === 'Enter' && createModel()}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200 placeholder-gray-400"
-                                />
-                            </div>
-                            <button
-                                onClick={createModel}
-                                disabled={!newModelNama.trim() || loading}
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition disabled:opacity-50"
-                            >
-                                <Plus size={16} /> Tambah
-                            </button>
+                    {/* Column header */}
+                    <div className="bg-slate-50 border-b border-slate-200 shrink-0">
+                        <div className="grid grid-cols-[40px_1fr_90px_120px_100px_48px] min-w-[600px]">
+                            <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
+                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Santri</div>
+                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">NIS</div>
+                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Model</div>
+                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Keterangan</div>
+                            <div className="px-2 py-[7px]"></div>
                         </div>
                     </div>
 
-                    {/* Existing models list */}
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-                            <h3 className="text-sm font-bold text-gray-900">Model Khidmah ({models.length})</h3>
-                            <p className="text-xs text-gray-500 mt-0.5">Daftar variabel model yang tersedia</p>
-                        </div>
-                        <div className="divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
-                            {models.length === 0 ? (
-                                <div className="p-8 text-center text-gray-400">
-                                    <Tags size={32} className="mx-auto mb-2 opacity-50" />
-                                    <p className="text-sm">Belum ada model khidmah</p>
-                                    <p className="text-xs mt-1">Tambahkan model di sebelah kiri</p>
+                    {/* Body */}
+                    <div className="flex-1 overflow-auto">
+                        {filteredData.length === 0 ? (
+                            <div className="flex items-center justify-center h-full text-slate-400">
+                                <div className="text-center space-y-1">
+                                    <ClipboardList size={24} className="mx-auto opacity-40" />
+                                    <p className="text-xs">{searchQuery || filterModel ? 'Tidak ada hasil' : 'Belum ada data khidmah'}</p>
+                                    {models.length === 0 && <p className="text-[10px]">Buat variabel model dulu di tab "Variabel Model"</p>}
                                 </div>
-                            ) : models.map(m => (
-                                <div key={m.id} className="px-6 py-3 flex items-center justify-between group hover:bg-gray-50 transition">
-                                    {editingModel?.id === m.id ? (
-                                        <div className="flex-1 flex items-center gap-2">
-                                            <input
-                                                autoFocus
-                                                value={editNama}
-                                                onChange={e => setEditNama(e.target.value)}
-                                                onKeyDown={e => { if (e.key === 'Enter') updateModel(); if (e.key === 'Escape') setEditingModel(null); }}
-                                                className="flex-1 px-2 py-1 rounded border border-emerald-300 text-sm outline-none focus:ring-1 focus:ring-emerald-200"
-                                            />
-                                            <input
-                                                value={editDesc}
-                                                onChange={e => setEditDesc(e.target.value)}
-                                                placeholder="Deskripsi"
-                                                onKeyDown={e => { if (e.key === 'Enter') updateModel(); if (e.key === 'Escape') setEditingModel(null); }}
-                                                className="flex-1 px-2 py-1 rounded border border-gray-200 text-sm outline-none focus:ring-1 focus:ring-emerald-200"
-                                            />
-                                            <button onClick={updateModel} className="px-2 py-1 bg-emerald-600 text-white rounded text-xs font-medium">OK</button>
-                                            <button onClick={() => setEditingModel(null)} className="px-2 py-1 text-gray-400 hover:text-gray-600 text-xs">Batal</button>
+                            </div>
+                        ) : (
+                            <div className="min-w-[600px]">
+                                {filteredData.map((d, idx) => (
+                                    <div key={d.id} className="grid grid-cols-[40px_1fr_90px_120px_100px_48px] border-b border-slate-100 hover:bg-slate-50/80 transition group">
+                                        <div className="px-2 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 text-center tabular-nums">{idx + 1}</div>
+                                        <div className="px-3 py-[7px] text-[12px] font-medium text-slate-800 border-r border-slate-100 truncate flex items-center gap-2">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 overflow-hidden">
+                                                {d.santri.foto
+                                                    ? <img src={d.santri.foto} alt="" className="w-full h-full object-cover" />
+                                                    : <span className="text-[9px] font-bold text-emerald-600">{d.santri.namaLengkap.charAt(0)}</span>
+                                                }
+                                            </div>
+                                            <span className="truncate">{d.santri.namaLengkap}</span>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-semibold text-gray-900">{m.nama}</span>
-                                                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{m._count?.dataKhidmah ?? 0} santri</span>
-                                                </div>
-                                                {m.deskripsi && <p className="text-xs text-gray-500 mt-0.5 truncate">{m.deskripsi}</p>}
-                                            </div>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                                                <button
-                                                    onClick={() => { setEditingModel(m); setEditNama(m.nama); setEditDesc(m.deskripsi || ''); }}
-                                                    className="px-2 py-1 text-xs text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition"
-                                                >
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteTarget({ type: 'model', id: m.id, label: m.nama })}
-                                                    className="w-7 h-7 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-400 rounded-lg flex items-center justify-center transition"
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
+                                        <div className="px-3 py-[7px] text-[11px] font-mono text-slate-500 border-r border-slate-100 truncate">{d.santri.nis}</div>
+                                        <div className="px-3 py-[7px] text-[11px] border-r border-slate-100">
+                                            <span className="px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded text-[10px] font-semibold">{d.modelKhidmah.nama}</span>
+                                        </div>
+                                        <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 truncate">{d.keterangan || <span className="text-slate-300 italic">—</span>}</div>
+                                        <div className="px-2 py-[7px] flex items-center justify-center">
+                                            <button onClick={() => setDeleteTarget({ type: 'data', id: d.id, label: `${d.santri.namaLengkap} - ${d.modelKhidmah.nama}` })}
+                                                className="p-1 text-slate-300 hover:text-red-500 rounded transition opacity-0 group-hover:opacity-100">
+                                                <Trash2 size={12} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Status bar */}
+                    <div className="h-7 border-t border-slate-200 bg-slate-50/80 flex items-center px-3 shrink-0">
+                        <span className="text-[10px] text-slate-400">Total: {filteredData.length} data khidmah</span>
+                    </div>
+                </>
+            )}
+
+            {/* ═══ Tab 2: Variabel Model Khidmah ═════════════════════ */}
+            {activeTab === 'model' && (
+                <div className="flex-1 flex overflow-hidden">
+                    {/* Left: add form */}
+                    <div className="w-[280px] shrink-0 border-r border-slate-200 bg-slate-50/50 flex flex-col">
+                        <div className="h-9 px-3 border-b border-slate-200 bg-white flex items-center shrink-0">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tambah Baru</span>
+                        </div>
+                        <div className="p-3 space-y-2">
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Nama *</label>
+                                <input type="text" value={newModelNama} onChange={e => setNewModelNama(e.target.value)} placeholder="Contoh: Pengajar, Keamanan..."
+                                    onKeyDown={e => e.key === 'Enter' && createModel()}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 placeholder-slate-400 focus:border-emerald-400 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Deskripsi</label>
+                                <input type="text" value={newModelDesc} onChange={e => setNewModelDesc(e.target.value)} placeholder="Opsional..."
+                                    onKeyDown={e => e.key === 'Enter' && createModel()}
+                                    className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 placeholder-slate-400 focus:border-emerald-400 outline-none" />
+                            </div>
+                            <button onClick={createModel} disabled={!newModelNama.trim() || loading}
+                                className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-semibold transition disabled:opacity-50">
+                                <Plus size={12} /> Tambah
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Right: model list */}
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        <div className="bg-slate-50 border-b border-slate-200 shrink-0">
+                            <div className="grid grid-cols-[40px_1fr_80px_1fr_80px] min-w-[500px]">
+                                <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
+                                <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Nama</div>
+                                <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Jumlah</div>
+                                <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Deskripsi</div>
+                                <div className="px-2 py-[7px]"></div>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-auto">
+                            {models.length === 0 ? (
+                                <div className="flex items-center justify-center h-full text-slate-400">
+                                    <div className="text-center space-y-1">
+                                        <Tags size={24} className="mx-auto opacity-40" />
+                                        <p className="text-xs">Belum ada model khidmah</p>
+                                        <p className="text-[10px]">Tambahkan di panel kiri</p>
+                                    </div>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="min-w-[500px]">
+                                    {models.map((m, idx) => (
+                                        <div key={m.id} className="grid grid-cols-[40px_1fr_80px_1fr_80px] border-b border-slate-100 hover:bg-slate-50/80 transition group">
+                                            <div className="px-2 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 text-center tabular-nums">{idx + 1}</div>
+                                            <div className="px-3 py-[7px] border-r border-slate-100">
+                                                {editingModel?.id === m.id ? (
+                                                    <div className="flex items-center gap-1">
+                                                        <input autoFocus value={editNama} onChange={e => setEditNama(e.target.value)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') updateModel(); if (e.key === 'Escape') setEditingModel(null); }}
+                                                            className="flex-1 px-1.5 py-0.5 rounded border border-emerald-300 text-xs outline-none" />
+                                                        <button onClick={updateModel} className="px-1.5 py-0.5 bg-emerald-500 text-white rounded text-[10px] font-medium">OK</button>
+                                                        <button onClick={() => setEditingModel(null)} className="text-[10px] text-slate-400">✕</button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-[12px] font-semibold text-slate-800 cursor-pointer hover:text-emerald-700 transition"
+                                                        onClick={() => { setEditingModel(m); setEditNama(m.nama); setEditDesc(m.deskripsi || ''); }}>
+                                                        {m.nama}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 tabular-nums">{m._count?.dataKhidmah ?? 0} santri</div>
+                                            <div className="px-3 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 truncate">
+                                                {editingModel?.id === m.id ? (
+                                                    <input value={editDesc} onChange={e => setEditDesc(e.target.value)} placeholder="Deskripsi"
+                                                        onKeyDown={e => { if (e.key === 'Enter') updateModel(); if (e.key === 'Escape') setEditingModel(null); }}
+                                                        className="w-full px-1.5 py-0.5 rounded border border-slate-200 text-xs outline-none" />
+                                                ) : (m.deskripsi || <span className="text-slate-300 italic">—</span>)}
+                                            </div>
+                                            <div className="px-2 py-[7px] flex items-center justify-center gap-1">
+                                                <button onClick={() => { setEditingModel(m); setEditNama(m.nama); setEditDesc(m.deskripsi || ''); }}
+                                                    className="text-[10px] text-slate-400 hover:text-emerald-600 transition opacity-0 group-hover:opacity-100">Edit</button>
+                                                <button onClick={() => setDeleteTarget({ type: 'model', id: m.id, label: m.nama })}
+                                                    className="p-0.5 text-slate-300 hover:text-red-500 rounded transition opacity-0 group-hover:opacity-100">
+                                                    <Trash2 size={11} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="h-7 border-t border-slate-200 bg-slate-50/80 flex items-center px-3 shrink-0">
+                            <span className="text-[10px] text-slate-400">{models.length} model khidmah</span>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ═══ Assign Modal ═══════════════════════════════════════════════════ */}
+            {/* ═══ Assign Modal ═══════════════════════════════════════ */}
             {showAssignModal && (
-                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
-                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl p-6 space-y-5" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-base font-bold text-gray-900">Tambah Khidmah Santri</h3>
-                            <button onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600">
-                                <X size={20} />
-                            </button>
+                <div className="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
+                    <div className="w-full max-w-xs rounded-xl bg-white shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-800">Tambah Khidmah</h3>
+                            <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
                         </div>
-
-                        <div className="space-y-4">
+                        <div className="p-4 space-y-3">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">NIS Santri *</label>
-                                <input
-                                    type="text"
-                                    value={assignNis}
-                                    onChange={e => setAssignNis(e.target.value)}
-                                    placeholder="Masukkan NIS santri..."
-                                    autoFocus
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200"
-                                />
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">NIS Santri *</label>
+                                <input type="text" autoFocus value={assignNis} onChange={e => setAssignNis(e.target.value)} placeholder="Masukkan NIS..."
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Model Khidmah *</label>
-                                <select
-                                    value={assignModelId}
-                                    onChange={e => setAssignModelId(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-emerald-400"
-                                >
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Model Khidmah *</label>
+                                <select value={assignModelId} onChange={e => setAssignModelId(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none">
                                     {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Keterangan (opsional)</label>
-                                <input
-                                    type="text"
-                                    value={assignKeterangan}
-                                    onChange={e => setAssignKeterangan(e.target.value)}
-                                    placeholder="Misal: Pengajar Nahwu, Ketua Kamar 5A..."
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200"
-                                />
+                                <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Keterangan</label>
+                                <input type="text" value={assignKeterangan} onChange={e => setAssignKeterangan(e.target.value)} placeholder="Opsional..."
+                                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
                             </div>
                         </div>
-
-                        <div className="flex gap-3 pt-2">
-                            <button onClick={() => setShowAssignModal(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Batal</button>
-                            <button
-                                onClick={assignKhidmah}
-                                disabled={!assignNis.trim() || !assignModelId || loading}
-                                className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50"
-                            >
+                        <div className="p-3 border-t border-slate-100 flex gap-2">
+                            <button onClick={() => setShowAssignModal(false)} className="flex-1 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">Batal</button>
+                            <button onClick={assignKhidmah} disabled={!assignNis.trim() || !assignModelId || loading}
+                                className="flex-1 py-1.5 rounded-lg bg-emerald-500 text-xs font-semibold text-white hover:bg-emerald-600 transition disabled:opacity-50">
                                 {loading ? 'Menyimpan...' : 'Simpan'}
                             </button>
                         </div>
@@ -437,25 +389,21 @@ export default function KhidmahPage() {
                 </div>
             )}
 
-            {/* ═══ Delete Confirm Modal ═══════════════════════════════════════════ */}
+            {/* ═══ Delete Confirm Modal ════════════════════════════════ */}
             {deleteTarget && (
-                <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
-                        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto">
-                            <AlertCircle size={22} className="text-red-500" />
+                <div className="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
+                    <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center mx-auto">
+                            <AlertCircle size={18} className="text-red-500" />
                         </div>
                         <div className="text-center">
-                            <h3 className="text-base font-bold text-gray-900">
-                                Hapus {deleteTarget.type === 'model' ? 'Model Khidmah' : 'Data Khidmah'}?
-                            </h3>
-                            <p className="text-sm font-semibold text-gray-800 mt-1">"{deleteTarget.label}"</p>
-                            {deleteTarget.type === 'model' && (
-                                <p className="text-xs text-gray-500 mt-2">Semua data santri yang terkait model ini akan ikut dihapus.</p>
-                            )}
+                            <h3 className="text-sm font-bold text-slate-900">Hapus {deleteTarget.type === 'model' ? 'Model' : 'Data'} Khidmah?</h3>
+                            <p className="text-xs font-semibold text-slate-600 mt-1">"{deleteTarget.label}"</p>
+                            {deleteTarget.type === 'model' && <p className="text-[10px] text-slate-400 mt-1">Semua data santri terkait akan ikut dihapus.</p>}
                         </div>
-                        <div className="flex gap-3">
-                            <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Batal</button>
-                            <button onClick={handleDelete} className="flex-1 py-2.5 rounded-xl bg-red-500 text-sm font-semibold text-white hover:bg-red-600 transition">Ya, Hapus</button>
+                        <div className="flex gap-2">
+                            <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition">Batal</button>
+                            <button onClick={handleDelete} className="flex-1 py-2 rounded-lg bg-red-500 text-xs font-semibold text-white hover:bg-red-600 transition">Ya, Hapus</button>
                         </div>
                     </div>
                 </div>

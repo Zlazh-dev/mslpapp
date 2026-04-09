@@ -5,12 +5,14 @@ import Navbar from '../Navbar';
 import BottomNav from '../BottomNav';
 
 // Pages that should render edge-to-edge without padding/max-width
-const FULL_BLEED_ROUTES = ['/madrasah/jadwal'];
+const FULL_BLEED_EXACT = ['/santri', '/khidmah'];
+const FULL_BLEED_PREFIX = ['/madrasah/jadwal', '/madrasah/kelas'];
 
 export default function DashboardLayout() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
-    const isFullBleed = FULL_BLEED_ROUTES.some(r => location.pathname.startsWith(r));
+    const isFullBleed = FULL_BLEED_EXACT.includes(location.pathname) ||
+        FULL_BLEED_PREFIX.some(r => location.pathname.startsWith(r));
 
     return (
         <div className="flex h-[100dvh] bg-slate-50 overflow-hidden relative">

@@ -222,21 +222,23 @@ export default function KelasManagementPage() {
     };
 
     return (
-        <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
-            <div className="mb-3 flex-shrink-0">
-                <h1 className="text-sm font-bold text-gray-900">Manajemen Kelas</h1>
-                <p className="text-xs text-gray-500 mt-0.5">Kelola Jenjang → Tingkat → Kelas, assign wali kelas via drag & drop</p>
+        <div className="flex flex-col h-[calc(100dvh-64px)] bg-white text-slate-700 overflow-hidden">
+            {/* ── Toolbar ─────────────────────────────── */}
+            <div className="h-10 border-b border-slate-200 flex items-center px-3 gap-2 shrink-0 bg-white">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Manajemen Kelas</span>
+                <div className="w-px h-5 bg-slate-200 mx-0.5" />
+                <span className="text-[10px] text-slate-400">Jenjang → Tingkat → Kelas</span>
             </div>
 
-            {success && <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex-shrink-0">{success}</div>}
-            {error && <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600 flex-shrink-0">{error}</div>}
+            {success && <div className="px-3 py-1.5 text-[11px] bg-blue-50 text-blue-700 border-b border-blue-100 shrink-0">{success}</div>}
+            {error && <div className="px-3 py-1.5 text-[11px] bg-red-50 text-red-600 border-b border-red-100 shrink-0">{error}</div>}
 
-            <div className="flex flex-1 min-h-0 bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="flex flex-1 min-h-0 bg-white overflow-hidden">
 
                 {/* Panel 1: Jenjang */}
-                <div className="w-[170px] flex-shrink-0 border-r border-gray-200 flex flex-col">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                        <span className="text-xs font-semibold text-gray-700">Jenjang</span>
+                <div className="w-[170px] flex-shrink-0 border-r border-slate-200 flex flex-col">
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jenjang</span>
                         {canEdit && (
                             <button onClick={() => setAddingJenjang(v => !v)} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
                         )}
@@ -245,26 +247,26 @@ export default function KelasManagementPage() {
                         {addingJenjang && <InlineAdd value={newJenjangNama} onChange={setNewJenjangNama} onConfirm={createJenjang} placeholder="Nama jenjang" loading={loading} />}
                         {jenjangList.map(j => (
                             <div key={j.id} onClick={() => { if (!renaming) setSelJenjang(j.id); }}
-                                className={`flex items-center gap-1 px-3 py-2 border-b border-gray-100 cursor-pointer group/row transition ${selJenjang === j.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
-                                <span className={`text-xs font-medium flex-1 truncate ${selJenjang === j.id ? 'text-blue-700' : 'text-gray-800'}`}>{j.nama}</span>
+                                className={`flex items-center gap-1 px-3 py-2 border-b border-slate-100 cursor-pointer group/row transition ${selJenjang === j.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
+                                <span className={`text-xs font-medium flex-1 truncate ${selJenjang === j.id ? 'text-blue-700' : 'text-slate-800'}`}>{j.nama}</span>
                                 {canEdit && (
                                     <>
                                         <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'jenjang', id: j.id, current: j.nama }); }}
-                                            className="w-5 h-5 flex-shrink-0 text-gray-400 hover:text-blue-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><Pencil size={10} /></button>
+                                            className="w-5 h-5 flex-shrink-0 text-slate-400 hover:text-blue-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><Pencil size={10} /></button>
                                         <button onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'jenjang', id: j.id, nama: j.nama }); }}
-                                            className="w-5 h-5 flex-shrink-0 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-400 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><TrashIcon /></button>
+                                            className="w-5 h-5 flex-shrink-0 bg-slate-100 hover:bg-red-100 hover:text-red-600 text-slate-400 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><TrashIcon /></button>
                                     </>
                                 )}
                             </div>
                         ))}
-                        {!jenjangList.length && <div className="p-4 text-center text-xs text-gray-400">Belum ada jenjang</div>}
+                        {!jenjangList.length && <div className="p-4 text-center text-xs text-slate-400">Belum ada jenjang</div>}
                     </div>
                 </div>
 
                 {/* Panel 2: Tingkat */}
-                <div className="w-[170px] flex-shrink-0 border-r border-gray-200 flex flex-col">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                        <span className="text-xs font-semibold text-gray-700">Tingkat</span>
+                <div className="w-[170px] flex-shrink-0 border-r border-slate-200 flex flex-col">
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkat</span>
                         {canEdit && selJenjang && (
                             <button onClick={() => setAddingTingkat(v => !v)} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
                         )}
@@ -292,9 +294,9 @@ export default function KelasManagementPage() {
                 </div>
 
                 {/* Panel 3: Kelas */}
-                <div className="flex-1 border-r border-gray-200 flex flex-col min-w-0">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                        <span className="text-xs font-semibold text-gray-700">Kelas</span>
+                <div className="flex-1 border-r border-slate-200 flex flex-col min-w-0">
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
                         {canEdit && selTingkat && (
                             <button onClick={() => setAddingKelas(v => !v)} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
                         )}
@@ -313,12 +315,12 @@ export default function KelasManagementPage() {
                                 ? <div className="p-6 text-center text-xs text-gray-400">Belum ada kelas</div>
                                 : (
                                     <table className="w-full">
-                                        <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                                        <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
                                             <tr>
-                                                <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Nama</th>
-                                                <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Thn Ajaran</th>
-                                                <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Santri</th>
-                                                <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Wali Kelas</th>
+                                                <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama</th>
+                                                <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thn Ajaran</th>
+                                                <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Santri</th>
+                                                <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wali Kelas</th>
                                                 {canEdit && <th className="px-3 py-1.5 w-10"></th>}
                                             </tr>
                                         </thead>
@@ -331,7 +333,7 @@ export default function KelasManagementPage() {
                                                         onDragOver={e => { e.preventDefault(); setDropTarget(k.id); }}
                                                         onDragLeave={() => setDropTarget(null)}
                                                         onDrop={e => { e.preventDefault(); handleDrop(k.id); }}
-                                                        className={`border-b border-gray-100 transition group/row ${isDragOver ? 'bg-blue-100 ring-1 ring-inset ring-blue-400' : 'hover:bg-gray-50'}`}>
+                                                        className={`border-b border-slate-100 transition group/row ${isDragOver ? 'bg-blue-100 ring-1 ring-inset ring-blue-400' : 'hover:bg-slate-50'}`}>
                                                         <td className="px-3 py-2 cursor-pointer" onClick={() => navigate(`/madrasah/kelas/${k.id}`)}>
                                                             <div className="flex items-center gap-1">
                                                                 <span className="text-xs font-medium text-gray-900 group-hover/row:text-blue-700 transition">{k.nama}</span>
@@ -375,9 +377,9 @@ export default function KelasManagementPage() {
 
                 {/* Panel 4: Wali Kelas (drag source) */}
                 <div className="w-[190px] flex-shrink-0 flex flex-col">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-blue-700 flex-shrink-0">
-                        <p className="text-xs font-semibold text-white">Wali Kelas</p>
-                        <p className="text-[10px] text-blue-300">Drag ke kelas untuk assign</p>
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Wali Kelas</p>
+                        <p className="text-[9px] text-slate-400">Drag ke kelas untuk assign</p>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {available.length > 0 && <>
