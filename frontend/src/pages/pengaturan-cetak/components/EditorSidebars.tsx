@@ -59,6 +59,7 @@ interface LayerSidebarProps {
     onGroup: () => void;
     onUngroup: () => void;
     onDelete: () => void;
+    onRenameGroup: (groupId: string, name: string) => void;
 }
 
 function getElementInfo(el: CanvasElement): { icon: React.ReactNode; title: string } {
@@ -103,25 +104,52 @@ function SortableLayerItem({ el, selectedIds, isGroupChild, onSelect, onHoverLay
     );
 }
 
-function GroupHeader({ groupId, isExpanded, onToggle, childCount }: {
-    groupId: string; isExpanded: boolean; onToggle: () => void; childCount: number;
+function GroupHeader({ groupId, groupName, isExpanded, onToggle, childCount, onRename }: {
+    groupId: string; groupName: string; isExpanded: boolean; onToggle: () => void; childCount: number;
+    onRename: (name: string) => void;
 }) {
+    const [editing, setEditing] = useState(false);
+    const [name, setName] = useState(groupName);
+
+    const commitRename = () => {
+        const trimmed = name.trim() || 'Group';
+        setName(trimmed);
+        onRename(trimmed);
+        setEditing(false);
+    };
+
+    // Sync if parent changes
+    React.useEffect(() => { setName(groupName); }, [groupName]);
+
     return (
         <div
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            onClick={(e) => { e.stopPropagation(); if (!editing) onToggle(); }}
+            onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
             className="flex items-center h-7 cursor-pointer select-none transition-colors pl-1.5 hover:bg-slate-700/60 group"
         >
             <span className="shrink-0 text-slate-500 mr-0.5">
                 {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
             </span>
             <Folder size={11} className="text-slate-500 mr-1.5 shrink-0" />
-            <span className="text-[11px] text-slate-300 font-medium truncate flex-1">Group</span>
+            {editing ? (
+                <input
+                    autoFocus
+                    className="flex-1 bg-slate-600 border border-blue-500 rounded px-1 py-0 text-[11px] text-white outline-none mr-1"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    onBlur={commitRename}
+                    onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { setName(groupName); setEditing(false); } }}
+                    onClick={e => e.stopPropagation()}
+                />
+            ) : (
+                <span className="text-[11px] text-slate-300 font-medium truncate flex-1" title="Double-click to rename">{groupName}</span>
+            )}
             <span className="text-[9px] text-slate-500 pr-2 tabular-nums">{childCount}</span>
         </div>
     );
 }
 
-export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, onDragEnd, onGroup, onUngroup, onDelete }: LayerSidebarProps) {
+export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, onDragEnd, onGroup, onUngroup, onDelete, onRenameGroup }: LayerSidebarProps) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -196,13 +224,16 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
                         {tree.map((node) => {
                             if (node.type === 'group') {
                                 const isExpanded = !collapsedGroups.has(node.groupId);
+                                const gName = node.children[0]?.groupName || 'Group';
                                 return (
                                     <div key={node.groupId}>
                                         <GroupHeader
                                             groupId={node.groupId}
+                                            groupName={gName}
                                             isExpanded={isExpanded}
                                             onToggle={() => toggleGroup(node.groupId)}
                                             childCount={node.children.length}
+                                            onRename={(name) => onRenameGroup(node.groupId, name)}
                                         />
                                         {isExpanded && node.children.map(child => (
                                             <SortableLayerItem

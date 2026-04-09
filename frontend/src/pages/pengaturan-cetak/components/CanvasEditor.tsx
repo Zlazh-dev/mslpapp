@@ -405,6 +405,7 @@ export function CanvasEditor({
                     onGroup={() => setElements(prev => groupElements(prev, selectedIds))}
                     onUngroup={() => setElements(prev => ungroupElements(prev, selectedIds))}
                     onDelete={() => { setElements(els => els.filter(x => !selectedIds.includes(x.id))); setSelectedIds([]); }}
+                    onRenameGroup={(groupId, name) => setElements(els => els.map(e => e.groupId === groupId ? { ...e, groupName: name } : e))}
                 />
 
                 {/* Center: Canvas */}

@@ -8,6 +8,7 @@ export type CanvasElement = {
     value?: string;
     field?: string;
     groupId?: string; // Menyatakan elemen ini adalah anak dari sebuah grup
+    groupName?: string; // Nama grup yang bisa di-rename
     tableConfig?: {
         dataType: 'presensi' | 'jadwal';
         headerColor?: string;
