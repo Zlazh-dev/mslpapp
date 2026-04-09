@@ -244,17 +244,21 @@ export class PdfController {
             return res.status(400).json({ message: 'konvaJson and kelasId are required' });
         }
 
-        // Generate the HTML for the dynamic table
+        // Generate the HTML for the dynamic preset table
         const tableHtml = await this.pdfDataService.buildPresensiTableHtml(body.kelasId);
 
-        // We still need header data for the canvas part (like nama kelas)
-        const kelasHeader = await this.pdfDataService.getKelasHeaderData(body.kelasId);
+        // Fetch header data and santri list for custom table DB columns
+        const [kelasHeader, santriList] = await Promise.all([
+            this.pdfDataService.getKelasHeaderData(body.kelasId),
+            this.pdfDataService.getKelasSantriList(body.kelasId),
+        ]);
 
         const opts: PdfRenderOptions = {
             konvaJson: body.konvaJson,
             dataParams: kelasHeader,
             qrFields: body.qrFields,
-            rawHtml: tableHtml
+            rawHtml: tableHtml,
+            santriList,
         };
 
         const pdfBuffer = await this.pdfService.generatePdf(opts);

@@ -27,6 +27,8 @@ export interface PdfRenderOptions {
     /** Page dimensions — defaults to A4 portrait */
     pageWidth?: number;
     pageHeight?: number;
+    /** List of santri data for custom table DB column filling */
+    santriList?: Array<Record<string, string>>;
 }
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -137,15 +139,17 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
                     jsonStr: string,
                     data: Record<string, string>,
                     qrUris: Record<string, string>,
+                    santriList: Array<Record<string, string>>,
                 ) => {
                     // Wait for all web-fonts to be fully available
                     await (document as any).fonts.ready;
                     // Delegate to the global render function injected in the HTML
-                    await (window as any).renderKonva(jsonStr, data, qrUris);
+                    await (window as any).renderKonva(jsonStr, data, qrUris, santriList);
                 },
                 konvaJsonStr,
                 opts.dataParams,
                 qrDataUris,
+                opts.santriList || [],
             );
 
             // PDF generation
@@ -291,11 +295,12 @@ html, body {
  * ──────────────────
  * Called from page.evaluate().
  *
- * @param {string}                  jsonStr   Konva Stage JSON
- * @param {Record<string,string>}   data      Placeholder values
- * @param {Record<string,string>}   qrUris    field→dataURI map
+ * @param {string}                  jsonStr     Konva Stage JSON
+ * @param {Record<string,string>}   data        Placeholder values
+ * @param {Record<string,string>}   qrUris      field→dataURI map
+ * @param {Array<Record<string,string>>} santriList list of santri data for custom tables
  */
-window.renderKonva = async (jsonStr, data, qrUris) => {
+window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
 
     /* ── 1. Parse & Traverse ─────────────────────────────────────── */
     const stageJson = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
@@ -383,25 +388,48 @@ window.renderKonva = async (jsonStr, data, qrUris) => {
         const y = rectNode.y();
         const w = rectNode.width();
         const cols = tc.columns || [];
-        const rows = tc.rows || [];
+        const templateRows = tc.rows || [];
         const border = tc.borderStyle === 'none' ? 'none' : '1px solid #000';
         const pad = (tc.cellPadding || 6) + 'px';
         const fSize = (tc.tableFontSize || 11) + 'px';
         const hColor = tc.headerColor || '#cbd5e1';
+
+        // Check if any column uses DB fields
+        const hasDbCols = cols.some(c => c.type === 'db');
+
+        // Determine actual rows: if santriList is available and table has DB columns,
+        // use santriList to populate rows (one row per santri).
+        // Otherwise fall back to template rows.
+        let actualRows = templateRows;
+        if (hasDbCols && santriList && santriList.length > 0) {
+            actualRows = santriList.map((santri, idx) => {
+                // Try to find a matching template row for static cell values
+                const tplRow = templateRows[idx] || {};
+                return { ...tplRow, _santri: santri, _idx: idx };
+            });
+        }
 
         // Build header
         const thHtml = cols.map(c =>
             '<th style="width:' + c.width + '%;background:' + hColor + ';padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.label + '</th>'
         ).join('');
 
-        // Build rows — for 'db' columns, substitute data placeholders
-        const trHtml = rows.map(row => {
+        // Build data rows
+        const trHtml = actualRows.map((row, rowIdx) => {
+            const santriData = row._santri || {};
             const tds = cols.map(c => {
                 let cellVal = '';
                 if (c.type === 'db' && c.field) {
-                    cellVal = data[c.field] || '[' + c.field + ']';
+                    // Use santri-specific data if available, otherwise fall back to single data param
+                    cellVal = santriData[c.field] || data[c.field] || '';
                 } else {
-                    cellVal = (row.cells && row.cells[c.id]) || '';
+                    // Static column: use template cell value, or auto-number for 'No'-like columns
+                    const cells = row.cells || {};
+                    cellVal = cells[c.id] || '';
+                    // Auto-number: if static column had sequential numbers, re-index
+                    if (!cellVal && c.label && c.label.toLowerCase().includes('no')) {
+                        cellVal = String(rowIdx + 1);
+                    }
                 }
                 return '<td style="padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + cellVal + '</td>';
             }).join('');

@@ -384,4 +384,42 @@ export class PdfDataService {
 
         return html;
     }
+
+    /**
+     * Returns a list of flat santri data objects for all active santri in a kelas.
+     * The keys match the DB_FIELDS used in the frontend custom table editor.
+     */
+    async getKelasSantriList(kelasId: number): Promise<Array<Record<string, string>>> {
+        const santris = await this.prisma.santri.findMany({
+            where: { kelasId, status: 'ACTIVE' },
+            include: {
+                kelas: { include: { tingkat: { include: { jenjang: true } } } },
+                kamar: { include: { gedung: true } },
+            },
+            orderBy: { namaLengkap: 'asc' },
+        });
+
+        const formatDate = (d: Date | null | undefined): string => {
+            if (!d) return '-';
+            return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(d));
+        };
+
+        return santris.map((s) => ({
+            namaLengkap: s.namaLengkap,
+            nis: s.nis,
+            nik: s.nik ?? '-',
+            noKk: s.noKk ?? '-',
+            tanggalLahir: formatDate(s.tanggalLahir),
+            tempatLahir: s.tempatLahir ?? '-',
+            gender: s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : '-',
+            noHp: s.noHp ?? '-',
+            'kelas.nama': s.kelas?.nama ?? '-',
+            'kamar.nama': s.kamar?.nama ?? '-',
+            jenjangPendidikan: s.jenjangPendidikan ?? '-',
+            namaAyah: s.namaAyah ?? '-',
+            namaIbu: s.namaIbu ?? '-',
+            namaWali: s.namaWali ?? '-',
+            status: s.status,
+        }));
+    }
 }
