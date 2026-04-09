@@ -263,25 +263,24 @@ export default function KamarManagementPage() {
     };
 
     return (
-        <div className="flex flex-col" style={{ height: 'calc(100vh - 120px)' }}>
-            {/* Header */}
-            <div className="mb-3 flex-shrink-0 flex items-center justify-between">
-                <div>
-                    <h1 className="text-sm font-bold text-gray-900">Manajemen Kamar Asrama</h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Kelola Kompleks → Gedung → Kamar, assign pembimbing via drag & drop</p>
-                </div>
+        <div className="flex flex-col h-[calc(100dvh-64px)] bg-white text-slate-700 overflow-hidden">
+            {/* ── Toolbar ─────────────────────────────── */}
+            <div className="h-10 border-b border-slate-200 flex items-center px-3 gap-2 shrink-0 bg-white">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Manajemen Kamar</span>
+                <div className="w-px h-5 bg-slate-200 mx-0.5" />
+                <span className="text-[10px] text-slate-400">Kompleks → Gedung → Kamar</span>
             </div>
 
-            {success && <div className="mb-2 p-2 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-700 flex-shrink-0">{success}</div>}
-            {error && <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600 flex-shrink-0">{error}</div>}
+            {success && <div className="px-3 py-1.5 text-[11px] bg-emerald-50 text-emerald-700 border-b border-emerald-100 shrink-0">{success}</div>}
+            {error && <div className="px-3 py-1.5 text-[11px] bg-red-50 text-red-600 border-b border-red-100 shrink-0">{error}</div>}
 
             {/* 4-Panel layout */}
-            <div className="flex flex-1 min-h-0 bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="flex flex-1 min-h-0 bg-white overflow-hidden">
 
                 {/* ── Panel 1: Kompleks ───────────────────────────────────────────── */}
-                <div className="w-[180px] flex-shrink-0 border-r border-gray-200 flex flex-col">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                        <span className="text-xs font-semibold text-gray-700">Kompleks</span>
+                <div className="w-[180px] flex-shrink-0 border-r border-slate-200 flex flex-col">
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kompleks</span>
                         {canEdit && (
                             <button onClick={() => setAddingKompleks(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
                                 <PlusIcon />
@@ -295,30 +294,30 @@ export default function KamarManagementPage() {
                         {kompleksList.map(k => (
                             <div key={k.id}
                                 onClick={() => { if (!renaming) setSelKompleks(k.id); }}
-                                className={`flex items-center gap-1 px-3 py-2 border-b border-gray-100 cursor-pointer group/row transition ${selKompleks === k.id ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}>
-                                <span className={`text-xs font-medium flex-1 truncate ${selKompleks === k.id ? 'text-emerald-700' : 'text-gray-800'}`}>{k.nama}</span>
+                                className={`flex items-center gap-1 px-3 py-2 border-b border-slate-100 cursor-pointer group/row transition ${selKompleks === k.id ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                                <span className={`text-xs font-medium flex-1 truncate ${selKompleks === k.id ? 'text-emerald-700' : 'text-slate-800'}`}>{k.nama}</span>
                                 {canEdit && (
                                     <>
                                         <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'kompleks', id: k.id, current: k.nama }); }}
-                                            className="w-5 h-5 flex-shrink-0 text-gray-400 hover:text-emerald-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100">
+                                            className="w-5 h-5 flex-shrink-0 text-slate-400 hover:text-emerald-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100">
                                             <Pencil size={10} />
                                         </button>
                                         <button onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'kompleks', id: k.id, nama: k.nama }); }}
-                                            className="w-5 h-5 flex-shrink-0 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-400 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100">
+                                            className="w-5 h-5 flex-shrink-0 bg-slate-100 hover:bg-red-100 hover:text-red-600 text-slate-400 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100">
                                             <TrashIcon />
                                         </button>
                                     </>
                                 )}
                             </div>
                         ))}
-                        {!kompleksList.length && <div className="p-4 text-center text-xs text-gray-400">Belum ada kompleks</div>}
+                        {!kompleksList.length && <div className="p-4 text-center text-xs text-slate-400">Belum ada kompleks</div>}
                     </div>
                 </div>
 
                 {/* ── Panel 2: Gedung ─────────────────────────────────────────────── */}
-                <div className="w-[180px] flex-shrink-0 border-r border-gray-200 flex flex-col">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between flex-shrink-0">
-                        <span className="text-xs font-semibold text-gray-700">Gedung</span>
+                <div className="w-[180px] flex-shrink-0 border-r border-slate-200 flex flex-col">
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gedung</span>
                         {canEdit && selKompleks && (
                             <button onClick={() => setAddingGedung(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
                                 <PlusIcon />
@@ -327,7 +326,7 @@ export default function KamarManagementPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {!selKompleks
-                            ? <div className="p-4 text-center text-xs text-gray-400">Pilih kompleks</div>
+                            ? <div className="p-4 text-center text-xs text-slate-400">Pilih kompleks</div>
                             : <>
                                 {addingGedung && (
                                     <InlineAdd value={newGedungNama} onChange={setNewGedungNama} onConfirm={createGedung} placeholder="Nama gedung" loading={loading} />
@@ -335,8 +334,8 @@ export default function KamarManagementPage() {
                                 {gedungList.map(g => (
                                     <div key={g.id}
                                         onClick={() => { if (!renaming) setSelGedung(g.id); }}
-                                        className={`flex items-center gap-1 px-3 py-2 border-b border-gray-100 cursor-pointer group/row transition ${selGedung === g.id ? 'bg-emerald-50' : 'hover:bg-gray-50'}`}>
-                                        <span className={`text-xs font-medium flex-1 truncate ${selGedung === g.id ? 'text-emerald-700' : 'text-gray-800'}`}>{g.nama}</span>
+                                        className={`flex items-center gap-1 px-3 py-2 border-b border-slate-100 cursor-pointer group/row transition ${selGedung === g.id ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
+                                        <span className={`text-xs font-medium flex-1 truncate ${selGedung === g.id ? 'text-emerald-700' : 'text-slate-800'}`}>{g.nama}</span>
                                         {canEdit && (
                                             <>
                                                 <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'gedung', id: g.id, current: g.nama }); }}
@@ -351,17 +350,17 @@ export default function KamarManagementPage() {
                                         )}
                                     </div>
                                 ))}
-                                {!gedungList.length && <div className="p-4 text-center text-xs text-gray-400">Belum ada gedung</div>}
+                                {!gedungList.length && <div className="p-4 text-center text-xs text-slate-400">Belum ada gedung</div>}
                             </>
                         }
                     </div>
                 </div>
 
                 {/* ── Panel 3: Kamar ──────────────────────────────────────────────── */}
-                <div className="flex-1 border-r border-gray-200 flex flex-col min-w-0">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 flex flex-col gap-1.5 flex-shrink-0">
+                <div className="flex-1 border-r border-slate-200 flex flex-col min-w-0">
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex flex-col gap-1.5 flex-shrink-0">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-700">Kamar</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kamar</span>
                             {canEdit && selGedung && (
                                 <button onClick={() => setAddingKamar(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
                                     <PlusIcon />
@@ -383,7 +382,7 @@ export default function KamarManagementPage() {
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {!selGedung
-                            ? <div className="p-6 text-center text-xs text-gray-400">Pilih gedung</div>
+                            ? <div className="p-6 text-center text-xs text-slate-400">Pilih gedung</div>
                             : <>
                                 {addingKamar && (
                                     <InlineAdd
@@ -397,27 +396,27 @@ export default function KamarManagementPage() {
                                     />
                                 )}
                                 {kamarList.length === 0
-                                    ? <div className="p-6 text-center text-xs text-gray-400">Belum ada kamar</div>
+                                    ? <div className="p-6 text-center text-xs text-slate-400">Belum ada kamar</div>
                                     : (
                                         <table className="w-full">
-                                            <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
+                                            <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
                                                 <tr>
-                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">
+                                                    <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                         <button onClick={() => setSortKamar(s => ({ key: 'nama', dir: s.key === 'nama' && s.dir === 'asc' ? 'desc' : 'asc' }))}
                                                             className="flex items-center gap-1 hover:text-emerald-600 transition">
                                                             Nama
                                                             {sortKamar.key === 'nama' ? (sortKamar.dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-30" />}
                                                         </button>
                                                     </th>
-                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">
+                                                    <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                                                         <button onClick={() => setSortKamar(s => ({ key: 'terisi', dir: s.key === 'terisi' && s.dir === 'asc' ? 'desc' : 'asc' }))}
                                                             className="flex items-center gap-1 hover:text-emerald-600 transition">
                                                             Terisi
                                                             {sortKamar.key === 'terisi' ? (sortKamar.dir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />) : <ArrowUpDown size={10} className="opacity-30" />}
                                                         </button>
                                                     </th>
-                                                    <th className="px-3 py-1.5 text-left text-[10px] font-medium text-gray-500">Pembimbing</th>
-                                                    {canEdit && <th className="px-3 py-1.5 text-center text-[10px] font-medium text-gray-500 w-10">Aksi</th>}
+                                                    <th className="px-3 py-1.5 text-left text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pembimbing</th>
+                                                    {canEdit && <th className="px-3 py-1.5 text-center text-[10px] font-bold text-slate-400 w-10"></th>}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -443,7 +442,7 @@ export default function KamarManagementPage() {
                                                             onDragOver={e => { e.preventDefault(); setDropTarget(k.id); }}
                                                             onDragLeave={() => setDropTarget(null)}
                                                             onDrop={e => { e.preventDefault(); handleDrop(k.id); }}
-                                                            className={`border-b border-gray-100 transition group/row ${isDragOver ? 'bg-emerald-100 ring-1 ring-inset ring-emerald-400' : 'hover:bg-gray-50'}`}>
+                                                            className={`border-b border-slate-100 transition group/row ${isDragOver ? 'bg-emerald-100 ring-1 ring-inset ring-emerald-400' : 'hover:bg-slate-50'}`}>
                                                             <td className="px-3 py-2 cursor-pointer" onClick={() => navigate(`/kamar/${k.id}`)}>
                                                                 <div className="flex items-center gap-1">
                                                                     <span className="text-xs font-medium text-gray-900 group-hover/row:text-emerald-700 transition">{k.nama}</span>
@@ -503,9 +502,9 @@ export default function KamarManagementPage() {
 
                 {/* ── Panel 4: Pembimbing (drag source) ──────────────────────────── */}
                 <div className="w-[190px] flex-shrink-0 flex flex-col">
-                    <div className="px-3 py-2 border-b border-gray-200 bg-violet-600 flex-shrink-0">
-                        <p className="text-xs font-semibold text-white">Pembimbing</p>
-                        <p className="text-[10px] text-violet-300">Drag ke kamar untuk assign</p>
+                    <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pembimbing</p>
+                        <p className="text-[9px] text-slate-400">Drag ke kamar untuk assign</p>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {available.length > 0 && (

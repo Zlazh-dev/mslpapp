@@ -5,7 +5,7 @@ import Navbar from '../Navbar';
 import BottomNav from '../BottomNav';
 
 // Pages that should render edge-to-edge without padding/max-width
-const FULL_BLEED_EXACT = ['/santri', '/khidmah'];
+const FULL_BLEED_EXACT = ['/santri', '/khidmah', '/users', '/kamar'];
 const FULL_BLEED_PREFIX = ['/madrasah/jadwal', '/madrasah/kelas'];
 
 export default function DashboardLayout() {

@@ -170,7 +170,7 @@ export default function SantriListPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
                     </button>
                     {showKebab && (
-                        <div className="absolute right-0 top-full mt-1 z-50 w-44 rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden">
+                        <div className="fixed right-3 mt-1 z-[9999] w-44 rounded-lg border border-slate-200 bg-white shadow-xl overflow-hidden" style={{ top: (kebabRef.current?.getBoundingClientRect().bottom ?? 40) + 2 }}>
                             <button onClick={exportExcel} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-slate-50 transition">Export Excel <span className="ml-auto text-[10px] text-slate-400">({total})</span></button>
                             {canEdit && <button onClick={() => { setShowKebab(false); setImportOpen(true); }} className="w-full flex items-center gap-2 px-3 py-2 text-xs text-slate-600 hover:bg-emerald-50 border-t border-slate-100 transition">Import Excel</button>}
                         </div>
@@ -207,8 +207,11 @@ export default function SantriListPage() {
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             Filter{activeFilterCount > 0 && <span className="min-w-[14px] h-[14px] rounded-full bg-emerald-500 text-white text-[8px] font-bold flex items-center justify-center px-0.5">{activeFilterCount}</span>}
                         </button>
-                        {showFilterPanel && (
-                            <div className="absolute right-0 top-full mt-1 z-50 w-60 rounded-lg border border-slate-200 bg-white shadow-xl overflow-hidden">
+                        {showFilterPanel && (() => {
+                            const rect = filterRef.current?.getBoundingClientRect();
+                            return (
+                            <div className="fixed z-[9999] w-60 rounded-lg border border-slate-200 bg-white shadow-xl overflow-hidden"
+                                style={{ top: (rect?.bottom ?? 0) + 4, right: window.innerWidth - (rect?.right ?? 0) }}>
                                 <div className="px-3 py-2 border-b border-slate-100 flex items-center justify-between">
                                     <span className="text-xs font-semibold text-slate-700">Filter</span>
                                     {activeFilterCount > 0 && <button onClick={resetFilters} className="text-[10px] font-medium text-red-500 hover:text-red-700">Reset</button>}
@@ -227,7 +230,8 @@ export default function SantriListPage() {
                                     </FilterSection>
                                 </div>
                             </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 </div>
                 {activeFilterCount > 0 && (
@@ -241,11 +245,10 @@ export default function SantriListPage() {
 
             {/* ── Column header ────────────────────────────────── */}
             <div className="bg-slate-50 border-b border-slate-200 shrink-0">
-                <div className="grid grid-cols-[40px_80px_1fr_70px_100px_100px_90px_90px_60px] min-w-[800px]">
+                <div className="grid grid-cols-[40px_80px_180px_1fr_100px_90px_90px_60px] min-w-[750px]">
                     <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">NIS</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Nama</div>
-                    <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Jnj</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Kelas</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Kamar</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Masuk</div>
@@ -257,27 +260,25 @@ export default function SantriListPage() {
             {/* ── Body ────────────────────────────────────────── */}
             <div className="flex-1 overflow-auto">
                 {loading ? (
-                    <div className="min-w-[800px]">{Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="grid grid-cols-[40px_80px_1fr_70px_100px_100px_90px_90px_60px] border-b border-slate-100 animate-pulse">
-                            {Array.from({ length: 9 }).map((_, j) => <div key={j} className="px-3 py-3 border-r border-slate-100"><div className="h-3 bg-slate-100 rounded" /></div>)}
+                    <div className="min-w-[750px]">{Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="grid grid-cols-[40px_80px_180px_1fr_100px_90px_90px_60px] border-b border-slate-100 animate-pulse">
+                            {Array.from({ length: 8 }).map((_, j) => <div key={j} className="px-3 py-3 border-r border-slate-100"><div className="h-3 bg-slate-100 rounded" /></div>)}
                         </div>))}</div>
                 ) : data.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-slate-400">
                         <p className="text-xs">{search || activeFilterCount || nisYear ? 'Tidak ada santri yang sesuai filter' : 'Belum ada data santri'}</p>
                     </div>
                 ) : (
-                    <div className="min-w-[800px]">{data.map((s, idx) => {
+                    <div className="min-w-[750px]">{data.map((s, idx) => {
                         const c = completenessOf(s); const pct = Math.round((c / 9) * 100);
+                        const kelasLabel = [s.jenjangPendidikan, s.kelas?.tingkat?.nama, s.kelas?.nama].filter(Boolean).join(' — ');
                         return (
                             <div key={s.id} onClick={() => navigate(`/santri/${s.id}`)}
-                                className="grid grid-cols-[40px_80px_1fr_70px_100px_100px_90px_90px_60px] border-b border-slate-100 hover:bg-slate-50/80 cursor-pointer group transition">
+                                className="grid grid-cols-[40px_80px_180px_1fr_100px_90px_90px_60px] border-b border-slate-100 hover:bg-slate-50/80 cursor-pointer group transition">
                                 <div className="px-2 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 text-center tabular-nums">{startIndex + idx + 1}</div>
                                 <div className="px-3 py-[7px] text-[11px] font-mono font-medium text-slate-600 border-r border-slate-100 truncate">{s.nis}</div>
                                 <div className="px-3 py-[7px] text-[12px] font-medium text-slate-800 border-r border-slate-100 truncate group-hover:text-emerald-700 transition">{s.namaLengkap}</div>
-                                <div className="px-3 py-[7px] text-[11px] border-r border-slate-100">
-                                    {s.jenjangPendidikan ? <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-semibold">{s.jenjangPendidikan}</span> : <span className="text-slate-300">—</span>}
-                                </div>
-                                <div className="px-3 py-[7px] text-[11px] text-slate-600 border-r border-slate-100 truncate">{s.kelas?.nama || <span className="text-slate-300">—</span>}</div>
+                                <div className="px-3 py-[7px] text-[11px] text-slate-600 border-r border-slate-100 truncate">{kelasLabel || <span className="text-slate-300">—</span>}</div>
                                 <div className="px-3 py-[7px] text-[11px] text-slate-600 border-r border-slate-100 truncate">{s.kamar?.nama || <span className="text-slate-300">—</span>}</div>
                                 <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 whitespace-nowrap">
                                     {s.tanggalMasuk ? new Date(s.tanggalMasuk).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : <span className="text-slate-300">—</span>}

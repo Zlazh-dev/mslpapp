@@ -2,9 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { User } from '../types';
-import Badge from '../components/Badge';
-import Modal from '../components/Modal';
-import { Plus, Edit2, Trash2, UserCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 
 const roleLabels: Record<string, string> = {
     ADMIN: 'Administrator',
@@ -13,98 +11,137 @@ const roleLabels: Record<string, string> = {
     PEMBIMBING_KAMAR: 'Pembimbing Kamar',
     WALI_KELAS: 'Wali Kelas',
 };
-const roleColors: Record<string, 'danger' | 'info' | 'warning' | 'success' | 'gray'> = {
-    ADMIN: 'danger', STAF_PENDATAAN: 'info', STAF_MADRASAH: 'warning', PEMBIMBING_KAMAR: 'success', WALI_KELAS: 'gray',
+const roleDot: Record<string, string> = {
+    ADMIN: 'bg-red-500', STAF_PENDATAAN: 'bg-blue-500', STAF_MADRASAH: 'bg-amber-500',
+    PEMBIMBING_KAMAR: 'bg-emerald-500', WALI_KELAS: 'bg-slate-500',
 };
 
 export default function UserListPage() {
     const navigate = useNavigate();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
-    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
-    const fetch = useCallback(async () => {
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
         api.get('/users').then(r => setUsers(r.data.data)).finally(() => setLoading(false));
     }, []);
 
-    useEffect(() => { fetch(); }, [fetch]);
+    useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
     const handleDelete = async () => {
-        if (!deleteId) return;
-        await api.delete(`/users/${deleteId}`);
-        setDeleteId(null); fetch();
+        if (!deleteTarget) return;
+        setDeleting(true);
+        await api.delete(`/users/${deleteTarget.id}`);
+        setDeleting(false); setDeleteTarget(null);
+        fetchUsers();
     };
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Pengguna</h1>
-                    <p className="text-gray-500 text-sm mt-1">Kelola akun pengguna sistem</p>
-                </div>
-                <Link to="/users/baru" className="btn-primary flex items-center gap-2"><Plus size={16} /> Tambah Pengguna</Link>
+        <div className="flex flex-col h-[calc(100dvh-64px)] bg-white text-slate-700 overflow-hidden">
+            {/* ── Toolbar ─────────────────────────────────────────── */}
+            <div className="h-10 border-b border-slate-200 flex items-center px-3 gap-2 shrink-0 bg-white">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest shrink-0">Pengguna</span>
+                <div className="w-px h-5 bg-slate-200 mx-0.5" />
+                <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{loading ? '...' : `${users.length} user`}</span>
+                <div className="flex-1" />
+                <Link to="/users/baru"
+                    className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-[11px] font-semibold flex items-center gap-1 transition shrink-0">
+                    <Plus size={12} /> Tambah
+                </Link>
             </div>
-            <div className="card">
-                <div className="table-wrapper">
-                    <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-600">Nama</th>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-600">Username</th>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-600">Role</th>
-                                <th className="text-left px-4 py-3 font-semibold text-gray-600">Penugasan</th>
-                                <th className="text-right px-4 py-3 font-semibold text-gray-600">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {loading ? <tr><td colSpan={5} className="text-center py-8 text-gray-400">Memuat...</td></tr>
-                                : users.length === 0 ? <tr><td colSpan={5} className="text-center py-12 text-gray-400">Belum ada pengguna</td></tr>
-                                    : users.map(u => (
-                                        <tr key={u.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-primary-700 text-sm font-bold">{u.name.charAt(0)}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="font-medium text-gray-900 block">{u.name}</span>
-                                                        {(u as any).santri && <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded shadow-sm border border-emerald-100 inline-block mt-0.5">Terkait Santri</span>}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-gray-600 font-mono text-xs">
-                                                {u.username || <span className="text-gray-400 italic">NIS: {(u as any).santri?.nis}</span>}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <Badge variant={roleColors[u.roles?.[0] || ''] || 'gray'}>{roleLabels[u.roles?.[0] || ''] || u.roles?.[0]}</Badge>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="text-xs text-gray-500 mt-0.5 space-y-0.5">
-                                                    {u.kelasWali && u.kelasWali.length > 0 && <span>Kelas: {u.kelasWali.map(k => k.nama).join(', ')}</span>}
-                                                    {u.kamarBimbing && <span> Kamar: {u.kamarBimbing.nama}</span>}
-                                                    {(!u.kelasWali || u.kelasWali.length === 0) && !u.kamarBimbing && '-'}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => navigate(`/users/${u.id}/edit`)} className="p-1.5 hover:bg-blue-50 rounded-lg text-blue-500"><Edit2 size={14} /></button>
-                                                    <button onClick={() => setDeleteId(u.id)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-500"><Trash2 size={14} /></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                        </tbody>
-                    </table>
+
+            {/* ── Column header ────────────────────────────────── */}
+            <div className="bg-slate-50 border-b border-slate-200 shrink-0">
+                <div className="grid grid-cols-[40px_1fr_120px_140px_1fr_60px] min-w-[650px]">
+                    <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
+                    <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Nama</div>
+                    <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Username</div>
+                    <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Role</div>
+                    <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Penugasan</div>
+                    <div className="px-2 py-[7px]"></div>
                 </div>
             </div>
-            <Modal isOpen={!!deleteId} onClose={() => setDeleteId(null)} title="Hapus Pengguna" size="sm">
-                <p className="text-gray-600 text-sm">Apakah Anda yakin ingin menghapus pengguna ini?</p>
-                <div className="flex gap-3 mt-6">
-                    <button onClick={() => setDeleteId(null)} className="btn-secondary flex-1">Batal</button>
-                    <button onClick={handleDelete} className="btn-danger flex-1">Hapus</button>
+
+            {/* ── Body ────────────────────────────────────────── */}
+            <div className="flex-1 overflow-auto">
+                {loading ? (
+                    <div className="min-w-[650px]">{Array.from({ length: 8 }).map((_, i) => (
+                        <div key={i} className="grid grid-cols-[40px_1fr_120px_140px_1fr_60px] border-b border-slate-100 animate-pulse">
+                            {Array.from({ length: 6 }).map((_, j) => <div key={j} className="px-3 py-3 border-r border-slate-100"><div className="h-3 bg-slate-100 rounded" /></div>)}
+                        </div>))}</div>
+                ) : users.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-slate-400">
+                        <p className="text-xs">Belum ada pengguna</p>
+                    </div>
+                ) : (
+                    <div className="min-w-[650px]">{users.map((u, idx) => {
+                        const role = u.roles?.[0] || '';
+                        const penugasan: string[] = [];
+                        if (u.kelasWali && u.kelasWali.length > 0) penugasan.push(`Kelas: ${u.kelasWali.map(k => k.nama).join(', ')}`);
+                        if (u.kamarBimbing) penugasan.push(`Kamar: ${u.kamarBimbing.nama}`);
+                        return (
+                            <div key={u.id} className="grid grid-cols-[40px_1fr_120px_140px_1fr_60px] border-b border-slate-100 hover:bg-slate-50/80 transition group">
+                                <div className="px-2 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 text-center tabular-nums">{idx + 1}</div>
+                                <div className="px-3 py-[7px] border-r border-slate-100 flex items-center gap-2 truncate">
+                                    <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                                        <span className="text-[9px] font-bold text-emerald-600">{u.name.charAt(0)}</span>
+                                    </div>
+                                    <span className="text-[12px] font-medium text-slate-800 truncate">{u.name}</span>
+                                    {(u as any).santri && <span className="text-[8px] bg-emerald-50 text-emerald-600 font-bold px-1 py-0 rounded border border-emerald-100 shrink-0">Santri</span>}
+                                </div>
+                                <div className="px-3 py-[7px] text-[11px] font-mono text-slate-500 border-r border-slate-100 truncate">
+                                    {u.username || <span className="text-slate-300 italic">NIS: {(u as any).santri?.nis}</span>}
+                                </div>
+                                <div className="px-3 py-[7px] text-[11px] border-r border-slate-100">
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${roleDot[role] || 'bg-slate-400'}`} />
+                                        <span className="text-[10px] font-medium text-slate-600">{roleLabels[role] || role}</span>
+                                    </span>
+                                </div>
+                                <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 truncate">
+                                    {penugasan.length > 0 ? penugasan.join(' · ') : <span className="text-slate-300">—</span>}
+                                </div>
+                                <div className="px-2 py-[7px] flex items-center justify-center gap-0.5" onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => navigate(`/users/${u.id}/edit`)}
+                                        className="w-5 h-5 text-slate-300 hover:text-blue-500 rounded flex items-center justify-center transition opacity-0 group-hover:opacity-100">
+                                        <Edit2 size={11} />
+                                    </button>
+                                    <button onClick={() => setDeleteTarget(u)}
+                                        className="w-5 h-5 text-slate-300 hover:text-red-500 rounded flex items-center justify-center transition opacity-0 group-hover:opacity-100">
+                                        <Trash2 size={11} />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}</div>
+                )}
+            </div>
+
+            {/* ── Status bar ──────────────────────────────────── */}
+            <div className="h-7 border-t border-slate-200 bg-slate-50/80 flex items-center px-3 shrink-0">
+                <span className="text-[10px] text-slate-400">{users.length} pengguna</span>
+            </div>
+
+            {/* ── Delete Modal ─────────────────────────────────── */}
+            {deleteTarget && (
+                <div className="fixed inset-0 z-[9999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
+                    <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+                        <div className="text-center">
+                            <h3 className="text-base font-bold text-slate-900">Hapus Pengguna?</h3>
+                            <p className="text-sm text-slate-500 mt-1">Data <strong>"{deleteTarget.name}"</strong> akan dihapus permanen.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Batal</button>
+                            <button onClick={handleDelete} disabled={deleting}
+                                className="flex-1 px-4 py-2 rounded-lg bg-red-500 text-sm font-semibold text-white hover:bg-red-600 transition disabled:opacity-50">
+                                {deleting ? 'Menghapus...' : 'Ya, Hapus'}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </Modal>
+            )}
         </div>
     );
 }
