@@ -527,34 +527,56 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                                     <Plus size={12} />
                                 </button>
                             </div>
-                            <div className="space-y-1">
-                                {cols.map(col => (
-                                    <div key={col.id} className="bg-white border border-slate-200 rounded p-1.5 space-y-1">
-                                        <div className="flex items-center gap-1">
-                                            <input className={`${inputCls} flex-1`} value={col.label} onChange={e => updateCol(col.id, { label: e.target.value })} placeholder="Header" />
-                                            <input type="number" className={`${inputCls} w-10`} value={col.width} min={5} max={90} onChange={e => updateCol(col.id, { width: Number(e.target.value) })} title="Width %" />
-                                            <button onClick={() => removeCol(col.id)} className="p-0.5 text-slate-400 hover:text-red-500 transition" title="Hapus kolom">
+                            <div className="space-y-1.5">
+                                {cols.map((col, idx) => (
+                                    <div key={col.id} className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                                        {/* Column title bar */}
+                                        <div className={`flex items-center gap-1.5 px-2 py-1 ${col.type === 'db' ? 'bg-emerald-50 border-b border-emerald-100' : 'bg-slate-50 border-b border-slate-100'}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${col.type === 'db' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                            <span className="text-[10px] font-bold text-slate-700 flex-1 truncate">{col.label || 'Kolom'}</span>
+                                            <span className="text-[8px] text-slate-400 uppercase">{col.type === 'db' ? 'DB' : 'Statis'}</span>
+                                            <button onClick={() => removeCol(col.id)} className="p-0.5 text-slate-300 hover:text-red-500 transition" title="Hapus kolom">
                                                 <X size={10} />
                                             </button>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                            <select className={`${inputCls} flex-1`} value={col.type} onChange={e => {
-                                                const newType = e.target.value as 'db' | 'static';
-                                                updateCol(col.id, { type: newType, field: newType === 'db' ? 'namaLengkap' : undefined });
-                                            }}>
-                                                <option value="static">Statis</option>
-                                                <option value="db">DB Variable</option>
-                                            </select>
-                                            {col.type === 'db' && (
-                                                <select className={`${inputCls} flex-1`} value={col.field || ''} onChange={e => updateCol(col.id, { field: e.target.value })}>
-                                                    {DB_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                        {/* Column settings */}
+                                        <div className="px-2 py-1.5 space-y-1">
+                                            <div>
+                                                <label className="text-[9px] text-slate-400 uppercase tracking-wide">Nama Header</label>
+                                                <input className={inputCls} value={col.label} onChange={e => updateCol(col.id, { label: e.target.value })} placeholder="Nama kolom" />
+                                            </div>
+                                            <div>
+                                                <label className="text-[9px] text-slate-400 uppercase tracking-wide">Tipe Isi</label>
+                                                <select className={inputCls} value={col.type} onChange={e => {
+                                                    const newType = e.target.value as 'db' | 'static';
+                                                    updateCol(col.id, { type: newType, field: newType === 'db' ? 'namaLengkap' : undefined });
+                                                }}>
+                                                    <option value="static">✏️ Statis (isi manual)</option>
+                                                    <option value="db">🗄️ Data Santri (otomatis)</option>
                                                 </select>
+                                            </div>
+                                            {col.type === 'db' && (
+                                                <div>
+                                                    <label className="text-[9px] text-slate-400 uppercase tracking-wide">Field Database</label>
+                                                    <select className={inputCls} value={col.field || ''} onChange={e => updateCol(col.id, { field: e.target.value })}>
+                                                        {DB_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                                    </select>
+                                                </div>
                                             )}
-                                            <select className={`${inputCls} w-12`} value={col.align || 'left'} onChange={e => updateCol(col.id, { align: e.target.value as any })} title="Align">
-                                                <option value="left">L</option>
-                                                <option value="center">C</option>
-                                                <option value="right">R</option>
-                                            </select>
+                                            <div className="flex gap-1.5">
+                                                <div className="flex-1">
+                                                    <label className="text-[9px] text-slate-400 uppercase tracking-wide">Lebar %</label>
+                                                    <input type="number" className={inputCls} value={col.width} min={5} max={90} onChange={e => updateCol(col.id, { width: Number(e.target.value) })} />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="text-[9px] text-slate-400 uppercase tracking-wide">Rata</label>
+                                                    <select className={inputCls} value={col.align || 'left'} onChange={e => updateCol(col.id, { align: e.target.value as any })}>
+                                                        <option value="left">← Kiri</option>
+                                                        <option value="center">↔ Tengah</option>
+                                                        <option value="right">→ Kanan</option>
+                                                    </select>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
