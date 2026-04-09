@@ -183,6 +183,17 @@ export default function KhidmahPage() {
             d.modelKhidmah.nama.toLowerCase().includes(q);
     });
 
+    // Group by santri for merged-row display
+    const groupedData = (() => {
+        const map = new Map<string, { santri: DataKhidmah['santri']; entries: DataKhidmah[] }>();
+        filteredData.forEach(d => {
+            const existing = map.get(d.santri.id);
+            if (existing) { existing.entries.push(d); }
+            else { map.set(d.santri.id, { santri: d.santri, entries: [d] }); }
+        });
+        return Array.from(map.values());
+    })();
+
     // ═══════════════════════════════════════════════════════════════════════════
     // RENDER
     // ═══════════════════════════════════════════════════════════════════════════
@@ -206,7 +217,7 @@ export default function KhidmahPage() {
 
                 <div className="flex-1" />
                 <span className="text-[10px] text-slate-400 tabular-nums shrink-0">
-                    {activeTab === 'data' ? `${filteredData.length} data` : `${models.length} model`}
+                    {activeTab === 'data' ? `${groupedData.length} santri · ${filteredData.length} data` : `${models.length} model`}
                 </span>
             </div>
 
@@ -240,19 +251,18 @@ export default function KhidmahPage() {
 
                     {/* Column header */}
                     <div className="bg-slate-50 border-b border-slate-200 shrink-0">
-                        <div className="grid grid-cols-[40px_1fr_90px_120px_100px_48px] min-w-[600px]">
+                        <div className="grid grid-cols-[40px_1fr_90px_1fr_48px] min-w-[600px]">
                             <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
                             <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Santri</div>
                             <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">NIS</div>
-                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Model</div>
-                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Keterangan</div>
+                            <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Model Khidmah</div>
                             <div className="px-2 py-[7px]"></div>
                         </div>
                     </div>
 
                     {/* Body */}
                     <div className="flex-1 overflow-auto">
-                        {filteredData.length === 0 ? (
+                        {groupedData.length === 0 ? (
                             <div className="flex items-center justify-center h-full text-slate-400">
                                 <div className="text-center space-y-1">
                                     <ClipboardList size={24} className="mx-auto opacity-40" />
@@ -262,31 +272,36 @@ export default function KhidmahPage() {
                             </div>
                         ) : (
                             <div className="min-w-[600px]">
-                                {filteredData.map((d, idx) => (
-                                    <div key={d.id} className="grid grid-cols-[40px_1fr_90px_120px_100px_48px] border-b border-slate-100 hover:bg-slate-50/80 transition group">
+                                {groupedData.map((g, idx) => (
+                                    <div key={g.santri.id} className="grid grid-cols-[40px_1fr_90px_1fr_48px] border-b border-slate-100 hover:bg-slate-50/80 transition group">
                                         <div className="px-2 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 text-center tabular-nums">{idx + 1}</div>
                                         <div className="px-3 py-[7px] text-[12px] font-medium text-slate-800 border-r border-slate-100 truncate flex items-center gap-2">
                                             <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 overflow-hidden">
-                                                {d.santri.foto
-                                                    ? <img src={d.santri.foto} alt="" className="w-full h-full object-cover" />
-                                                    : <span className="text-[9px] font-bold text-emerald-600">{d.santri.namaLengkap.charAt(0)}</span>
+                                                {g.santri.foto
+                                                    ? <img src={g.santri.foto} alt="" className="w-full h-full object-cover" />
+                                                    : <span className="text-[9px] font-bold text-emerald-600">{g.santri.namaLengkap.charAt(0)}</span>
                                                 }
                                             </div>
-                                            <span className="truncate">{d.santri.namaLengkap}</span>
+                                            <span className="truncate">{g.santri.namaLengkap}</span>
                                         </div>
-                                        <div className="px-3 py-[7px] text-[11px] font-mono text-slate-500 border-r border-slate-100 truncate">{d.santri.nis}</div>
-                                        <div className="px-3 py-[7px] text-[11px] border-r border-slate-100">
-                                            <span className="px-1.5 py-0.5 bg-teal-50 text-teal-700 rounded text-[10px] font-semibold">{d.modelKhidmah.nama}</span>
+                                        <div className="px-3 py-[7px] text-[11px] font-mono text-slate-500 border-r border-slate-100 truncate">{g.santri.nis}</div>
+                                        <div className="px-3 py-[6px] border-r border-slate-100 flex flex-wrap items-center gap-1">
+                                            {g.entries.map(entry => (
+                                                <span key={entry.id} className="inline-flex items-center gap-0.5 pl-1.5 pr-0.5 py-0.5 bg-teal-50 text-teal-700 rounded text-[10px] font-semibold group/badge">
+                                                    <button onClick={() => openEditPanel(entry)} className="hover:text-teal-900 transition" title={entry.keterangan || undefined}>
+                                                        {entry.modelKhidmah.nama}
+                                                    </button>
+                                                    <button onClick={() => setDeleteTarget({ type: 'data', id: entry.id, label: `${g.santri.namaLengkap} - ${entry.modelKhidmah.nama}` })}
+                                                        className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-teal-400 hover:bg-red-100 hover:text-red-500 transition opacity-0 group-hover/badge:opacity-100">
+                                                        <X size={8} />
+                                                    </button>
+                                                </span>
+                                            ))}
                                         </div>
-                                        <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 truncate">{d.keterangan || <span className="text-slate-300 italic">—</span>}</div>
                                         <div className="px-2 py-[7px] flex items-center justify-center gap-0.5">
-                                            <button onClick={() => openEditPanel(d)}
-                                                className="p-1 text-slate-300 hover:text-blue-500 rounded transition opacity-0 group-hover:opacity-100">
-                                                <Edit2 size={11} />
-                                            </button>
-                                            <button onClick={() => setDeleteTarget({ type: 'data', id: d.id, label: `${d.santri.namaLengkap} - ${d.modelKhidmah.nama}` })}
-                                                className="p-1 text-slate-300 hover:text-red-500 rounded transition opacity-0 group-hover:opacity-100">
-                                                <Trash2 size={12} />
+                                            <button onClick={() => { openAddPanel(); setAssignNis(g.santri.nis); }}
+                                                className="p-1 text-slate-300 hover:text-emerald-500 rounded transition opacity-0 group-hover:opacity-100" title="Tambah model">
+                                                <Plus size={11} />
                                             </button>
                                         </div>
                                     </div>
@@ -297,7 +312,7 @@ export default function KhidmahPage() {
 
                     {/* Status bar */}
                     <div className="h-7 border-t border-slate-200 bg-slate-50/80 flex items-center px-3 shrink-0">
-                        <span className="text-[10px] text-slate-400">Total: {filteredData.length} data khidmah</span>
+                        <span className="text-[10px] text-slate-400">Total: {groupedData.length} santri · {filteredData.length} data khidmah</span>
                     </div>
                 </>
             )}
