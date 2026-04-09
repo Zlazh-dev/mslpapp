@@ -96,29 +96,29 @@ function SortableLayerItem({ el, selectedIds, isFirstInGroup, isLastInGroup, onS
     return (
         <div ref={setNodeRef} style={style} className={`flex flex-col relative ${isDragging ? 'z-50' : 'z-0'} ${isGrouped ? 'px-0.5' : ''}`}>
             {isFirstInGroup && (
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-wider px-2 py-1 bg-slate-100 border border-b-0 border-slate-200 rounded-t-md mb-0.5 mt-1">
-                    <Layers size={10} className="text-slate-400" /> Group
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 bg-slate-700/60 border border-b-0 border-slate-600 rounded-t-md mb-0.5 mt-1">
+                    <Layers size={10} className="text-slate-500" /> Group
                 </div>
             )}
             <div 
                 onMouseEnter={() => onHoverLayer(el.id)}
                 onMouseLeave={() => onHoverLayer(null)}
-                className={`w-full text-left px-1.5 py-1.5 flex items-center gap-1.5 text-[11px] transition border bg-white ${isSelected ? 'border-primary-200 shadow-sm font-semibold ring-1 ring-primary-500/20' : 'border-transparent hover:border-gray-200'} ${isDragging ? 'shadow-md border-primary-400 opacity-90' : ''} ${isGrouped ? 'ml-3 border-l w-[calc(100%-0.75rem)] rounded-none' : 'rounded-md'} ${isFirstInGroup ? '!rounded-tr-md' : ''} ${isLastInGroup ? '!rounded-b-md' : ''}`}
+                className={`w-full text-left px-1.5 py-1.5 flex items-center gap-1.5 text-[11px] transition border ${isSelected ? 'border-blue-500/40 bg-blue-900/30 font-semibold' : 'border-transparent hover:border-slate-600 hover:bg-slate-700/50'} ${isDragging ? 'shadow-md border-blue-500 opacity-90' : ''} ${isGrouped ? 'ml-3 border-l w-[calc(100%-0.75rem)] rounded-none' : 'rounded-md'} ${isFirstInGroup ? '!rounded-tr-md' : ''} ${isLastInGroup ? '!rounded-b-md' : ''}`}
             >
-                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-800 rounded bg-gray-50/50 hover:bg-slate-100 shrink-0 transition-colors">
-                    <GripVertical size={12} className={isDragging ? "text-primary-500" : ""} />
+                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-300 rounded bg-slate-700/30 hover:bg-slate-600 shrink-0 transition-colors">
+                    <GripVertical size={12} className={isDragging ? "text-blue-400" : ""} />
                 </div>
                 <button onClick={() => onSelect(el.id)} className="flex-1 flex items-center gap-2 truncate text-left focus:outline-none overflow-hidden py-0.5">
                     <span className="shrink-0">{icon}</span>
-                    <span className={`truncate flex-1 ${isSelected ? 'text-primary-800 font-medium' : 'text-gray-600'}`} title={title}>{title}</span>
-                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-primary-500 shrink-0 mr-1" />}
+                    <span className={`truncate flex-1 ${isSelected ? 'text-blue-300 font-medium' : 'text-slate-400'}`} title={title}>{title}</span>
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mr-1" />}
                 </button>
             </div>
             {isGrouped && !isLastInGroup && (
-                <div className="absolute left-1 top-0 bottom-0 w-3 border-l border-slate-200 -z-10" />
+                <div className="absolute left-1 top-0 bottom-0 w-3 border-l border-slate-600 -z-10" />
             )}
             {isLastInGroup && (
-                <div className="h-1.5 w-[calc(100%-0.75rem)] ml-3 bg-slate-50 border-x border-b border-slate-200 rounded-b-md mb-1 shadow-sm" />
+                <div className="h-1.5 w-[calc(100%-0.75rem)] ml-3 bg-slate-700/30 border-x border-b border-slate-600 rounded-b-md mb-1" />
             )}
         </div>
     );
@@ -134,10 +134,10 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
     const itemIds = reversedElements.map(e => e.id);
 
     return (
-        <div className="w-64 bg-gray-50/50 border-r flex flex-col z-20 shrink-0 shadow-[2px_0_10px_-5px_rgba(0,0,0,0.05)] relative">
-            <div className="px-3 py-2 border-b border-gray-100 bg-white shadow-sm relative z-10">
-                <h2 className="text-[11px] font-bold text-gray-800 uppercase tracking-widest flex items-center gap-1.5"><Layers size={12} className="text-primary-500"/> Struktur Lapisan</h2>
-                <p className="text-[9px] text-gray-500 mt-0.5 leading-snug flex items-center gap-1">Seret <GripVertical size={10} className="text-gray-400" /> untuk pindah Z-Index.</p>
+        <div className="w-56 bg-slate-800 border-r border-slate-700 flex flex-col z-20 shrink-0">
+            <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/90 relative z-10">
+                <h2 className="text-[11px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5"><Layers size={12} className="text-blue-400"/> Layers</h2>
+                <p className="text-[9px] text-slate-500 mt-0.5 leading-snug flex items-center gap-1">Seret <GripVertical size={10} className="text-slate-500" /> untuk pindah Z-Index.</p>
             </div>
             <DndContext 
                 sensors={sensors} 
@@ -145,11 +145,11 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
                 onDragEnd={onDragEnd}
                 modifiers={[restrictToVerticalAxis]}
             >
-                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
                     {elements.length === 0 && (
-                        <div className="text-center py-6 px-3 border border-dashed border-gray-200 rounded-lg m-2">
-                            <Layers size={20} className="text-gray-300 mx-auto mb-1.5" />
-                            <p className="text-[10px] text-gray-400 leading-snug">Kanvas kosong. Tambah alat di samping.</p>
+                        <div className="text-center py-6 px-3 border border-dashed border-slate-600 rounded-lg m-2">
+                            <Layers size={20} className="text-slate-600 mx-auto mb-1.5" />
+                            <p className="text-[10px] text-slate-500 leading-snug">Kanvas kosong. Tambah alat di toolbar atas.</p>
                         </div>
                     )}
                     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>

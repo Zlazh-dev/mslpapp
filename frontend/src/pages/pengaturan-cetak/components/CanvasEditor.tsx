@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CanvasElement } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
-import { User, Undo, Redo } from 'lucide-react';
-import { EditorHeader } from './HeaderBreadcrumb';
-import { ToolsSidebar, LayerSidebar, PropertiesSidebar } from './EditorSidebars';
+import { User, Undo, Redo, Type, Database, Square, Circle, Image as ImageIcon, QrCode, Table2 } from 'lucide-react';
+
+import { LayerSidebar, PropertiesSidebar } from './EditorSidebars';
 import api from '../../../lib/api';
 import { DragEndEvent } from '@dnd-kit/core';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -315,33 +315,84 @@ export function CanvasEditor({
 
     return (
         <div className="flex flex-col h-full bg-gray-100 overflow-hidden font-sans">
-            <EditorHeader 
-                templateName={templateName} onBack={onBack} onSave={onSave}
-                snapToGrid={snapToGrid} setSnapToGrid={setSnapToGrid}
-                showGrid={showGrid} setShowGrid={setShowGrid}
-                scale={scale} setScale={setScale} saving={saving} onShowPreview={onShowPreview}
-            />
+            {/* ── Figma-style top toolbar ── */}
+            <div className="h-10 bg-slate-800 text-white flex items-center px-2 gap-1 shrink-0 z-20">
+                {/* Back button */}
+                <button onClick={onBack} className="p-1.5 hover:bg-slate-700 rounded transition text-slate-300 hover:text-white" title="Kembali">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <div className="w-px h-5 bg-slate-600 mx-1" />
 
-            <div className="bg-white border-b border-gray-100 px-4 py-1.5 flex gap-2 items-center shrink-0 z-10 shadow-sm">
-                <button onClick={undo} disabled={!canUndo} className="p-1 hover:bg-gray-100 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-transparent" title="Undo (Ctrl+Z)"><Undo size={16}/></button>
-                <button onClick={redo} disabled={!canRedo} className="p-1 hover:bg-gray-100 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-transparent" title="Redo (Ctrl+Y)"><Redo size={16}/></button>
-                <div className="w-px h-4 bg-gray-200 mx-2"/>
-                <span className="text-xs text-gray-400">Tips: Gunakan <b className="text-gray-600">Shift + Click</b> untuk multi-select. Gunakan <b className="text-gray-600">Ctrl + G</b> untuk Group elemen.</span>
+                {/* Template name */}
+                <span className="text-xs font-semibold text-slate-300 px-1.5 truncate max-w-[140px]">{templateName}</span>
+                <div className="w-px h-5 bg-slate-600 mx-1" />
+
+                {/* Tool buttons - inline like Figma */}
+                <button onClick={() => addElement('text')} title="Teks Statis" className="p-1.5 hover:bg-slate-700 rounded transition text-blue-400 hover:text-blue-300">
+                    <Type size={15} />
+                </button>
+                <button onClick={() => addElement('field')} title="Variabel Database" className="p-1.5 hover:bg-slate-700 rounded transition text-emerald-400 hover:text-emerald-300">
+                    <Database size={15} />
+                </button>
+                <button onClick={() => addElement('field', 'foto')} title="Foto Profil Santri" className="p-1.5 hover:bg-slate-700 rounded transition text-rose-400 hover:text-rose-300">
+                    <User size={15} />
+                </button>
+                <div className="w-px h-5 bg-slate-600 mx-0.5" />
+                <button onClick={() => addElement('rect')} title="Bentuk Kotak" className="p-1.5 hover:bg-slate-700 rounded transition text-amber-400 hover:text-amber-300">
+                    <Square size={15} />
+                </button>
+                <button onClick={() => addElement('circle')} title="Bentuk Lingkaran" className="p-1.5 hover:bg-slate-700 rounded transition text-orange-400 hover:text-orange-300">
+                    <Circle size={15} />
+                </button>
+                <div className="w-px h-5 bg-slate-600 mx-0.5" />
+                <button onClick={() => imageInputRef.current?.click()} title="Unggah Gambar" className="p-1.5 hover:bg-slate-700 rounded transition text-purple-400 hover:text-purple-300 relative">
+                    <ImageIcon size={15} />
+                    {uploadingImage && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 border-2 border-purple-400 border-t-white rounded-full animate-spin bg-slate-800" />}
+                    <input type="file" accept="image/*" className="hidden" ref={imageInputRef} onChange={handleImageUpload} />
+                </button>
+                <button onClick={() => addElement('qrcode')} title="QR Code" className="p-1.5 hover:bg-slate-700 rounded transition text-teal-400 hover:text-teal-300">
+                    <QrCode size={15} />
+                </button>
+                <button onClick={() => addElement('table')} title="Tabel Dinamis" className="p-1.5 hover:bg-slate-700 rounded transition text-indigo-400 hover:text-indigo-300">
+                    <Table2 size={15} />
+                </button>
+
+                <div className="w-px h-5 bg-slate-600 mx-1" />
+                <button onClick={undo} disabled={!canUndo} className="p-1.5 hover:bg-slate-700 rounded transition text-slate-400 hover:text-white disabled:opacity-30" title="Undo (Ctrl+Z)"><Undo size={14}/></button>
+                <button onClick={redo} disabled={!canRedo} className="p-1.5 hover:bg-slate-700 rounded transition text-slate-400 hover:text-white disabled:opacity-30" title="Redo (Ctrl+Y)"><Redo size={14}/></button>
+
+                {/* Spacer */}
+                <div className="flex-1" />
+
+                {/* Right side controls */}
+                <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer select-none">
+                    <input type="checkbox" checked={snapToGrid} onChange={e => setSnapToGrid(e.target.checked)} className="w-3 h-3 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-0" />
+                    Snap
+                </label>
+                <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer select-none ml-2">
+                    <input type="checkbox" checked={showGrid} onChange={e => setShowGrid(e.target.checked)} className="w-3 h-3 rounded border-slate-500 bg-slate-700 text-blue-500 focus:ring-0" />
+                    Grid
+                </label>
+                <div className="w-px h-5 bg-slate-600 mx-2" />
+                <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-500">Zoom</span>
+                    <input type="range" min={0.3} max={1.5} step={0.05} value={scale} onChange={e => setScale(Number(e.target.value))}
+                        className="w-16 h-1 accent-blue-500 cursor-pointer" />
+                    <span className="text-[10px] text-slate-300 w-8 text-right tabular-nums">{Math.round(scale * 100)}%</span>
+                </div>
+                <div className="w-px h-5 bg-slate-600 mx-2" />
+                <button onClick={onShowPreview} className="px-2.5 py-1 text-[10px] font-semibold text-slate-300 hover:text-white hover:bg-slate-700 rounded transition">Preview</button>
+                <button onClick={onSave} disabled={saving} className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-[10px] font-bold text-white rounded transition disabled:opacity-50 ml-1">
+                    {saving ? 'Saving...' : 'Simpan'}
+                </button>
             </div>
 
+            {/* ── Main 3-panel layout ── */}
             <div className="flex flex-1 overflow-hidden">
-                <ToolsSidebar 
-                    onAddElement={addElement} 
-                    onAddFoto={() => addElement('field', 'foto')}
-                    onAddQr={() => addElement('qrcode')}
-                    onAddTable={() => addElement('table')}
-                    onImageUpload={handleImageUpload} 
-                    uploadingImage={uploadingImage} 
-                    imageInputRef={imageInputRef} 
-                />
-                
+                {/* Left: Layer panel */}
                 <LayerSidebar elements={elements} selectedIds={selectedIds} onSelect={(id) => setSelectedIds([id])} onDragEnd={handleLayerDragEnd} onHoverLayer={setHoveredId} />
 
+                {/* Center: Canvas */}
                 <div className="flex-1 overflow-auto bg-slate-200 flex items-start justify-center p-8 relative" onPointerDown={() => setSelectedIds([])}>
                     <div 
                         className="bg-white shadow-2xl relative border border-gray-200 print:shadow-none"
@@ -424,7 +475,6 @@ export function CanvasEditor({
                             </div>
                         ))}
 
-                        {/* Bounding Box multi-select terpadu */}
                         {selectedIds.length > 1 && boundingBox && (
                             <div 
                                 style={{
@@ -442,6 +492,7 @@ export function CanvasEditor({
                     </div>
                 </div>
 
+                {/* Right: Properties */}
                 <PropertiesSidebar 
                     selectedEl={selectedEl} 
                     multipleSelected={selectedIds.length > 1}
