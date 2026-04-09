@@ -47,6 +47,8 @@ export function CanvasEditor({
     
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const [editingCell, setEditingCell] = useState<{ elId: string; rowId: string; colId: string } | null>(null);
+    const [editingHeader, setEditingHeader] = useState<{ elId: string; colId: string } | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [dragStart, setDragStart] = useState<{
@@ -488,44 +490,89 @@ export function CanvasEditor({
                                     </div>
                                 )}
                                 {el.type === 'table' && el.tableConfig?.dataType === 'custom' && el.tableConfig.columns && (
-                                    <div style={{ width: '100%', height: '100%', overflow: 'hidden', pointerEvents: 'none' }}>
+                                    <div style={{ width: '100%', height: '100%', overflow: 'hidden' }} onPointerDown={e => e.stopPropagation()}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: `${el.tableConfig.tableFontSize || 11}px`, fontFamily: 'Arial, sans-serif', tableLayout: 'fixed' }}>
                                             <thead>
                                                 <tr>
-                                                    {el.tableConfig.columns.map(col => (
-                                                        <th key={col.id} style={{
-                                                            width: `${col.width}%`,
-                                                            backgroundColor: el.tableConfig!.headerColor || '#cbd5e1',
-                                                            padding: `${el.tableConfig!.cellPadding || 6}px`,
-                                                            border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
-                                                            textAlign: col.align || 'left',
-                                                            fontWeight: 'bold',
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                        }}>
-                                                            {col.label}
-                                                        </th>
-                                                    ))}
+                                                    {el.tableConfig.columns.map(col => {
+                                                        const isEditingThis = editingHeader?.elId === el.id && editingHeader?.colId === col.id;
+                                                        return (
+                                                            <th key={col.id} style={{
+                                                                width: `${col.width}%`,
+                                                                backgroundColor: el.tableConfig!.headerColor || '#cbd5e1',
+                                                                padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                                border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
+                                                                textAlign: col.align || 'left',
+                                                                fontWeight: 'bold',
+                                                                cursor: 'text',
+                                                                position: 'relative',
+                                                            }}
+                                                            onDoubleClick={(e) => { e.stopPropagation(); setEditingHeader({ elId: el.id, colId: col.id }); }}
+                                                            >
+                                                                {isEditingThis ? (
+                                                                    <input
+                                                                        autoFocus
+                                                                        className="w-full bg-white/80 border border-blue-400 rounded px-0.5 text-inherit font-bold outline-none"
+                                                                        style={{ fontSize: 'inherit', textAlign: col.align || 'left' }}
+                                                                        defaultValue={col.label}
+                                                                        onBlur={(e) => {
+                                                                            const newLabel = e.target.value.trim() || col.label;
+                                                                            setElements(prev => prev.map(el2 => el2.id !== el.id ? el2 : {
+                                                                                ...el2, tableConfig: { ...el2.tableConfig!, columns: el2.tableConfig!.columns!.map(c => c.id === col.id ? { ...c, label: newLabel } : c) }
+                                                                            }));
+                                                                            setEditingHeader(null);
+                                                                        }}
+                                                                        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingHeader(null); }}
+                                                                        onClick={e => e.stopPropagation()}
+                                                                    />
+                                                                ) : col.label}
+                                                            </th>
+                                                        );
+                                                    })}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {(el.tableConfig.rows || []).map(row => (
                                                     <tr key={row.id}>
-                                                        {el.tableConfig!.columns!.map(col => (
-                                                            <td key={col.id} style={{
-                                                                padding: `${el.tableConfig!.cellPadding || 6}px`,
-                                                                border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
-                                                                textAlign: col.align || 'left',
-                                                                color: col.type === 'db' ? '#9ca3af' : '#1e293b',
-                                                                fontStyle: col.type === 'db' ? 'italic' : 'normal',
-                                                                whiteSpace: 'nowrap',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                            }}>
-                                                                {col.type === 'db' ? `[${col.field}]` : (row.cells[col.id] || '')}
-                                                            </td>
-                                                        ))}
+                                                        {el.tableConfig!.columns!.map(col => {
+                                                            const isEditingThis = editingCell?.elId === el.id && editingCell?.rowId === row.id && editingCell?.colId === col.id;
+                                                            const isStatic = col.type === 'static';
+                                                            return (
+                                                                <td key={col.id} style={{
+                                                                    padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                                    border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
+                                                                    textAlign: col.align || 'left',
+                                                                    color: col.type === 'db' ? '#9ca3af' : '#1e293b',
+                                                                    fontStyle: col.type === 'db' ? 'italic' : 'normal',
+                                                                    cursor: isStatic ? 'text' : 'default',
+                                                                    position: 'relative',
+                                                                }}
+                                                                onDoubleClick={(e) => {
+                                                                    if (!isStatic) return;
+                                                                    e.stopPropagation();
+                                                                    setEditingCell({ elId: el.id, rowId: row.id, colId: col.id });
+                                                                }}
+                                                                >
+                                                                    {isEditingThis ? (
+                                                                        <input
+                                                                            autoFocus
+                                                                            className="w-full bg-blue-50 border border-blue-400 rounded px-0.5 outline-none"
+                                                                            style={{ fontSize: 'inherit', textAlign: col.align || 'left', color: '#1e293b' }}
+                                                                            defaultValue={row.cells[col.id] || ''}
+                                                                            onBlur={(e) => {
+                                                                                const val = e.target.value;
+                                                                                setElements(prev => prev.map(el2 => el2.id !== el.id ? el2 : {
+                                                                                    ...el2, tableConfig: { ...el2.tableConfig!, rows: el2.tableConfig!.rows!.map(r => r.id !== row.id ? r : { ...r, cells: { ...r.cells, [col.id]: val } }) }
+                                                                                }));
+                                                                                setEditingCell(null);
+                                                                            }}
+                                                                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingCell(null); }}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                        />
+                                                                    ) : (col.type === 'db' ? `[${col.field}]` : (row.cells[col.id] || ''))}
+                                                                </td>
+                                                            );
+                                                        })}
                                                     </tr>
                                                 ))}
                                             </tbody>
