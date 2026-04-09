@@ -18,10 +18,10 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintMo
     useEffect(() => {
         if (isOpen) {
             setLoading(true);
-            api.get('/settings/print-templates')
+            api.get('/settings/CETAK_TEMPLATES')
                 .then(res => {
-                    const parsed = JSON.parse(res.data.data.value || '[]');
-                    // We can just show all templates, or those containing a table
+                    const data = res.data?.data;
+                    const parsed = Array.isArray(data) ? data : [];
                     setTemplates(parsed);
                     if (parsed.length > 0) setSelectedTemplate(parsed[0]);
                 })
