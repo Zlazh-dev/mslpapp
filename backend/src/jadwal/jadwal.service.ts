@@ -105,12 +105,13 @@ export class JadwalService {
             return { meta: { status: 400, message: 'userId atau santriId wajib diisi' } };
         }
 
-        // Cek duplicate
+        // Cek duplicate — if already exists, return the existing record so the chain can continue
         const exist = await this.prisma.guruMapel.findUnique({
-            where: { userId_mataPelajaran: { userId, mataPelajaran: data.mataPelajaran } }
+            where: { userId_mataPelajaran: { userId, mataPelajaran: data.mataPelajaran } },
+            include: { user: { select: { id: true, name: true, username: true } } }
         });
         if (exist) {
-            return { meta: { status: 400, message: 'Pengajar sudah diassign mapel ini' } };
+            return { meta: { status: 200, message: 'Relasi sudah ada' }, data: exist };
         }
 
         const result = await this.prisma.guruMapel.create({
