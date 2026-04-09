@@ -47,6 +47,7 @@ export default function JadwalManagementPage() {
 
     // Print state
     const [printKelas, setPrintKelas] = useState<{ id: number; name: string } | null>(null);
+    const [printDropdownOpen, setPrintDropdownOpen] = useState(false);
 
     // ─── FETCHERS ───────────────────────────────
     useEffect(() => {
@@ -288,6 +289,23 @@ export default function JadwalManagementPage() {
                         ))}
 
                         <div className="flex-1" />
+                        <div className="relative shrink-0">
+                            <button onClick={() => setPrintDropdownOpen(!printDropdownOpen)}
+                                className="px-2 py-0.5 text-[10px] font-semibold text-teal-600 hover:bg-teal-50 rounded flex items-center gap-1 transition">
+                                <Printer size={11} /> Cetak
+                            </button>
+                            {printDropdownOpen && (
+                                <div className="absolute right-0 top-full mt-1 z-50 w-56 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl">
+                                    <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pilih Kelas</div>
+                                    {kelasList.map(k => (
+                                        <button key={k.id} onClick={() => { setPrintDropdownOpen(false); setPrintKelas({ id: k.id, name: kelasLabel(k) }); }}
+                                            className="w-full text-left px-3 py-2 text-[11px] text-slate-700 hover:bg-teal-50 hover:text-teal-700 transition truncate">
+                                            {kelasLabel(k)}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <span className="text-[10px] text-slate-400 tabular-nums shrink-0">{kelasList.length} kelas</span>
                     </div>
 
