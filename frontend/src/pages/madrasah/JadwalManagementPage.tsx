@@ -136,7 +136,7 @@ export default function JadwalManagementPage() {
     // ─── RENDER ─────────────────────────────────
     // Negative margins to break out of layout's p-4 md:p-6 padding + remove max width constraint
     return (
-        <div className="-m-4 md:-m-6 flex h-[calc(100vh-64px)] bg-white text-slate-700 overflow-hidden" style={{ maxWidth: 'none' }}>
+        <div className="flex h-[calc(100dvh-64px)] bg-white text-slate-700 overflow-hidden">
             <DndContext onDragEnd={onDragEnd} onDragStart={onDragStart}>
 
                 {/* ═══ LEFT SIDEBAR ═══ */}
