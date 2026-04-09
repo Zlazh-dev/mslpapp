@@ -1,5 +1,5 @@
-import React from 'react';
-import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2, ChevronRight, ChevronDown, Folder } from 'lucide-react';
 import { CanvasElement } from '../types';
 
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -58,68 +58,60 @@ interface LayerSidebarProps {
     onDragEnd: (event: DragEndEvent) => void;
 }
 
-function SortableLayerItem({ el, selectedIds, isFirstInGroup, isLastInGroup, onSelect, onHoverLayer }: { el: CanvasElement; selectedIds: string[]; isFirstInGroup?: boolean; isLastInGroup?: boolean; onSelect: (id: string) => void; onHoverLayer: (id: string | null) => void }) {
+function getElementInfo(el: CanvasElement): { icon: React.ReactNode; title: string } {
+    if (el.type === 'field' && el.field === 'foto') return { icon: <User size={11} className="text-rose-400" />, title: 'Foto Profil' };
+    if (el.type === 'field') return { icon: <Database size={11} className="text-emerald-400" />, title: `${el.field}` };
+    if (el.type === 'rect') return { icon: <Square size={11} className="text-amber-400" />, title: 'Rectangle' };
+    if (el.type === 'circle') return { icon: <Circle size={11} className="text-orange-400" />, title: 'Ellipse' };
+    if (el.type === 'image') return { icon: <ImageIcon size={11} className="text-purple-400" />, title: 'Image' };
+    if (el.type === 'qrcode') return { icon: <QrCode size={11} className="text-teal-400" />, title: 'QR Code' };
+    if (el.type === 'table') return { icon: <Table2 size={11} className="text-indigo-400" />, title: `Table (${el.tableConfig?.dataType || ''})` };
+    return { icon: <Type size={11} className="text-blue-400" />, title: el.value || 'Text' };
+}
+
+function SortableLayerItem({ el, selectedIds, isGroupChild, onSelect, onHoverLayer }: {
+    el: CanvasElement; selectedIds: string[]; isGroupChild: boolean;
+    onSelect: (id: string) => void; onHoverLayer: (id: string | null) => void;
+}) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: el.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        zIndex: isDragging ? 50 : 1,
-    };
-
-    let icon = <Type size={12} className="text-blue-500"/>;
-    let title = el.value || 'Teks';
-    
-    if (el.type === 'field' && el.field === 'foto') {
-        icon = <User size={12} className="text-rose-500"/>;
-        title = 'Foto Profil Santri';
-    } else if (el.type === 'field') { 
-        icon = <Database size={12} className="text-emerald-500"/>; 
-        title = `[ ${el.field} ]`; 
-    } else if (el.type === 'rect') { 
-        icon = <Square size={12} className="text-amber-500"/>; 
-        title = 'Kotak/Garis Pembatas'; 
-    } else if (el.type === 'image') { 
-        icon = <ImageIcon size={12} className="text-purple-500"/>; 
-        title = 'Gambar / Logo'; 
-    } else if (el.type === 'qrcode') {
-        icon = <QrCode size={12} className="text-teal-500"/>;
-        title = 'QR Code Profil Publik';
-    } else if (el.type === 'table') {
-        icon = <Table2 size={12} className="text-indigo-500"/>;
-        title = `Tabel Dinamis (${el.tableConfig?.dataType || 'kosong'})`;
-    }
-
+    const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 1 };
+    const { icon, title } = getElementInfo(el);
     const isSelected = selectedIds.includes(el.id);
-    const isGrouped = !!el.groupId;
 
     return (
-        <div ref={setNodeRef} style={style} className={`flex flex-col relative ${isDragging ? 'z-50' : 'z-0'} ${isGrouped ? 'px-0.5' : ''}`}>
-            {isFirstInGroup && (
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1 bg-slate-700/60 border border-b-0 border-slate-600 rounded-t-md mb-0.5 mt-1">
-                    <Layers size={10} className="text-slate-500" /> Group
-                </div>
-            )}
-            <div 
-                onMouseEnter={() => onHoverLayer(el.id)}
-                onMouseLeave={() => onHoverLayer(null)}
-                className={`w-full text-left px-1.5 py-1.5 flex items-center gap-1.5 text-[11px] transition border ${isSelected ? 'border-blue-500/40 bg-blue-900/30 font-semibold' : 'border-transparent hover:border-slate-600 hover:bg-slate-700/50'} ${isDragging ? 'shadow-md border-blue-500 opacity-90' : ''} ${isGrouped ? 'ml-3 border-l w-[calc(100%-0.75rem)] rounded-none' : 'rounded-md'} ${isFirstInGroup ? '!rounded-tr-md' : ''} ${isLastInGroup ? '!rounded-b-md' : ''}`}
-            >
-                <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-300 rounded bg-slate-700/30 hover:bg-slate-600 shrink-0 transition-colors">
-                    <GripVertical size={12} className={isDragging ? "text-blue-400" : ""} />
-                </div>
-                <button onClick={() => onSelect(el.id)} className="flex-1 flex items-center gap-2 truncate text-left focus:outline-none overflow-hidden py-0.5">
-                    <span className="shrink-0">{icon}</span>
-                    <span className={`truncate flex-1 ${isSelected ? 'text-blue-300 font-medium' : 'text-slate-400'}`} title={title}>{title}</span>
-                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mr-1" />}
-                </button>
+        <div
+            ref={setNodeRef}
+            style={style}
+            onMouseEnter={() => onHoverLayer(el.id)}
+            onMouseLeave={() => onHoverLayer(null)}
+            onClick={(e) => { e.stopPropagation(); onSelect(el.id); }}
+            className={`flex items-center h-7 cursor-pointer select-none transition-colors group ${isGroupChild ? 'pl-7' : 'pl-2'} ${isSelected ? 'bg-blue-600/20' : 'hover:bg-slate-700/60'} ${isDragging ? 'opacity-60' : ''}`}
+        >
+            <div {...attributes} {...listeners} className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing pr-1 text-slate-500 hover:text-slate-300 transition-opacity shrink-0">
+                <GripVertical size={10} />
             </div>
-            {isGrouped && !isLastInGroup && (
-                <div className="absolute left-1 top-0 bottom-0 w-3 border-l border-slate-600 -z-10" />
-            )}
-            {isLastInGroup && (
-                <div className="h-1.5 w-[calc(100%-0.75rem)] ml-3 bg-slate-700/30 border-x border-b border-slate-600 rounded-b-md mb-1" />
-            )}
+            <span className="shrink-0 mr-1.5">{icon}</span>
+            <span className={`text-[11px] truncate flex-1 ${isSelected ? 'text-white font-medium' : 'text-slate-400'}`} title={title}>
+                {title}
+            </span>
+        </div>
+    );
+}
+
+function GroupHeader({ groupId, isExpanded, onToggle, childCount }: {
+    groupId: string; isExpanded: boolean; onToggle: () => void; childCount: number;
+}) {
+    return (
+        <div
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            className="flex items-center h-7 cursor-pointer select-none transition-colors pl-1.5 hover:bg-slate-700/60 group"
+        >
+            <span className="shrink-0 text-slate-500 mr-0.5">
+                {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            </span>
+            <Folder size={11} className="text-slate-500 mr-1.5 shrink-0" />
+            <span className="text-[11px] text-slate-300 font-medium truncate flex-1">Group</span>
+            <span className="text-[9px] text-slate-500 pr-2 tabular-nums">{childCount}</span>
         </div>
     );
 }
@@ -129,47 +121,91 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+    const toggleGroup = (groupId: string) => {
+        setCollapsedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(groupId)) next.delete(groupId);
+            else next.add(groupId);
+            return next;
+        });
+    };
 
     const reversedElements = [...elements].reverse();
     const itemIds = reversedElements.map(e => e.id);
 
+    // Build tree: group consecutive grouped items under a group header
+    const seenGroups = new Set<string>();
+    type TreeNode = { type: 'group'; groupId: string; children: CanvasElement[] } | { type: 'item'; el: CanvasElement };
+    const tree: TreeNode[] = [];
+
+    for (const el of reversedElements) {
+        if (el.groupId) {
+            if (!seenGroups.has(el.groupId)) {
+                seenGroups.add(el.groupId);
+                const children = reversedElements.filter(e => e.groupId === el.groupId);
+                tree.push({ type: 'group', groupId: el.groupId, children });
+            }
+        } else {
+            tree.push({ type: 'item', el });
+        }
+    }
+
     return (
         <div className="w-56 bg-slate-800 border-r border-slate-700 flex flex-col z-20 shrink-0">
-            <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/90 relative z-10">
-                <h2 className="text-[11px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5"><Layers size={12} className="text-blue-400"/> Layers</h2>
-                <p className="text-[9px] text-slate-500 mt-0.5 leading-snug flex items-center gap-1">Seret <GripVertical size={10} className="text-slate-500" /> untuk pindah Z-Index.</p>
+            <div className="px-3 py-2 border-b border-slate-700 bg-slate-800/90 relative z-10 flex items-center justify-between">
+                <h2 className="text-[11px] font-bold text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                    <Layers size={12} className="text-blue-400"/> Layers
+                </h2>
+                <span className="text-[9px] text-slate-500 tabular-nums">{elements.length}</span>
             </div>
-            <DndContext 
-                sensors={sensors} 
-                collisionDetection={closestCenter} 
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
                 onDragEnd={onDragEnd}
                 modifiers={[restrictToVerticalAxis]}
             >
-                <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+                <div className="flex-1 overflow-y-auto py-1">
                     {elements.length === 0 && (
-                        <div className="text-center py-6 px-3 border border-dashed border-slate-600 rounded-lg m-2">
-                            <Layers size={20} className="text-slate-600 mx-auto mb-1.5" />
-                            <p className="text-[10px] text-slate-500 leading-snug">Kanvas kosong. Tambah alat di toolbar atas.</p>
+                        <div className="text-center py-8 px-4">
+                            <Layers size={20} className="text-slate-600 mx-auto mb-2" />
+                            <p className="text-[10px] text-slate-500 leading-snug">Kanvas kosong.<br/>Tambah elemen dari toolbar.</p>
                         </div>
                     )}
                     <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                        {reversedElements.map((el, idx) => {
-                            const isGrouped = !!el.groupId;
-                            const prevGroup = idx > 0 ? reversedElements[idx - 1].groupId : null;
-                            const nextGroup = idx < reversedElements.length - 1 ? reversedElements[idx + 1].groupId : null;
-                            
-                            const isFirstInGroup = isGrouped && el.groupId !== prevGroup;
-                            const isLastInGroup = isGrouped && el.groupId !== nextGroup;
-
+                        {tree.map((node) => {
+                            if (node.type === 'group') {
+                                const isExpanded = !collapsedGroups.has(node.groupId);
+                                return (
+                                    <div key={node.groupId}>
+                                        <GroupHeader
+                                            groupId={node.groupId}
+                                            isExpanded={isExpanded}
+                                            onToggle={() => toggleGroup(node.groupId)}
+                                            childCount={node.children.length}
+                                        />
+                                        {isExpanded && node.children.map(child => (
+                                            <SortableLayerItem
+                                                key={child.id}
+                                                el={child}
+                                                selectedIds={selectedIds}
+                                                isGroupChild={true}
+                                                onSelect={onSelect}
+                                                onHoverLayer={onHoverLayer}
+                                            />
+                                        ))}
+                                    </div>
+                                );
+                            }
                             return (
-                                <SortableLayerItem 
-                                    key={el.id} 
-                                    el={el} 
-                                    selectedIds={selectedIds} 
-                                    isFirstInGroup={isFirstInGroup}
-                                    isLastInGroup={isLastInGroup}
-                                    onSelect={onSelect} 
-                                    onHoverLayer={onHoverLayer} 
+                                <SortableLayerItem
+                                    key={node.el.id}
+                                    el={node.el}
+                                    selectedIds={selectedIds}
+                                    isGroupChild={false}
+                                    onSelect={onSelect}
+                                    onHoverLayer={onHoverLayer}
                                 />
                             );
                         })}
