@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Calendar, User as UserIcon, Plus, Trash2, Loader2, Settings, X, GripVertical, Search, Filter, BookOpen, Users } from 'lucide-react';
+import { Calendar, User as UserIcon, Plus, Trash2, Loader2, Settings, X, GripVertical, Search, Filter, BookOpen, Users, ClipboardList } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay } from '@dnd-kit/core';
@@ -22,6 +22,19 @@ interface GuruData {
     mapels: string[];
 }
 
+interface KhidmahModel {
+    id: string;
+    nama: string;
+    _count?: { dataKhidmah: number };
+}
+
+interface KhidmahSantri {
+    id: string;
+    santri: { id: string; nis: string; namaLengkap: string };
+    modelKhidmah: { id: string; nama: string };
+    keterangan: string | null;
+}
+
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────────
 
 export default function JadwalManagementPage() {
@@ -31,9 +44,14 @@ export default function JadwalManagementPage() {
     // State ─ Data
     const [guruMapel, setGuruMapel] = useState<any[]>([]);
     const [masterMapels, setMasterMapels] = useState<any[]>([]);
-    const [usersList, setUsersList] = useState<any[]>([]);
     const [kelasList, setKelasList] = useState<any[]>([]);
     const [jadwalList, setJadwalList] = useState<any[]>([]);
+
+    // State ─ Khidmah integration
+    const [khidmahModels, setKhidmahModels] = useState<KhidmahModel[]>([]);
+    const [selectedKhidmahModel, setSelectedKhidmahModel] = useState('');
+    const [khidmahSantriList, setKhidmahSantriList] = useState<KhidmahSantri[]>([]);
+    const [loadingKhidmahSantri, setLoadingKhidmahSantri] = useState(false);
 
     // State ─ Loading
     const [loadingMaster, setLoadingMaster] = useState(false);
@@ -52,27 +70,22 @@ export default function JadwalManagementPage() {
     const [newMapelName, setNewMapelName] = useState('');
     const [addingMapel, setAddingMapel] = useState(false);
 
-    // Form: Assign Guru
-    const [mmUserId, setMmUserId] = useState('');
-    const [mmMapelId, setMmMapelId] = useState(''); // Stores the name, actually
+    // Form: Assign Pengajar (Khidmah-based)
+    const [mmSantriUserId, setMmSantriUserId] = useState('');
+    const [mmMapelId, setMmMapelId] = useState('');
     const [mmAdding, setMmAdding] = useState(false);
 
     // ─── FETCH INITIAL DATA ──────────────────────────────────────────────────────
 
     useEffect(() => {
-        // Users (Only WALI_KELAS)
-        api.get('/users?limit=100').then(res => {
-            const waliKelasUsers = (res.data.data || []).filter((u: any) => 
-                u.roles?.some((r: any) => (typeof r === 'string' ? r : r.name) === 'WALI_KELAS')
-            );
-            setUsersList(waliKelasUsers);
-        });
-        
         // Kelas (with Jenjang and Tingkat)
         api.get('/kelas').then(res => {
             setKelasList(res.data.data || []);
             if (res.data.data.length > 0) setSelectedKelas(res.data.data[0].id.toString());
         });
+
+        // Khidmah Models
+        api.get('/khidmah/model').then(res => setKhidmahModels(res.data || [])).catch(() => {});
 
         fetchMasterMapel();
         fetchGuruMapel();
@@ -82,6 +95,19 @@ export default function JadwalManagementPage() {
         if (!selectedKelas) return;
         fetchJadwal(selectedKelas);
     }, [selectedKelas]);
+
+    // When khidmah model is selected, fetch santri assigned to it
+    useEffect(() => {
+        if (!selectedKhidmahModel) {
+            setKhidmahSantriList([]);
+            return;
+        }
+        setLoadingKhidmahSantri(true);
+        api.get('/khidmah/data', { params: { modelKhidmahId: selectedKhidmahModel } })
+            .then(res => setKhidmahSantriList(res.data || []))
+            .catch(() => setKhidmahSantriList([]))
+            .finally(() => setLoadingKhidmahSantri(false));
+    }, [selectedKhidmahModel]);
 
     const fetchMasterMapel = () => {
         api.get('/jadwal/mata-pelajaran')
@@ -124,10 +150,10 @@ export default function JadwalManagementPage() {
 
     const handleAddGuruMapel = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!mmUserId || !mmMapelId) return;
+        if (!mmSantriUserId || !mmMapelId) return;
         setMmAdding(true);
         try {
-            await api.post('/jadwal/guru-mapel', { userId: mmUserId, mataPelajaran: mmMapelId });
+            await api.post('/jadwal/guru-mapel', { santriId: mmSantriUserId, mataPelajaran: mmMapelId });
             setMmMapelId('');
             fetchGuruMapel();
         } catch (err: any) {
@@ -229,7 +255,6 @@ export default function JadwalManagementPage() {
             data: guru
         });
 
-        // Small compact list representation
         return (
             <div 
                 ref={setNodeRef} 
@@ -319,7 +344,7 @@ export default function JadwalManagementPage() {
                         <div className="p-3 border-b border-slate-200 bg-white">
                             <div className="relative">
                                 <Search size={14} className="absolute left-2.5 top-2 text-slate-400" />
-                                <input type="text" value={searchGuru} onChange={e => setSearchGuru(e.target.value)} placeholder="Cari wali kelas..." className="w-full text-xs pl-8 pr-3 py-1.5 bg-slate-100 border-none rounded-md focus:bg-slate-200 focus:outline-none transition" />
+                                <input type="text" value={searchGuru} onChange={e => setSearchGuru(e.target.value)} placeholder="Cari pengampu..." className="w-full text-xs pl-8 pr-3 py-1.5 bg-slate-100 border-none rounded-md focus:bg-slate-200 focus:outline-none transition" />
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto bg-white">
@@ -379,21 +404,21 @@ export default function JadwalManagementPage() {
                 </DndContext>
             </div>
 
-            {/* ─── SLIDE-OVER SIDE PANEL (KELOLA MAPEL) ─── */}
+            {/* ─── SLIDE-OVER SIDE PANEL (KELOLA MAPEL & PENGAJAR) ─── */}
             {isSlidePanelOpen && (
                 <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[1px] z-40 transition-opacity" onClick={() => setIsSlidePanelOpen(false)} />
             )}
             
-            <div className={`fixed top-0 right-0 h-full w-full sm:w-[400px] bg-slate-50 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col ${isSlidePanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-[420px] bg-slate-50 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-slate-200 flex flex-col ${isSlidePanelOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="h-16 px-5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white">
                     <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <Settings size={18} className="text-slate-500" /> Konfigurasi Database
+                        <Settings size={18} className="text-slate-500" /> Tambah Data Mapel & Pengajar
                     </h2>
                     <button onClick={() => setIsSlidePanelOpen(false)} className="p-2 text-slate-400 hover:text-red-500 rounded-full hover:bg-slate-100 transition"><X size={18} /></button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    {/* SECTION 1: MASTER DATA MAPEL */}
+                    {/* SECTION 1: MASTER DATA MAPEL (tetap sama) */}
                     <div className="p-5 border-b border-slate-200 bg-white">
                         <h3 className="text-[13px] font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-2">
                             <BookOpen size={14} className="text-orange-500"/> 1. Buat Mata Pelajaran Utama
@@ -424,27 +449,70 @@ export default function JadwalManagementPage() {
                         </div>
                     </div>
 
-                    {/* SECTION 2: ASSIGN GURU MAPEL */}
+                    {/* SECTION 2: ASSIGN PENGAJAR KE MAPEL (Khidmah-based) */}
                     <div className="p-5">
                        <h3 className="text-[13px] font-bold text-slate-800 mb-4 uppercase tracking-wider flex items-center gap-2">
-                            <Users size={14} className="text-emerald-500"/> 2. Assign Wali Kelas ke Mapel
+                            <ClipboardList size={14} className="text-teal-500"/> 2. Assign Pengajar ke Mapel
                         </h3>
                         <form onSubmit={handleAddGuruMapel} className="space-y-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-1 mb-8">
+                            {/* Step A: Pilih Model Khidmah */}
                             <div>
-                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pilih Wali Kelas (Pengajar) <span className="text-red-500">*</span></label>
-                                <select required value={mmUserId} onChange={e => setMmUserId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:border-emerald-500 outline-none transition">
-                                    <option value="">-- Pilih Wali Kelas --</option>
-                                    {usersList.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pilih Variabel Khidmah <span className="text-red-500">*</span></label>
+                                <select 
+                                    value={selectedKhidmahModel} 
+                                    onChange={e => { setSelectedKhidmahModel(e.target.value); setMmSantriUserId(''); }}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:border-teal-500 outline-none transition"
+                                >
+                                    <option value="">-- Pilih Model Khidmah --</option>
+                                    {khidmahModels.map(m => (
+                                        <option key={m.id} value={m.id}>{m.nama} ({m._count?.dataKhidmah ?? 0} santri)</option>
+                                    ))}
                                 </select>
+                                {khidmahModels.length === 0 && (
+                                    <p className="text-[11px] text-amber-600 mt-1.5">⚠ Belum ada model khidmah. Buat dulu di halaman <strong>Data Khidmah</strong>.</p>
+                                )}
                             </div>
+
+                            {/* Step B: Pilih Santri dari daftar khidmah */}
+                            {selectedKhidmahModel && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pilih Pengajar (Santri Khidmah) <span className="text-red-500">*</span></label>
+                                    {loadingKhidmahSantri ? (
+                                        <div className="flex items-center gap-2 py-2 text-xs text-slate-400"><Loader2 size={12} className="animate-spin" /> Memuat data...</div>
+                                    ) : khidmahSantriList.length === 0 ? (
+                                        <div className="py-3 text-center text-xs text-slate-400 italic border border-dashed border-slate-200 rounded-lg">
+                                            Tidak ada santri yang ter-assign ke model ini
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <select 
+                                                required 
+                                                value={mmSantriUserId} 
+                                                onChange={e => setMmSantriUserId(e.target.value)} 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:border-teal-500 outline-none transition"
+                                            >
+                                                <option value="">-- Pilih Santri --</option>
+                                                {khidmahSantriList.map(ks => (
+                                                    <option key={ks.id} value={ks.santri.id}>
+                                                        {ks.santri.namaLengkap} ({ks.santri.nis}){ks.keterangan ? ` — ${ks.keterangan}` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[10px] text-slate-400 mt-1">{khidmahSantriList.length} santri tersedia dari khidmah ini</p>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Step C: Pilih Mapel */}
                             <div>
                                 <label className="block text-xs font-semibold text-slate-600 mb-1.5">Pilih Mata Pelajaran <span className="text-red-500">*</span></label>
-                                <select required value={mmMapelId} onChange={e => setMmMapelId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:border-emerald-500 outline-none transition disabled:opacity-50" disabled={masterMapels.length === 0}>
+                                <select required value={mmMapelId} onChange={e => setMmMapelId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:border-teal-500 outline-none transition disabled:opacity-50" disabled={masterMapels.length === 0}>
                                     <option value="">-- Pilih Mapel dari Induk --</option>
                                     {masterMapels.map(m => <option key={m.id} value={m.nama}>{m.nama}</option>)}
                                 </select>
                             </div>
-                            <button type="submit" disabled={mmAdding || masterMapels.length === 0} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2 rounded-md transition text-sm mt-2 flex justify-center items-center gap-2 disabled:bg-slate-300">
+                            <button type="submit" disabled={mmAdding || !mmSantriUserId || !mmMapelId} className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 rounded-md transition text-sm mt-2 flex justify-center items-center gap-2 disabled:bg-slate-300">
                                 {mmAdding ? <Loader2 size={14} className="animate-spin" /> : 'Assign Relasi'}
                             </button>
                         </form>
@@ -457,7 +525,7 @@ export default function JadwalManagementPage() {
                             </h3>
                             {loadingMaster ? <div className="flex justify-center"><Loader2 size={16} className="animate-spin text-slate-400" /></div> : (
                                 <ul className="space-y-2">
-                                    {draggables.length === 0 && <li className="text-center text-xs text-slate-400 py-4 italic border border-dashed border-slate-200 rounded-lg">Belum ada wali kelas ter-assign.</li>}
+                                    {draggables.length === 0 && <li className="text-center text-xs text-slate-400 py-4 italic border border-dashed border-slate-200 rounded-lg">Belum ada pengajar ter-assign.</li>}
                                     {draggables.map(g => (
                                         <li key={g.userId} className="border border-slate-200 shadow-sm rounded-lg p-3 bg-white">
                                             <div className="font-bold text-slate-800 text-[13px] mb-2">{g.name}</div>

@@ -71,10 +71,43 @@ export class JadwalService {
         return { meta: { status: 200, message: 'Data Guru Mapel' }, data };
     }
 
-    async addGuruMapel(data: { userId: string; mataPelajaran: string }) {
+    async addGuruMapel(data: { userId?: string; santriId?: string; mataPelajaran: string }) {
+        let userId = data.userId;
+
+        // If santriId is provided instead of userId, resolve it
+        if (!userId && data.santriId) {
+            const santri = await this.prisma.santri.findUnique({
+                where: { id: data.santriId },
+                include: { user: { select: { id: true } } }
+            });
+            if (!santri) {
+                return { meta: { status: 404, message: 'Santri tidak ditemukan' } };
+            }
+
+            if (santri.user) {
+                userId = santri.user.id;
+            } else {
+                // Auto-create a minimal user account for this santri (as pengajar label)
+                const bcrypt = await import('bcrypt');
+                const hashedPw = await bcrypt.hash(santri.nis, 10);
+                const newUser = await this.prisma.user.create({
+                    data: {
+                        name: santri.namaLengkap,
+                        password: hashedPw,
+                        santriId: santri.id,
+                    }
+                });
+                userId = newUser.id;
+            }
+        }
+
+        if (!userId) {
+            return { meta: { status: 400, message: 'userId atau santriId wajib diisi' } };
+        }
+
         // Cek duplicate
         const exist = await this.prisma.guruMapel.findUnique({
-            where: { userId_mataPelajaran: { userId: data.userId, mataPelajaran: data.mataPelajaran } }
+            where: { userId_mataPelajaran: { userId, mataPelajaran: data.mataPelajaran } }
         });
         if (exist) {
             return { meta: { status: 400, message: 'Pengajar sudah diassign mapel ini' } };
@@ -82,7 +115,7 @@ export class JadwalService {
 
         const result = await this.prisma.guruMapel.create({
             data: {
-                userId: data.userId,
+                userId,
                 mataPelajaran: data.mataPelajaran
             },
             include: { user: { select: { id: true, name: true, username: true } } }
