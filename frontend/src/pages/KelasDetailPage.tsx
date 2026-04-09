@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../lib/api';
 import { Kelas, Santri } from '../types';
 import { useAuthStore } from '../stores/authStore';
-import { ArrowLeft, Pencil, X, GraduationCap, Users, UserPlus } from 'lucide-react';
+import { ArrowLeft, Pencil, X, GraduationCap, Users, UserPlus, Printer } from 'lucide-react';
 import AssignSantriModal from '../components/AssignSantriModal';
+import { PresensiPrintModal } from './madrasah/components/PresensiPrintModal';
 
 const LIMIT = 20;
 
@@ -72,6 +73,7 @@ export default function KelasDetailPage() {
     const [kelas, setKelas] = useState<Kelas | null>(null);
     const [editOpen, setEditOpen] = useState(false);
     const [assignOpen, setAssignOpen] = useState(false);
+    const [printOpen, setPrintOpen] = useState(false);
 
     // Santri table state
     const [santriList, setSantriList] = useState<Santri[]>([]);
@@ -205,11 +207,18 @@ export default function KelasDetailPage() {
                         </p>
                     </div>
                     {canEdit && (
-                        <button onClick={() => setAssignOpen(true)}
-                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition">
-                            <UserPlus size={14} />
-                            Assign Santri
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setPrintOpen(true)}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition">
+                                <Printer size={14} />
+                                Cetak Presensi
+                            </button>
+                            <button onClick={() => setAssignOpen(true)}
+                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold flex items-center gap-1.5 transition">
+                                <UserPlus size={14} />
+                                Assign Santri
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -366,6 +375,15 @@ export default function KelasDetailPage() {
                     onClose={() => setAssignOpen(false)}
                     onAssigned={fetchSantri}
                     accentColor="blue"
+                />
+            )}
+
+            {/* Print Modal */}
+            {printOpen && (
+                <PresensiPrintModal
+                    isOpen={printOpen}
+                    kelasId={kelas.id.toString()}
+                    onClose={() => setPrintOpen(false)}
                 />
             )}
 

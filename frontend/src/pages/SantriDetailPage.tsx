@@ -8,7 +8,7 @@ import { usePrinter } from '../hooks/usePrinter';
 import {
     ArrowLeft, Edit2, Camera, MoreVertical, FileText, Upload, X,
     User as UserIcon, Users, MapPin, GraduationCap, BookOpen,
-    QrCode, Printer, Download, Trash2, KeyRound
+    QrCode, Printer, Download, Trash2, KeyRound, ClipboardList, Plus
 } from 'lucide-react';
 
 const BACKEND = import.meta.env.VITE_API_URL || '';
@@ -64,6 +64,13 @@ export default function SantriDetailPage() {
     // Print Modal
     const [printModal, setPrintModal] = useState<{ isOpen: boolean; templates: any[]; paperSize: 'A4' | 'F4', orientation: 'portrait' | 'landscape' }>({ isOpen: false, templates: [], paperSize: 'A4', orientation: 'portrait' });
     const { print } = usePrinter();
+
+    // Khidmah
+    const [khidmahList, setKhidmahList] = useState<{id: string; modelKhidmah: {id: string; nama: string}; keterangan: string | null}[]>([]);
+    const [khidmahModels, setKhidmahModels] = useState<{id: string; nama: string}[]>([]);
+    const [showKhidmahAssign, setShowKhidmahAssign] = useState(false);
+    const [khidmahAssignModelId, setKhidmahAssignModelId] = useState('');
+    const [khidmahAssignKet, setKhidmahAssignKet] = useState('');
 
     const generateQr = useCallback((santriId: string) => {
         const url = `${window.location.origin}/p/santri/${santriId}`;
@@ -341,7 +348,16 @@ ${row('Keterangan', s.deskripsiWali || '—')}
         }).finally(() => setLoading(false));
     };
 
-    useEffect(() => { fetchSantri(); }, [id]);
+    const fetchKhidmah = () => {
+        if (!id) return;
+        api.get(`/khidmah/data/santri/${id}`).then(r => setKhidmahList(r.data)).catch(() => {});
+    };
+
+    const fetchKhidmahModels = () => {
+        api.get('/khidmah/model').then(r => setKhidmahModels(r.data)).catch(() => {});
+    };
+
+    useEffect(() => { fetchSantri(); fetchKhidmah(); fetchKhidmahModels(); }, [id]);
 
     useEffect(() => {
         if (activeTab === 'nilai' && id) {
@@ -570,6 +586,79 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                             <InfoRow label="Keterangan" value={santri.deskripsiWali} />
                         </div>
                     </div>
+
+                    {/* Khidmah */}
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center justify-between gap-2.5 mb-4 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-lg bg-teal-50 flex items-center justify-center"><ClipboardList size={15} className="text-teal-600" /></div>
+                                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Khidmah</h3>
+                            </div>
+                            {canEdit && (
+                                <button onClick={() => { setShowKhidmahAssign(true); setKhidmahAssignModelId(khidmahModels[0]?.id || ''); }}
+                                    disabled={khidmahModels.length === 0}
+                                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-teal-600 hover:bg-teal-50 rounded-lg transition disabled:opacity-40">
+                                    <Plus size={12} /> Tambah
+                                </button>
+                            )}
+                        </div>
+                        {khidmahList.length === 0 ? (
+                            <p className="text-xs text-slate-400 italic text-center py-2">Belum ada khidmah</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {khidmahList.map(k => (
+                                    <div key={k.id} className="flex items-center justify-between gap-2 group">
+                                        <div className="flex-1 min-w-0">
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-teal-100 text-teal-700">{k.modelKhidmah.nama}</span>
+                                            {k.keterangan && <p className="text-[11px] text-slate-400 mt-0.5 truncate">{k.keterangan}</p>}
+                                        </div>
+                                        {canEdit && (
+                                            <button onClick={async () => { await api.delete(`/khidmah/data/${k.id}`); fetchKhidmah(); }}
+                                                className="w-5 h-5 text-slate-300 hover:text-red-500 flex items-center justify-center transition opacity-0 group-hover:opacity-100 text-[10px]">✕</button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Assign Khidmah Modal (inline) */}
+                    {showKhidmahAssign && (
+                        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowKhidmahAssign(false)}>
+                            <div className="w-full max-w-sm rounded-2xl bg-white shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold text-slate-900">Assign Khidmah</h3>
+                                    <button onClick={() => setShowKhidmahAssign(false)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Model Khidmah</label>
+                                        <select value={khidmahAssignModelId} onChange={e => setKhidmahAssignModelId(e.target.value)}
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-teal-400">
+                                            {khidmahModels.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Keterangan (opsional)</label>
+                                        <input type="text" value={khidmahAssignKet} onChange={e => setKhidmahAssignKet(e.target.value)}
+                                            placeholder="Misal: Pengajar Nahwu..."
+                                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-teal-400" />
+                                    </div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setShowKhidmahAssign(false)} className="flex-1 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Batal</button>
+                                    <button onClick={async () => {
+                                        try {
+                                            await api.post('/khidmah/data', { nis: santri.nis, modelKhidmahId: khidmahAssignModelId, keterangan: khidmahAssignKet || undefined });
+                                            setShowKhidmahAssign(false); setKhidmahAssignKet('');
+                                            fetchKhidmah();
+                                        } catch (e: any) { alert(e.response?.data?.message || 'Gagal'); }
+                                    }} disabled={!khidmahAssignModelId}
+                                        className="flex-1 py-2 rounded-xl bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 transition disabled:opacity-50">Simpan</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Right: Tabbed data cards ── */}

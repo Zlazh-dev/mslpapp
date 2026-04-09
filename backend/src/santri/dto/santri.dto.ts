@@ -41,6 +41,7 @@ export class CreateSantriDto {
     @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kelasId?: number;
     @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kamarId?: number;
     @ApiProperty({ required: false }) @IsOptional() @IsString() foto?: string;
+    @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl?: string;
 }
 
 export class UpdateSantriDto {
@@ -91,6 +92,7 @@ export class QuerySantriDto {
     @IsOptional() @IsString() status?: string;
     @IsOptional() @IsString() jenjangPendidikan?: string;
     @IsOptional() @IsString() nisYear?: string;
+    @IsOptional() @IsString() gender?: string;
     @IsOptional() @IsString() page?: string;
     @IsOptional() @IsString() limit?: string;
 }

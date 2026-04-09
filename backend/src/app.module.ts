@@ -19,6 +19,9 @@ import { UploadModule } from './upload/upload.module';
 import { ChatModule } from './chat/chat.module';
 import { SettingsModule } from './settings/settings.module';
 import { BackupModule } from './backup/backup.module';
+import { PdfModule } from './pdf/pdf.module';
+import { JadwalModule } from './jadwal/jadwal.module';
+import { KhidmahModule } from './khidmah/khidmah.module';
 
 @Module({
     imports: [
@@ -43,6 +46,9 @@ import { BackupModule } from './backup/backup.module';
         ChatModule,
         SettingsModule,
         BackupModule,
+        PdfModule,
+        JadwalModule,
+        KhidmahModule,
     ],
     providers: [],
 })

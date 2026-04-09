@@ -96,10 +96,10 @@ export default function SantriListPage() {
             if (filterKamar) params.kamarId = filterKamar;
             if (filterKelas) params.kelasId = filterKelas;
             if (filterStatus) params.status = filterStatus;
+            if (filterGender) params.gender = filterGender;
             const res = await api.get('/santri', { params });
             const list: Santri[] = res.data.data;
-            const filtered = filterGender ? list.filter(s => s.gender === filterGender) : list;
-            setData(filtered);
+            setData(list);
             setTotal(res.data.meta?.total || 0);
             setTotalPages(res.data.meta?.totalPages || 1);
         } finally { setLoading(false); }
@@ -125,8 +125,9 @@ export default function SantriListPage() {
         if (filterKamar) params.kamarId = filterKamar;
         if (filterKelas) params.kelasId = filterKelas;
         if (filterStatus) params.status = filterStatus;
+        if (filterGender) params.gender = filterGender;
         const res = await api.get('/santri', { params });
-        const rows = (res.data.data as Santri[]).filter(s => !filterGender || s.gender === filterGender).map(s => ({
+        const rows = (res.data.data as Santri[]).map(s => ({
             NIS: s.nis, 'Nama Lengkap': s.namaLengkap, Gender: GENDER_LABEL[s.gender] || s.gender,
             'Tempat Lahir': s.tempatLahir, 'Tgl Lahir': s.tanggalLahir ? new Date(s.tanggalLahir).toLocaleDateString('id-ID') : '',
             'No HP': s.noHp || '', NIK: s.nik || '', 'No KK': s.noKk || '',

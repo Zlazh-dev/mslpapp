@@ -23,7 +23,12 @@ import UserFormPage from './pages/UserFormPage';
 import SantriPublicPage from './pages/SantriPublicPage';
 import PrintSettingsPage from './pages/PrintSettingsPage';
 import BackupDataPage from './pages/BackupDataPage';
+import KhidmahPage from './pages/KhidmahPage';
 import UnauthorizedPage from './pages/error/Unauthorized';
+
+// Madrasah Portal
+import MadrasahDashboardPage from './pages/madrasah/MadrasahDashboardPage';
+import JadwalManagementPage from './pages/madrasah/JadwalManagementPage';
 
 // Guards
 import DesktopGuard from './components/layout/DesktopGuard';
@@ -37,17 +42,30 @@ function PrivateRoute({ children, allowedRoles }: { children: React.ReactNode; a
     return <>{children}</>;
 }
 
+/** Role-aware default landing page after login */
+function DefaultRedirect() {
+    const { user } = useAuthStore();
+    const roles = user?.roles || [];
+
+    // STAF_MADRASAH (without ADMIN) → Madrasah dashboard
+    if (roles.includes('STAF_MADRASAH') && !roles.includes('ADMIN')) {
+        return <Navigate to="/madrasah/dashboard" replace />;
+    }
+
+    return <Navigate to="/dashboard" replace />;
+}
+
 export default function App() {
     const { isAuthenticated } = useAuthStore();
 
     return (
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
-                <Route path="/login" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+                <Route path="/login" element={isAuthenticated ? <DefaultRedirect /> : <LoginPage />} />
                 <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
                 <Route path="/" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
-                    <Route index element={<Navigate to="/dashboard" replace />} />
+                    <Route index element={<DefaultRedirect />} />
                     <Route path="dashboard" element={<DashboardPage />} />
 
                     {/* Santri */}
@@ -56,9 +74,20 @@ export default function App() {
                     <Route path="santri/:id" element={<SantriDetailPage />} />
                     <Route path="santri/:id/edit" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_PENDATAAN']}><SantriFormPage /></PrivateRoute>} />
 
-                    {/* Manajemen Kelas */}
-                    <Route path="kelas" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH']}><DesktopGuard><KelasManagementPage /></DesktopGuard></PrivateRoute>} />
-                    <Route path="kelas/:id" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH', 'WALI_KELAS']}><DesktopGuard><KelasDetailPage /></DesktopGuard></PrivateRoute>} />
+                    {/* Khidmah */}
+                    <Route path="khidmah" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH']}><KhidmahPage /></PrivateRoute>} />
+
+                    {/* ── Portal Madrasah ──────────────────────────────────── */}
+                    <Route path="madrasah/dashboard" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH']}><MadrasahDashboardPage /></PrivateRoute>} />
+                    <Route path="madrasah/kelas" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH']}><DesktopGuard><KelasManagementPage /></DesktopGuard></PrivateRoute>} />
+                    <Route path="madrasah/kelas/:id" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH', 'WALI_KELAS']}><DesktopGuard><KelasDetailPage /></DesktopGuard></PrivateRoute>} />
+                    <Route path="madrasah/kelas-saya" element={<PrivateRoute allowedRoles={['WALI_KELAS']}><KelasSayaPage /></PrivateRoute>} />
+                    <Route path="madrasah/jadwal" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH', 'WALI_KELAS']}><DesktopGuard><JadwalManagementPage /></DesktopGuard></PrivateRoute>} />
+
+                    {/* Backwards compat redirect: /kelas → /madrasah/kelas */}
+                    <Route path="kelas" element={<Navigate to="/madrasah/kelas" replace />} />
+                    <Route path="kelas/:id" element={<Navigate to="/madrasah/kelas" replace />} />
+                    <Route path="kelas-saya" element={<Navigate to="/madrasah/kelas-saya" replace />} />
 
                     {/* Manajemen Kamar */}
                     <Route path="kamar" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_PENDATAAN']}><DesktopGuard><KamarManagementPage /></DesktopGuard></PrivateRoute>} />
@@ -66,9 +95,6 @@ export default function App() {
 
                     {/* Kamar Saya (Pembimbing Kamar) */}
                     <Route path="kamar-saya" element={<PrivateRoute allowedRoles={['PEMBIMBING_KAMAR']}><KamarSayaPage /></PrivateRoute>} />
-
-                    {/* Kelas Saya (Wali Kelas) */}
-                    <Route path="kelas-saya" element={<PrivateRoute allowedRoles={['WALI_KELAS']}><KelasSayaPage /></PrivateRoute>} />
 
                     {/* Chat — semua role */}
                     <Route path="chat" element={<ChatPage />} />
@@ -79,7 +105,7 @@ export default function App() {
                     <Route path="users/:id/edit" element={<PrivateRoute allowedRoles={['ADMIN']}><DesktopGuard><UserFormPage /></DesktopGuard></PrivateRoute>} />
 
                     {/* Pengaturan */}
-                    <Route path="pengaturan/cetak" element={<PrivateRoute allowedRoles={['ADMIN']}><DesktopGuard><PrintSettingsPage /></DesktopGuard></PrivateRoute>} />
+                    <Route path="pengaturan/cetak" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH']}><DesktopGuard><PrintSettingsPage /></DesktopGuard></PrivateRoute>} />
                     <Route path="pengaturan/backupdata" element={<PrivateRoute allowedRoles={['ADMIN']}><DesktopGuard><BackupDataPage /></DesktopGuard></PrivateRoute>} />
                 </Route>
 

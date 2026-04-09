@@ -5,6 +5,7 @@ import {
     Download, Upload, Shield, AlertTriangle, CheckCircle2,
     FileJson, ArrowLeft, Loader2, RefreshCw, Database
 } from 'lucide-react';
+import { useAuthStore } from '../stores/authStore';
 
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -19,23 +20,23 @@ export default function BackupDataPage() {
     const [importWarnings, setImportWarnings] = useState<string[]>([]);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [alertModal, setAlertModal] = useState({ show: false, message: '' });
 
-    const handleExport = async () => {
+    const handleExport = () => {
         setExportLoading(true);
-        try {
-            const res = await api.get('/backup/export', { responseType: 'blob' });
-            const date = new Date().toISOString().slice(0, 10);
-            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `LPAPP_backup_${date}.json`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-        } catch {
-            alert('Gagal mengekspor data. Pastikan server berjalan.');
-        } finally {
+        const token = useAuthStore.getState().token;
+        
+        if (!token) {
+            setAlertModal({ show: true, message: 'Harap masuk kembali ke akun Anda.' });
             setExportLoading(false);
+            return;
         }
+
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        window.location.href = `${baseUrl}/backup/export?token=${token}`;
+        
+        // Reset loading state safely since download doesn't reload the page
+        setTimeout(() => setExportLoading(false), 2000);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,9 +56,12 @@ export default function BackupDataPage() {
         setImportError('');
 
         try {
-            const text = await selectedFile.text();
-            const json = JSON.parse(text);
-            const res = await api.post('/backup/import', json);
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            const res = await api.post('/backup/import', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             setImportReport(res.data.report);
             setImportWarnings(res.data.sampleErrors || []);
             setImportStatus('success');
@@ -90,7 +94,7 @@ export default function BackupDataPage() {
                 </button>
                 <div>
                     <h1 className="text-xl font-bold text-slate-800">Backup & Restore Data</h1>
-                    <p className="text-xs text-slate-500 mt-0.5">Ekspor dan impor data aplikasi dalam format JSON</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Ekspor dan impor data dan gambar dalam format ZIP</p>
                 </div>
             </div>
 
@@ -116,13 +120,13 @@ export default function BackupDataPage() {
                     </div>
                     <div>
                         <h2 className="font-bold text-slate-800 text-sm">Ekspor Backup</h2>
-                        <p className="text-xs text-slate-500">Unduh semua data sebagai file JSON</p>
+                        <p className="text-xs text-slate-500">Unduh semua data dan foto dalam file ZIP</p>
                     </div>
                 </div>
                 <div className="p-6">
                     <p className="text-sm text-slate-600 mb-5 leading-relaxed">
-                        Mengekspor seluruh data termasuk Santri, Kamar, Kelas, Gedung, Kompleks, Jenjang,
-                        Tingkat, Nilai, dan Pengaturan Aplikasi ke dalam satu file <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">.json</code>.
+                        Mengekspor seluruh data termasuk Foto, Kamar, Kelas, Gedung, Kompleks, Jenjang,
+                        Tingkat, Nilai, dan Pengaturan Aplikasi ke dalam satu file arsip <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">.zip</code>.
                     </p>
                     <div className="flex flex-wrap gap-2 mb-5">
                         {Object.values(tableLabels).map(label => (
@@ -151,7 +155,7 @@ export default function BackupDataPage() {
                     </div>
                     <div>
                         <h2 className="font-bold text-slate-800 text-sm">Impor Backup</h2>
-                        <p className="text-xs text-slate-500">Pulihkan data dari file JSON backup</p>
+                        <p className="text-xs text-slate-500">Pulihkan data dan foto dari file ZIP backup</p>
                     </div>
                 </div>
                 <div className="p-6 space-y-4">
@@ -165,7 +169,7 @@ export default function BackupDataPage() {
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".json,application/json"
+                            accept=".zip,application/zip"
                             className="hidden"
                             onChange={handleFileChange}
                         />
@@ -180,7 +184,7 @@ export default function BackupDataPage() {
                         ) : (
                             <>
                                 <p className="text-sm font-medium text-slate-500">Klik untuk memilih file backup</p>
-                                <p className="text-xs text-slate-400 mt-1">Format: .json — hanya file dari LPAPP</p>
+                                <p className="text-xs text-slate-400 mt-1">Format: .zip — Hanya file ekspor asli LPAPP</p>
                             </>
                         )}
                     </div>
@@ -258,6 +262,31 @@ export default function BackupDataPage() {
                             <button onClick={handleImport}
                                 className="flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition shadow-sm">
                                 Ya, Impor Sekarang
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Alert Modal */}
+            {alertModal.show && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+                    onClick={() => setAlertModal({ show: false, message: '' })}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4"
+                        onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-xl bg-red-100 flex items-center justify-center">
+                                <AlertTriangle size={20} className="text-red-600" />
+                            </div>
+                            <h3 className="font-bold text-slate-800">Pemberitahuan</h3>
+                        </div>
+                        <p className="text-sm text-slate-600 leading-relaxed">
+                            {alertModal.message}
+                        </p>
+                        <div className="flex justify-end pt-2">
+                            <button onClick={() => setAlertModal({ show: false, message: '' })}
+                                className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold transition shadow-sm">
+                                Mengerti
                             </button>
                         </div>
                     </div>

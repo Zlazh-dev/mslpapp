@@ -33,7 +33,8 @@ export class SantriRepository {
                 where, 
                 skip, 
                 take, 
-                include: { kelas: true, kamar: { include: { gedung: true } } } 
+                include: { kelas: true, kamar: { include: { gedung: true } } },
+                orderBy: { nis: 'asc' }
             }),
             this.prisma.santri.count({ where })
         ]);

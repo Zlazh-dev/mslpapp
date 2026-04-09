@@ -275,6 +275,12 @@ export function CanvasEditor({
                 newEl.style.fontWeight = 'bold'; 
                 newEl.value = '[Data Santri]'; 
             }
+        } else if (type === 'table') {
+            newEl.tableConfig = { dataType: 'presensi', headerColor: '#cbd5e1' };
+            newEl.w = CANVAS_W - 100;
+            newEl.h = 200;
+            newEl.x = 50;
+            newEl.y = CANVAS_H / 2;
         }
 
         setElements(prev => [...prev, newEl]);
@@ -328,6 +334,7 @@ export function CanvasEditor({
                     onAddElement={addElement} 
                     onAddFoto={() => addElement('field', 'foto')}
                     onAddQr={() => addElement('qrcode')}
+                    onAddTable={() => addElement('table')}
                     onImageUpload={handleImageUpload} 
                     uploadingImage={uploadingImage} 
                     imageInputRef={imageInputRef} 
@@ -393,6 +400,16 @@ export function CanvasEditor({
                                     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, pointerEvents: 'none' }}>
                                         <QRCodeSVG value="https://profil-publik-santri" size={Math.min(el.w, el.h) - 8} level="M" style={{ display: 'block' }} />
                                         <span style={{ fontSize: 8, fontFamily: 'sans-serif', color: '#6b7280' }}>Profil Publik</span>
+                                    </div>
+                                )}
+                                {el.type === 'table' && (
+                                    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', pointerEvents: 'none' }}>
+                                        <div style={{ padding: '8px', backgroundColor: el.tableConfig?.headerColor || '#cbd5e1', color: 'black', fontSize: '12px', fontWeight: 'bold', display: 'flex', justifyContent: 'center' }}>
+                                            Tabel Dinamis ({el.tableConfig?.dataType === 'jadwal' ? 'Jadwal Pelajaran' : 'Presensi Santri'})
+                                        </div>
+                                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '12px' }}>
+                                            [ Data akan di-generate oleh server ]
+                                        </div>
                                     </div>
                                 )}
                                 {(el.type === 'rect' || el.type === 'circle') && (

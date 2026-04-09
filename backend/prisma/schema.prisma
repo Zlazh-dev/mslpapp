@@ -66,7 +66,9 @@ model User {
   kamarBimbing     Kamar?        @relation("PembimbingKamar", fields: [kamarBimbingId], references: [id])
   kelasWali        Kelas[]       @relation("WaliKelas")
   nilaiCreated     Nilai[]       @relation("NilaiCreator")
-  presensiCreated  PresensiKelas[] @relation("PengajarPresensi")
+  presensiGuru     PresensiKelas[] @relation("PengajarPresensi")
+  jadwalMengajar   JadwalPelajaran[] @relation("PengajarJadwal")
+  mapelDiampu      GuruMapel[]
   sentMessages     ChatMessage[] @relation("SentMessages")
   receivedMessages ChatMessage[] @relation("ReceivedMessages")
 
@@ -136,6 +138,7 @@ model Kelas {
   santris     Santri[]
   nilais      Nilai[]
   presensis   PresensiKelas[]
+  jadwals     JadwalPelajaran[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -189,6 +192,7 @@ model Santri {
   kamar Kamar?  @relation(fields: [kamarId], references: [id])
   nilai Nilai[]
   presensis PresensiSiswa[]
+  dataKhidmah DataKhidmah[]
 
   user  User?
 }
@@ -242,6 +246,40 @@ model PresensiSiswa {
   updatedAt       DateTime       @updatedAt
 }
 
+// ─── Jadwal Pelajaran ─────────────────────────────────────────────────────────
+
+model JadwalPelajaran {
+  id             String   @id @default(cuid())
+  kelasId        Int
+  kelas          Kelas    @relation(fields: [kelasId], references: [id], onDelete: Cascade)
+  hari           Int      // 1=Senin ... 7=Ahad
+  mataPelajaran  String
+  pengajarId     String?
+  pengajar       User?    @relation("PengajarJadwal", fields: [pengajarId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ─── Mata Pelajaran (Master Data) ──────────────────────────────────────────────────
+
+model MataPelajaran {
+  id        String   @id @default(cuid())
+  nama      String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ─── Guru Mapel (Master) ─────────────────────────────────────────────────────────
+
+model GuruMapel {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mataPelajaran  String
+  createdAt      DateTime @default(now())
+
+  @@unique([userId, mataPelajaran])
+}
+
 // ─── Chat (Direct Messages) ───────────────────────────────────────────────────
 
 model ChatMessage {
@@ -260,4 +298,28 @@ model ChatMessage {
   receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@index([receiverId, isImportant, isArchived, createdAt])
+}
+
+// ─── Khidmah (Kepengurusan Santri) ────────────────────────────────────────────
+
+model ModelKhidmah {
+  id          String        @id @default(cuid())
+  nama        String        @unique
+  deskripsi   String?
+  dataKhidmah DataKhidmah[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model DataKhidmah {
+  id             String       @id @default(cuid())
+  santriId       String
+  santri         Santri       @relation(fields: [santriId], references: [id], onDelete: Cascade)
+  modelKhidmahId String
+  modelKhidmah   ModelKhidmah @relation(fields: [modelKhidmahId], references: [id], onDelete: Cascade)
+  keterangan     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([santriId, modelKhidmahId])
 }

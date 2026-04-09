@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { X, Printer } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Printer, FileDown } from 'lucide-react';
 import { CanvasElement } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { User } from 'lucide-react';
+import { ServerPrintModal } from './ServerPrintModal';
 
 const BACKEND = import.meta.env.VITE_API_URL || '';
 const CANVAS_W = 794; // A4 96dpi Width
@@ -15,6 +16,8 @@ interface PrintPreviewModalProps {
 }
 
 export function PrintPreviewModal({ isOpen, onClose, elements }: PrintPreviewModalProps) {
+    const [showServerPrint, setShowServerPrint] = useState(false);
+
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -41,8 +44,14 @@ export function PrintPreviewModal({ isOpen, onClose, elements }: PrintPreviewMod
                         <button onClick={onClose} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 transition text-sm">
                             Batal
                         </button>
+                        <button
+                            onClick={() => setShowServerPrint(true)}
+                            className="px-5 py-2 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 shadow flex items-center gap-2 text-sm"
+                        >
+                            <FileDown size={16} /> Cetak Data
+                        </button>
                         <button onClick={handlePrint} className="px-5 py-2 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 shadow flex items-center gap-2 text-sm">
-                            <Printer size={16} /> Mulai Cetak
+                            <Printer size={16} /> Cetak Layout
                         </button>
                     </div>
                 </div>
@@ -93,12 +102,44 @@ export function PrintPreviewModal({ isOpen, onClose, elements }: PrintPreviewMod
                                         />
                                     </div>
                                 )}
+                                {el.type === 'table' && (
+                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', fontFamily: 'sans-serif' }}>
+                                            <thead>
+                                                <tr>
+                                                    <th style={{ backgroundColor: el.tableConfig?.headerColor || '#cbd5e1', padding: '6px', border: '1px solid #000' }}>No</th>
+                                                    <th style={{ backgroundColor: el.tableConfig?.headerColor || '#cbd5e1', padding: '6px', border: '1px solid #000' }}>Kolom 1</th>
+                                                    <th style={{ backgroundColor: el.tableConfig?.headerColor || '#cbd5e1', padding: '6px', border: '1px solid #000' }}>Kolom 2</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td style={{ padding: '6px', border: '1px solid #000', textAlign: 'center' }}>1</td>
+                                                    <td style={{ padding: '6px', border: '1px solid #000' }}>Data 1</td>
+                                                    <td style={{ padding: '6px', border: '1px solid #000' }}>Data 2</td>
+                                                </tr>
+                                                <tr>
+                                                    <td style={{ padding: '6px', border: '1px solid #000', textAlign: 'center' }}>2</td>
+                                                    <td style={{ padding: '6px', border: '1px solid #000' }}>Data 3</td>
+                                                    <td style={{ padding: '6px', border: '1px solid #000' }}>Data 4</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>
 
                 </div>
             </div>
+
+            {/* Server Print Modal */}
+            <ServerPrintModal
+                isOpen={showServerPrint}
+                onClose={() => setShowServerPrint(false)}
+                elements={elements}
+            />
         </div>
     );
 }

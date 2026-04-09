@@ -1,6 +1,7 @@
 import {
-    Controller, Get, Post, Body, UseGuards, Res, HttpCode, HttpStatus,
+    Controller, Get, Post, Body, UseGuards, Res, HttpCode, HttpStatus, UseInterceptors, UploadedFile, BadRequestException
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { BackupService } from './backup.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,18 +20,20 @@ export class BackupController {
     @Get('export')
     @Roles('ADMIN')
     async exportBackup(@Res() res: Response) {
-        const data = await this.backupService.exportBackup();
-        const filename = `mslpapp_backup_${new Date().toISOString().slice(0, 10)}.json`;
+        const buffer = await this.backupService.exportZipBackup();
+        const filename = `mslpapp_backup_${new Date().toISOString().slice(0, 10)}.zip`;
 
-        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Type', 'application/zip');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.send(JSON.stringify(data, null, 2));
+        res.send(buffer);
     }
 
     @Post('import')
     @Roles('ADMIN')
     @HttpCode(HttpStatus.OK)
-    async importBackup(@Body() data: any) {
-        return this.backupService.importBackup(data);
+    @UseInterceptors(FileInterceptor('file'))
+    async importBackup(@UploadedFile() file: Express.Multer.File) {
+        if (!file) throw new BadRequestException('File ZIP tidak ditemukan');
+        return this.backupService.importZipBackup(file.buffer);
     }
 }

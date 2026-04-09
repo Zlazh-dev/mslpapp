@@ -1,5 +1,5 @@
 import React from 'react';
-import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown } from 'lucide-react';
+import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2 } from 'lucide-react';
 import { CanvasElement } from '../types';
 
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -11,12 +11,13 @@ interface ToolsSidebarProps {
     onAddElement: (type: CanvasElement['type']) => void;
     onAddFoto: () => void;
     onAddQr: () => void;
+    onAddTable: () => void;
     onImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     uploadingImage: boolean;
     imageInputRef: React.RefObject<HTMLInputElement>;
 }
 
-export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onImageUpload, uploadingImage, imageInputRef }: ToolsSidebarProps) {
+export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onAddTable, onImageUpload, uploadingImage, imageInputRef }: ToolsSidebarProps) {
     return (
         <div className="w-16 bg-white border-r flex flex-col items-center py-4 space-y-4 z-20 shrink-0 shadow-[2px_0_10px_-5px_rgba(0,0,0,0.1)] relative">
             <button onClick={() => onAddElement('text')} title="Teks Statis" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-blue-500 hover:bg-blue-100 hover:text-blue-600 transition group border border-gray-100">
@@ -41,6 +42,9 @@ export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onImageUpload, 
             </button>
             <button onClick={onAddQr} title="QR Code" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-teal-500 hover:bg-teal-100 hover:text-teal-600 transition group border border-gray-100">
                 <QrCode size={18} />
+            </button>
+            <button onClick={onAddTable} title="Tabel Dinamis" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-600 transition group border border-gray-100">
+                <Table2 size={18} />
             </button>
         </div>
     );
@@ -81,6 +85,9 @@ function SortableLayerItem({ el, selectedIds, isFirstInGroup, isLastInGroup, onS
     } else if (el.type === 'qrcode') {
         icon = <QrCode size={12} className="text-teal-500"/>;
         title = 'QR Code Profil Publik';
+    } else if (el.type === 'table') {
+        icon = <Table2 size={12} className="text-indigo-500"/>;
+        title = `Tabel Dinamis (${el.tableConfig?.dataType || 'kosong'})`;
     }
 
     const isSelected = selectedIds.includes(el.id);
@@ -296,6 +303,23 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                     <div className="rounded-lg bg-teal-50 border border-teal-100 p-3 text-[11px] text-teal-700 leading-relaxed">
                         <QrCode size={12} className="inline mr-1 mb-0.5" />
                         QR Code mengarah ke profil santri saat dicetak.
+                    </div>
+                )}
+
+                {selectedEl.type === 'table' && (
+                    <div className="pt-3 border-t space-y-3">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1"><Table2 size={12} /> Konfigurasi Tabel</h3>
+                        <div>
+                            <label className="text-xs text-gray-500 block mb-1">Sumber Data</label>
+                            <select className="form-input text-sm shadow-none border-gray-200 w-full" value={selectedEl.tableConfig?.dataType || 'presensi'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: e.target.value as any } })}>
+                                <option value="presensi">Presensi Santri</option>
+                                <option value="jadwal">Jadwal Pelajaran</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 block mb-1">Warna Header Tabel</label>
+                            <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" value={selectedEl.tableConfig?.headerColor || '#e5e7eb'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: selectedEl.tableConfig?.dataType || 'presensi', headerColor: e.target.value } })} />
+                        </div>
                     </div>
                 )}
 

@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 
 import { useEffect, useState } from 'react';
 import {
-    LayoutDashboard, Users, Home,
+    LayoutDashboard, Users, Home, BookOpen, Calendar, ClipboardList,
     GraduationCap, UserCheck, LogOut, MessageSquare, Printer, HardDrive, Download
 } from 'lucide-react';
 
@@ -30,7 +30,17 @@ const navGroups: NavGroup[] = [
     {
         title: 'Data Master',
         items: [
-            { to: '/santri', label: 'Data Santri', icon: <Users size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH'] }
+            { to: '/santri', label: 'Data Santri', icon: <Users size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH'] },
+            { to: '/khidmah', label: 'Data Khidmah', icon: <ClipboardList size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH'] },
+        ]
+    },
+    {
+        title: 'Portal Madrasah',
+        items: [
+            { to: '/madrasah/dashboard', label: 'Dashboard Madrasah', icon: <BookOpen size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
+            { to: '/madrasah/kelas', label: 'Manajemen Kelas', icon: <GraduationCap size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
+            { to: '/madrasah/jadwal', label: 'Manajemen Jadwal', icon: <Calendar size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
+            { to: '/madrasah/kelas-saya', label: 'Kelas Bimbingan', icon: <GraduationCap size={18} />, roles: ['WALI_KELAS'] },
         ]
     },
     {
@@ -38,8 +48,6 @@ const navGroups: NavGroup[] = [
         items: [
             { to: '/kamar', label: 'Data Kamar', icon: <Home size={18} />, roles: ['ADMIN', 'STAF_PENDATAAN'] },
             { to: '/kamar-saya', label: 'Kamar Bimbingan', icon: <Home size={18} />, roles: ['PEMBIMBING_KAMAR'] },
-            { to: '/kelas', label: 'Data Kelas', icon: <GraduationCap size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
-            { to: '/kelas-saya', label: 'Kelas Bimbingan', icon: <GraduationCap size={18} />, roles: ['WALI_KELAS'] },
         ]
     },
     {
@@ -52,7 +60,7 @@ const navGroups: NavGroup[] = [
         title: 'Sistem Administrasi',
         items: [
             { to: '/users', label: 'Kelola Pengguna', icon: <UserCheck size={18} />, roles: ['ADMIN'] },
-            { to: '/pengaturan/cetak', label: 'Desain Cetak', icon: <Printer size={18} />, roles: ['ADMIN'] },
+            { to: '/pengaturan/cetak', label: 'Desain Cetak', icon: <Printer size={18} />, roles: ['ADMIN', 'STAF_MADRASAH'] },
             { to: '/pengaturan/backupdata', label: 'Backup / Pulih', icon: <HardDrive size={18} />, roles: ['ADMIN'] },
         ]
     }

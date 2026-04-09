@@ -1,6 +1,6 @@
 export type CanvasElement = {
     id: string;
-    type: 'text' | 'field' | 'image' | 'rect' | 'circle' | 'qrcode' | 'group';
+    type: 'text' | 'field' | 'image' | 'rect' | 'circle' | 'qrcode' | 'group' | 'table';
     x: number;
     y: number;
     w: number;
@@ -8,6 +8,10 @@ export type CanvasElement = {
     value?: string;
     field?: string;
     groupId?: string; // Menyatakan elemen ini adalah anak dari sebuah grup
+    tableConfig?: {
+        dataType: 'presensi' | 'jadwal';
+        headerColor?: string;
+    };
     style: React.CSSProperties & {
         strokeWidth?: number | string;
         strokeColor?: string;

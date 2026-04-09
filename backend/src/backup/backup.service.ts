@@ -1,5 +1,8 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import AdmZip = require('adm-zip');
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class BackupService {
@@ -49,6 +52,50 @@ export class BackupService {
             settings,
             nilai,
         };
+    }
+
+    async exportZipBackup() {
+        const data = await this.exportBackup();
+        
+        const zip = new AdmZip();
+        zip.addFile('backup.json', Buffer.from(JSON.stringify(data, null, 2), 'utf8'));
+
+        const uploadsPath = path.join(process.cwd(), 'uploads');
+        if (fs.existsSync(uploadsPath)) {
+            zip.addLocalFolder(uploadsPath, 'uploads');
+        }
+
+        return zip.toBuffer();
+    }
+
+    async importZipBackup(fileBuffer: Buffer) {
+        let zip: AdmZip;
+        try {
+            zip = new AdmZip(fileBuffer);
+        } catch (e) {
+            throw new BadRequestException('Format file ZIP tidak valid.');
+        }
+
+        const backupEntry = zip.getEntry('backup.json');
+        if (!backupEntry) {
+            throw new BadRequestException('File backup.json tidak ditemukan dalam arsip ZIP.');
+        }
+
+        let jsonData: any;
+        try {
+            jsonData = JSON.parse(backupEntry.getData().toString('utf8'));
+        } catch (e) {
+            throw new BadRequestException('Format backup.json rusak atau tidak valid.');
+        }
+
+        const uploadEntries = zip.getEntries().filter(e => e.entryName.startsWith('uploads/') && !e.isDirectory);
+        if (uploadEntries.length > 0) {
+            for (const entry of uploadEntries) {
+                zip.extractEntryTo(entry, process.cwd(), true, true);
+            }
+        }
+
+        return this.importBackup(jsonData);
     }
 
     async importBackup(data: any) {

@@ -1,0 +1,8 @@
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=Mslpapp2026!
+POSTGRES_DB=mslpapp
+JWT_SECRET=mslpapp_jwt_super_secret_2026_lp3ia
+JWT_EXPIRES_IN=7d
+VITE_API_URL=https://app.lp3ia.ponpes.id/api
+FRONTEND_URL=https://app.lp3ia.ponpes.id
+NODE_ENV=production

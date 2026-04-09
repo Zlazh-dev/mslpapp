@@ -33,7 +33,7 @@ export class SantriService {
     }
 
     async findAll(query: QuerySantriDto) {
-        const { search, kelasId, kamarId, status, jenjangPendidikan, nisYear, page = '1', limit = '10' } = query as any;
+        const { search, kelasId, kamarId, status, jenjangPendidikan, nisYear, gender, page = '1', limit = '10' } = query as any;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
         const where: any = {};
@@ -48,6 +48,7 @@ export class SantriService {
         if (status) where.status = status as StatusSantri;
         if (jenjangPendidikan) where.jenjangPendidikan = { contains: jenjangPendidikan, mode: 'insensitive' };
         if (nisYear) where.nis = { startsWith: nisYear };
+        if (gender) where.gender = gender;
 
         const [data, total] = await this.santriRepo.findAllWithRelationsAndCount(where, skip, parseInt(limit));
 
@@ -73,7 +74,7 @@ export class SantriService {
 
         const santri = await this.santriRepo.create({
             ...dto,
-            tanggalLahir: new Date(dto.tanggalLahir),
+            tanggalLahir: dto.tanggalLahir ? new Date(dto.tanggalLahir) : undefined,
             tanggalMasuk: dto.tanggalMasuk ? new Date(dto.tanggalMasuk) : undefined,
             tanggalKeluar: dto.tanggalKeluar ? new Date(dto.tanggalKeluar) : undefined,
             status: autoStatus,
