@@ -279,13 +279,13 @@ export class PdfController {
     // ─── Jadwal Kelas PDF ───────────────────────────────────────
 
     @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
-    @Post('jadwal/kelas')
-    async generateJadwalKelas(@Body() body: { konvaJson: any, kelasId: number, hari?: number, qrFields?: string[] }, @Res() res: Response) {
-        if (!body.konvaJson || !body.kelasId) {
-            return res.status(400).json({ message: 'konvaJson and kelasId are required' });
+    @Post('jadwal/hari')
+    async generateJadwalHari(@Body() body: { konvaJson: any, hari: number, qrFields?: string[] }, @Res() res: Response) {
+        if (!body.konvaJson || !body.hari) {
+            return res.status(400).json({ message: 'konvaJson and hari are required' });
         }
 
-        const jadwalData = await this.pdfDataService.getKelasJadwalData(body.kelasId, body.hari);
+        const jadwalData = await this.pdfDataService.getJadwalByHari(body.hari);
 
         const opts: PdfRenderOptions = {
             konvaJson: body.konvaJson,
@@ -296,9 +296,10 @@ export class PdfController {
 
         const pdfBuffer = await this.pdfService.generatePdf(opts);
         
+        const HARI = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="jadwal_kelas_${body.kelasId}.pdf"`,
+            'Content-Disposition': `attachment; filename="jadwal_${HARI[body.hari] || body.hari}.pdf"`,
             'Content-Length': pdfBuffer.length,
         });
         

@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, Printer, AlertCircle, ChevronRight } from 'lucide-react';
+import { X, Loader2, Printer, AlertCircle } from 'lucide-react';
 import api from '../../../lib/api';
+
+const HARI_NAMES = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
 
 interface JadwalPrintPanelProps {
     isOpen: boolean;
     onClose: () => void;
-    kelasList: { id: number; name: string }[];
-    hari?: number;
+    hari: number;
 }
 
-export function JadwalPrintPanel({ isOpen, onClose, kelasList, hari }: JadwalPrintPanelProps) {
+export function JadwalPrintPanel({ isOpen, onClose, hari }: JadwalPrintPanelProps) {
     const [templates, setTemplates] = useState<any[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-    const [selectedKelas, setSelectedKelas] = useState<{ id: number; name: string } | null>(kelasList[0] || null);
     const [loading, setLoading] = useState(false);
     const [generating, setGenerating] = useState(false);
     const [error, setError] = useState('');
@@ -40,26 +40,25 @@ export function JadwalPrintPanel({ isOpen, onClose, kelasList, hari }: JadwalPri
 
     const handleClose = () => { setVisible(false); setTimeout(onClose, 200); };
 
+    const hariName = HARI_NAMES[hari] || String(hari);
+
     const buildFilename = () => {
         const templatePart = selectedTemplate?.name || 'Jadwal';
-        const kelasPart = selectedKelas?.name || 'Kelas';
         const now = new Date();
         const datePart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9\u00C0-\u024F\u0600-\u06FF]/g, '_').replace(/_+/g, '_');
-        return `${sanitize(templatePart)}_${sanitize(kelasPart)}_${datePart}.pdf`;
+        return `${sanitize(templatePart)}_Jadwal_${hariName}_${datePart}.pdf`;
     };
 
     const handleGenerate = async () => {
-        if (!selectedTemplate || !selectedKelas) return;
+        if (!selectedTemplate) return;
         setGenerating(true);
         setError('');
         try {
             const konvaModule = await import('../../pengaturan-cetak/utils/konvaExporter');
             const konvaJson = konvaModule.exportToKonvaJson(selectedTemplate.elements);
-            const body: any = { konvaJson, kelasId: selectedKelas.id };
-            if (hari) body.hari = hari;
 
-            const res = await api.post('/pdf/jadwal/kelas', body, { responseType: 'blob' });
+            const res = await api.post('/pdf/jadwal/hari', { konvaJson, hari }, { responseType: 'blob' });
             const blob = new Blob([res.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
 
@@ -93,29 +92,13 @@ export function JadwalPrintPanel({ isOpen, onClose, kelasList, hari }: JadwalPri
                             <Printer size={18} className="text-teal-600" />
                             Cetak Jadwal
                         </h2>
+                        <p className="text-xs text-gray-500 mt-1">Hari {hariName} — semua kelas</p>
                     </div>
                     <button onClick={handleClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"><X size={16} /></button>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-5">
-                    {/* Kelas picker */}
-                    <div>
-                        <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Pilih Kelas</label>
-                        <select
-                            value={selectedKelas?.id || ''}
-                            onChange={e => {
-                                const k = kelasList.find(k => k.id === Number(e.target.value));
-                                setSelectedKelas(k || null);
-                            }}
-                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 focus:border-teal-400 outline-none"
-                        >
-                            {kelasList.map(k => (
-                                <option key={k.id} value={k.id}>{k.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
                     {/* Template picker */}
                     <div>
                         <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Pilih Template</label>
@@ -147,7 +130,7 @@ export function JadwalPrintPanel({ isOpen, onClose, kelasList, hari }: JadwalPri
                     </div>
 
                     {/* Filename preview */}
-                    {selectedTemplate && selectedKelas && (
+                    {selectedTemplate && (
                         <div className="bg-gray-50 rounded-lg px-3.5 py-2.5 border border-gray-100">
                             <p className="text-[10px] text-gray-400 uppercase tracking-wide font-bold">Nama File</p>
                             <p className="text-[11px] text-gray-600 font-mono mt-1 break-all leading-relaxed">{buildFilename()}</p>
@@ -165,7 +148,7 @@ export function JadwalPrintPanel({ isOpen, onClose, kelasList, hari }: JadwalPri
                 {/* Footer */}
                 <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50 flex gap-2 shrink-0">
                     <button onClick={handleClose} className="flex-1 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-100 rounded-lg transition">Batal</button>
-                    <button onClick={handleGenerate} disabled={!selectedTemplate || !selectedKelas || generating}
+                    <button onClick={handleGenerate} disabled={!selectedTemplate || generating}
                         className="flex-1 py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
                         {generating ? <><Loader2 size={15} className="animate-spin" /> Memproses...</> : <><Printer size={15} /> Cetak</>}
                     </button>

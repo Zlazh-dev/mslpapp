@@ -472,7 +472,6 @@ export default function JadwalManagementPage() {
             {printOpen && (
                 <JadwalPrintPanel
                     isOpen={printOpen}
-                    kelasList={kelasList.map(k => ({ id: k.id, name: kelasLabel(k) }))}
                     hari={selectedHari}
                     onClose={() => setPrintOpen(false)}
                 />

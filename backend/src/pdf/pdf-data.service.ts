@@ -428,46 +428,33 @@ export class PdfDataService {
     }
 
     /**
-     * Returns jadwal data for a kelas, suitable for custom table rendering.
-     * Each row represents one jadwal entry with pengajar and mapel fields.
+     * Returns jadwal data for a specific hari across all kelas.
+     * Each row represents one jadwal entry with pengajar, mapel, and kelas fields.
      */
-    async getKelasJadwalData(kelasId: number, hari?: number): Promise<{
+    async getJadwalByHari(hari: number): Promise<{
         header: Record<string, string>;
         rows: Array<Record<string, string>>;
     }> {
-        const kelas = await this.prisma.kelas.findUnique({
-            where: { id: kelasId },
-            include: { tingkat: { include: { jenjang: true } }, waliKelas: true },
-        });
-
-        const kelasLengkap = kelas
-            ? [kelas.tingkat?.jenjang?.nama, kelas.tingkat?.nama, kelas.nama].filter(Boolean).join(' ')
-            : '-';
-
-        const where: any = { kelasId };
-        if (hari) where.hari = hari;
+        const HARI_NAMES = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
 
         const jadwals = await this.prisma.jadwalPelajaran.findMany({
-            where,
+            where: { hari },
             include: {
                 pengajar: { select: { id: true, name: true } },
                 kelas: { include: { tingkat: { include: { jenjang: true } } } },
             },
-            orderBy: [{ hari: 'asc' }, { mataPelajaran: 'asc' }],
+            orderBy: [
+                { kelas: { tingkat: { jenjang: { nama: 'asc' } } } },
+                { mataPelajaran: 'asc' },
+            ],
         });
-
-        const HARI_NAMES = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
 
         return {
             header: {
-                'kelas.nama': kelas?.nama ?? '-',
-                kelas_lengkap: kelasLengkap,
-                tahunAjaran: kelas?.tahunAjaran || '-',
-                jenjangPendidikan: kelas?.tingkat?.jenjang?.nama || '-',
-                waliKelas: kelas?.waliKelas?.name || '-',
+                hari: HARI_NAMES[hari] || String(hari),
             },
             rows: jadwals.map((j) => ({
-                pengajar: (j.pengajar as any)?.name ?? '-',
+                pengajar: j.pengajar?.name ?? '-',
                 mapel: j.mataPelajaran,
                 hari: HARI_NAMES[j.hari] || String(j.hari),
                 'kelas.nama': j.kelas?.nama ?? '-',
