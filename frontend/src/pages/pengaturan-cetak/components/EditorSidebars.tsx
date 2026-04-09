@@ -405,10 +405,15 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                                 <option value="jenjangPendidikan">Jenjang</option>
                                 <option value="jalurPendidikan">Jalur</option>
                                 <option value="kelas.nama">Kelas</option>
+                                <option value="kelas_lengkap">Kelas Lengkap (Jenjang+Tingkat+Nama)</option>
                                 <option value="kamar.nama">Kamar</option>
                                 <option value="tanggalMasuk">Tgl Masuk</option>
                                 <option value="tanggalKeluar">Tgl Keluar</option>
                                 <option value="status">Status</option>
+                            </optgroup>
+                            <optgroup label="Jadwal">
+                                <option value="pengajar">Pengajar</option>
+                                <option value="mapel">Mata Pelajaran</option>
                             </optgroup>
                             <optgroup label="Keluarga">
                                 <option value="namaAyah">Nama Ayah</option>
@@ -477,8 +482,11 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                     { value: 'gender', label: 'Gender' },
                     { value: 'noHp', label: 'No HP' },
                     { value: 'kelas.nama', label: 'Kelas' },
+                    { value: 'kelas_lengkap', label: 'Kelas Lengkap' },
                     { value: 'kamar.nama', label: 'Kamar' },
                     { value: 'jenjangPendidikan', label: 'Jenjang' },
+                    { value: 'pengajar', label: 'Pengajar' },
+                    { value: 'mapel', label: 'Mata Pelajaran' },
                     { value: 'namaAyah', label: 'Nama Ayah' },
                     { value: 'namaIbu', label: 'Nama Ibu' },
                     { value: 'namaWali', label: 'Nama Wali' },

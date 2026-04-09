@@ -314,6 +314,7 @@ export class PdfDataService {
 
         return {
             'kelas.nama': kelas.nama,
+            kelas_lengkap: [kelas.tingkat?.jenjang?.nama, kelas.tingkat?.nama, kelas.nama].filter(Boolean).join(' '),
             'tahunAjaran': kelas.tahunAjaran || '-',
             'jenjangPendidikan': kelas.tingkat?.jenjang?.nama || '-',
             'waliKelas': kelas.waliKelas?.name || '-'
@@ -414,6 +415,9 @@ export class PdfDataService {
             gender: s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : '-',
             noHp: s.noHp ?? '-',
             'kelas.nama': s.kelas?.nama ?? '-',
+            kelas_lengkap: s.kelas
+                ? [s.kelas.tingkat?.jenjang?.nama, s.kelas.tingkat?.nama, s.kelas.nama].filter(Boolean).join(' ')
+                : '-',
             'kamar.nama': s.kamar?.nama ?? '-',
             jenjangPendidikan: s.jenjangPendidikan ?? '-',
             namaAyah: s.namaAyah ?? '-',
@@ -421,5 +425,56 @@ export class PdfDataService {
             namaWali: s.namaWali ?? '-',
             status: s.status,
         }));
+    }
+
+    /**
+     * Returns jadwal data for a kelas, suitable for custom table rendering.
+     * Each row represents one jadwal entry with pengajar and mapel fields.
+     */
+    async getKelasJadwalData(kelasId: number, hari?: number): Promise<{
+        header: Record<string, string>;
+        rows: Array<Record<string, string>>;
+    }> {
+        const kelas = await this.prisma.kelas.findUnique({
+            where: { id: kelasId },
+            include: { tingkat: { include: { jenjang: true } }, waliKelas: true },
+        });
+
+        const kelasLengkap = kelas
+            ? [kelas.tingkat?.jenjang?.nama, kelas.tingkat?.nama, kelas.nama].filter(Boolean).join(' ')
+            : '-';
+
+        const where: any = { kelasId };
+        if (hari) where.hari = hari;
+
+        const jadwals = await this.prisma.jadwalPelajaran.findMany({
+            where,
+            include: {
+                pengajar: { select: { id: true, name: true } },
+                kelas: { include: { tingkat: { include: { jenjang: true } } } },
+            },
+            orderBy: [{ hari: 'asc' }, { mataPelajaran: 'asc' }],
+        });
+
+        const HARI_NAMES = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
+
+        return {
+            header: {
+                'kelas.nama': kelas?.nama ?? '-',
+                kelas_lengkap: kelasLengkap,
+                tahunAjaran: kelas?.tahunAjaran || '-',
+                jenjangPendidikan: kelas?.tingkat?.jenjang?.nama || '-',
+                waliKelas: kelas?.waliKelas?.name || '-',
+            },
+            rows: jadwals.map((j) => ({
+                pengajar: (j.pengajar as any)?.name ?? '-',
+                mapel: j.mataPelajaran,
+                hari: HARI_NAMES[j.hari] || String(j.hari),
+                'kelas.nama': j.kelas?.nama ?? '-',
+                kelas_lengkap: j.kelas
+                    ? [j.kelas.tingkat?.jenjang?.nama, j.kelas.tingkat?.nama, j.kelas.nama].filter(Boolean).join(' ')
+                    : '-',
+            })),
+        };
     }
 }

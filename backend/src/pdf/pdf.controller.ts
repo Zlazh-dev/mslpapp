@@ -276,6 +276,35 @@ export class PdfController {
         res.end(pdfBuffer);
     }
 
+    // ─── Jadwal Kelas PDF ───────────────────────────────────────
+
+    @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
+    @Post('jadwal/kelas')
+    async generateJadwalKelas(@Body() body: { konvaJson: any, kelasId: number, hari?: number, qrFields?: string[] }, @Res() res: Response) {
+        if (!body.konvaJson || !body.kelasId) {
+            return res.status(400).json({ message: 'konvaJson and kelasId are required' });
+        }
+
+        const jadwalData = await this.pdfDataService.getKelasJadwalData(body.kelasId, body.hari);
+
+        const opts: PdfRenderOptions = {
+            konvaJson: body.konvaJson,
+            dataParams: jadwalData.header,
+            qrFields: body.qrFields,
+            santriList: jadwalData.rows,
+        };
+
+        const pdfBuffer = await this.pdfService.generatePdf(opts);
+        
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="jadwal_kelas_${body.kelasId}.pdf"`,
+            'Content-Length': pdfBuffer.length,
+        });
+        
+        res.end(pdfBuffer);
+    }
+
     // ─── Shared Response Helper ──────────────────────────────────
 
     private async sendPdf(

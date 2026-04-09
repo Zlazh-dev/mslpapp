@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { User as UserIcon, Trash2, Loader2, Settings, X, GripVertical, Search, BookOpen, ClipboardList, RefreshCw, Plus } from 'lucide-react';
+import { User as UserIcon, Trash2, Loader2, Settings, X, GripVertical, Search, BookOpen, ClipboardList, RefreshCw, Plus, Printer } from 'lucide-react';
 import api from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
 import { DndContext, useDraggable, useDroppable, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
+import { JadwalPrintPanel } from './components/JadwalPrintPanel';
 
 const HARI = [
     { id: 1, name: 'Senin' }, { id: 2, name: 'Selasa' }, { id: 3, name: 'Rabu' },
@@ -43,6 +44,9 @@ export default function JadwalManagementPage() {
 
     // Draft state: kelasId -> { pengajarId, pengajarName, mapelName }
     const [drafts, setDrafts] = useState<Map<number, DraftEntry>>(new Map());
+
+    // Print state
+    const [printKelas, setPrintKelas] = useState<{ id: number; name: string } | null>(null);
 
     // ─── FETCHERS ───────────────────────────────
     useEffect(() => {
@@ -347,7 +351,11 @@ export default function JadwalManagementPage() {
                                                     <span className="text-[11px] text-slate-300 italic">Drop mapel</span>
                                                 )}
                                             </DroppableCell>
-                                            <div className="px-2 py-[7px] flex items-center justify-center">
+                                            <div className="px-2 py-[7px] flex items-center justify-center gap-0.5">
+                                                <button onClick={() => setPrintKelas({ id: k.id, name: kelasLabel(k) })}
+                                                    className="p-0.5 text-slate-300 hover:text-teal-500 rounded transition opacity-0 group-hover:opacity-100" title="Cetak jadwal">
+                                                    <Printer size={12} />
+                                                </button>
                                                 {jadwal && canEdit && (
                                                     <button onClick={() => handleDelete(jadwal.id)}
                                                         className="p-0.5 text-slate-300 hover:text-red-500 rounded transition opacity-0 group-hover:opacity-100">
@@ -460,6 +468,16 @@ export default function JadwalManagementPage() {
                     </div>
                 </div>
             </div>
+
+            {printKelas && (
+                <JadwalPrintPanel
+                    isOpen={!!printKelas}
+                    kelasId={printKelas.id}
+                    kelasName={printKelas.name}
+                    hari={selectedHari}
+                    onClose={() => setPrintKelas(null)}
+                />
+            )}
         </div>
     );
 }
