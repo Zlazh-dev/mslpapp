@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, Download, AlertCircle } from 'lucide-react';
+import { X, Loader2, Printer, AlertCircle } from 'lucide-react';
 import api from '../../../lib/api';
 
 interface PresensiPrintModalProps {
     isOpen: boolean;
     onClose: () => void;
     kelasId: string;
+    kelasName?: string;
 }
 
-export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintModalProps) {
+export function PresensiPrintModal({ isOpen, onClose, kelasId, kelasName }: PresensiPrintModalProps) {
     const [templates, setTemplates] = useState<any[]>([]);
     const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
     const [loading, setLoading] = useState(false);
@@ -32,6 +33,16 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintMo
         }
     }, [isOpen]);
 
+    const buildFilename = () => {
+        const templatePart = selectedTemplate?.name || 'Template';
+        const kelasPart = kelasName || `Kelas_${kelasId}`;
+        const now = new Date();
+        const datePart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        // Sanitize: replace spaces/special chars with underscore
+        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9\u00C0-\u024F\u0600-\u06FF]/g, '_').replace(/_+/g, '_');
+        return `${sanitize(templatePart)}_${sanitize(kelasPart)}_${datePart}.pdf`;
+    };
+
     const handleGenerate = async () => {
         if (!selectedTemplate) return;
 
@@ -50,16 +61,34 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintMo
 
             const res = await api.post('/pdf/presensi/kelas', body, { responseType: 'blob' });
             
-            // Create download link
+            // Create blob URL and open in new window for direct printing
             const blob = new Blob([res.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Presensi_Kelas_${kelasId}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
+            
+            // Open PDF in new window and trigger print
+            const printWindow = window.open(url, '_blank');
+            if (printWindow) {
+                printWindow.addEventListener('load', () => {
+                    // Small delay to ensure PDF renders
+                    setTimeout(() => {
+                        printWindow.print();
+                    }, 500);
+                });
+                // Set the document title so it appears as the filename in print dialog
+                const filename = buildFilename().replace('.pdf', '');
+                printWindow.document.title = filename;
+            } else {
+                // Fallback: if popup blocked, download instead
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = buildFilename();
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            // Don't revoke immediately — the window needs it
+            setTimeout(() => window.URL.revokeObjectURL(url), 60000);
         } catch (err: any) {
             console.error('Server print error:', err);
             setError(err.response?.data?.message || 'Gagal mencetak PDF dari server. Pastikan server berjalan.');
@@ -76,7 +105,9 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintMo
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <div>
                         <h2 className="text-lg font-bold text-gray-800">Cetak Presensi Kelas</h2>
-                        <p className="text-xs text-gray-500 mt-0.5">Pilih template desain yang mengandung tabel presensi</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            {kelasName ? `Kelas: ${kelasName}` : 'Pilih template desain yang mengandung tabel presensi'}
+                        </p>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition">
                         <X size={18} />
@@ -112,6 +143,14 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintMo
                             <p className="text-xs text-red-700">{error}</p>
                         </div>
                     )}
+
+                    {/* Preview filename */}
+                    {selectedTemplate && (
+                        <div className="bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
+                            <p className="text-[10px] text-slate-400 uppercase tracking-wide font-semibold">Nama File</p>
+                            <p className="text-xs text-slate-700 font-mono mt-0.5 truncate">{buildFilename()}</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
@@ -123,7 +162,7 @@ export function PresensiPrintModal({ isOpen, onClose, kelasId }: PresensiPrintMo
                         disabled={!selectedTemplate || generating}
                         className="px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition disabled:opacity-50 flex items-center gap-2"
                     >
-                        {generating ? <><Loader2 size={16} className="animate-spin" /> Memproses...</> : <><Download size={16} /> Cetak PDF</>}
+                        {generating ? <><Loader2 size={16} className="animate-spin" /> Memproses...</> : <><Printer size={16} /> Cetak</>}
                     </button>
                 </div>
             </div>

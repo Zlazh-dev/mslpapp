@@ -383,6 +383,7 @@ export default function KelasDetailPage() {
                 <PresensiPrintModal
                     isOpen={printOpen}
                     kelasId={kelas.id.toString()}
+                    kelasName={`${kelas.tingkat?.jenjang?.nama || ''} ${kelas.tingkat?.nama || ''} ${kelas.nama}`.trim()}
                     onClose={() => setPrintOpen(false)}
                 />
             )}
