@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 import { Plus, Trash2, GripVertical, Pencil, Check, X, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 type DeleteTarget = { type: 'kompleks' | 'gedung' | 'kamar'; id: number; nama: string };
+type PanelMode = { action: 'add' | 'edit'; entity: 'kompleks' | 'gedung' | 'kamar'; id?: number } | null;
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
@@ -19,57 +20,6 @@ const PlusIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
     </svg>
 );
-
-interface InlineAddProps {
-    value: string;
-    onChange: (v: string) => void;
-    onConfirm: () => void;
-    placeholder: string;
-    type?: string;
-    loading?: boolean;
-    extraInput?: React.ReactNode;
-}
-function InlineAdd({ value, onChange, onConfirm, placeholder, type = 'text', loading, extraInput }: InlineAddProps) {
-    return (
-        <div className="flex gap-1 p-2 border-b border-dashed border-emerald-200 bg-emerald-50/50">
-            <input
-                type={type} value={value} autoFocus
-                onChange={e => onChange(e.target.value)}
-                placeholder={placeholder}
-                onKeyDown={e => e.key === 'Enter' && value && onConfirm()}
-                className="flex-1 min-w-0 px-2 py-1 rounded border border-emerald-200 text-xs bg-white outline-none focus:border-emerald-400"
-            />
-            {extraInput}
-            <button
-                onClick={() => value && onConfirm()} disabled={!value || loading}
-                className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium disabled:opacity-50 transition"
-            >OK</button>
-        </div>
-    );
-}
-
-// ── Rename Modal (for Kompleks & Gedung) ───────────────────────────────────────────────────
-function RenameModal({ title, initialValue, onSave, onClose }: { title: string; initialValue: string; onSave: (v: string) => void; onClose: () => void }) {
-    const [val, setVal] = useState(initialValue);
-    return (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-            <div className="w-full max-w-xs rounded-2xl bg-white shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-gray-900">Edit {title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={15} /></button>
-                </div>
-                <input autoFocus value={val} onChange={e => setVal(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && val.trim()) onSave(val.trim()); if (e.key === 'Escape') onClose(); }}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-200" />
-                <div className="flex gap-2">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Batal</button>
-                    <button onClick={() => val.trim() && onSave(val.trim())} disabled={!val.trim()}
-                        className="flex-1 py-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50">Simpan</button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
@@ -88,14 +38,6 @@ export default function KamarManagementPage() {
     const [kamarList, setKamarList] = useState<Kamar[]>([]);
     const [pembimbingList, setPembimbingList] = useState<User[]>([]);
 
-    // Add forms
-    const [addingKompleks, setAddingKompleks] = useState(false);
-    const [newKompleksNama, setNewKompleksNama] = useState('');
-    const [addingGedung, setAddingGedung] = useState(false);
-    const [newGedungNama, setNewGedungNama] = useState('');
-    const [addingKamar, setAddingKamar] = useState(false);
-    const [newKamarNama, setNewKamarNama] = useState('');
-    const [newKamarKap, setNewKamarKap] = useState('');
     const [filterKamar, setFilterKamar] = useState('');
     const [sortKamar, setSortKamar] = useState<{ key: 'nama' | 'terisi'; dir: 'asc' | 'desc' }>({ key: 'nama', dir: 'asc' });
 
@@ -106,9 +48,6 @@ export default function KamarManagementPage() {
     // Global map: userId -> { kamarId, kamarNama } across ALL gedungs
     const [globalAssignMap, setGlobalAssignMap] = useState<Map<string, { kamarId: number; kamarNama: string }>>(new Map());
 
-    // Inline edit state: 'kompleks-5', 'gedung-2'
-    const [renaming, setRenaming] = useState<{ type: 'kompleks' | 'gedung'; id: number; current: string } | null>(null);
-
     // Delete confirm
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
@@ -116,6 +55,11 @@ export default function KamarManagementPage() {
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Sidebar panel state
+    const [panelMode, setPanelMode] = useState<PanelMode>(null);
+    const [panelNama, setPanelNama] = useState('');
+    const [panelKap, setPanelKap] = useState('');
 
     const showMsg = (msg: string) => { setSuccess(msg); setError(''); setTimeout(() => setSuccess(''), 3000); };
     const showErr = (msg: string) => { setError(msg); setTimeout(() => setError(''), 4000); };
@@ -160,12 +104,12 @@ export default function KamarManagementPage() {
     // ── CRUD handlers ──────────────────────────────────────────────────────────
 
     const createKompleks = async () => {
-        if (!newKompleksNama.trim()) return;
+        if (!panelNama.trim()) return;
         setLoading(true);
         try {
-            const r = await api.post('/kompleks', { nama: newKompleksNama });
+            const r = await api.post('/kompleks', { nama: panelNama });
             showMsg(`Kompleks "${r.data.data.nama}" dibuat`);
-            setAddingKompleks(false); setNewKompleksNama('');
+            setPanelMode(null); setPanelNama('');
             await fetchKompleks();
             setSelKompleks(r.data.data.id);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
@@ -173,12 +117,12 @@ export default function KamarManagementPage() {
     };
 
     const createGedung = async () => {
-        if (!newGedungNama.trim() || !selKompleks) return;
+        if (!panelNama.trim() || !selKompleks) return;
         setLoading(true);
         try {
-            const r = await api.post('/gedung', { nama: newGedungNama, kompleksId: selKompleks });
+            const r = await api.post('/gedung', { nama: panelNama, kompleksId: selKompleks });
             showMsg(`Gedung "${r.data.data.nama}" dibuat`);
-            setAddingGedung(false); setNewGedungNama('');
+            setPanelMode(null); setPanelNama('');
             await fetchGedung(selKompleks);
             setSelGedung(r.data.data.id);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
@@ -186,12 +130,12 @@ export default function KamarManagementPage() {
     };
 
     const createKamar = async () => {
-        if (!newKamarNama.trim() || !selGedung) return;
+        if (!panelNama.trim() || !selGedung) return;
         setLoading(true);
         try {
-            await api.post('/kamar', { nama: newKamarNama, gedungId: selGedung, kapasitas: newKamarKap ? parseInt(newKamarKap) : undefined });
+            await api.post('/kamar', { nama: panelNama, gedungId: selGedung, kapasitas: panelKap ? parseInt(panelKap) : undefined });
             showMsg('Kamar berhasil dibuat');
-            setAddingKamar(false); setNewKamarNama(''); setNewKamarKap('');
+            setPanelMode(null); setPanelNama(''); setPanelKap('');
             await fetchKamar(selGedung);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
         finally { setLoading(false); }
@@ -219,10 +163,29 @@ export default function KamarManagementPage() {
         try {
             await api.patch(`/${type}/${id}`, { nama });
             showMsg('Nama berhasil diperbarui');
-            setRenaming(null);
+            setPanelMode(null); setPanelNama('');
             if (type === 'kompleks') await fetchKompleks();
             else if (type === 'gedung' && selKompleks) await fetchGedung(selKompleks);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
+    };
+
+    const openAddPanel = (entity: 'kompleks' | 'gedung' | 'kamar') => {
+        setPanelMode({ action: 'add', entity });
+        setPanelNama(''); setPanelKap('');
+    };
+    const openEditPanel = (entity: 'kompleks' | 'gedung', id: number, current: string) => {
+        setPanelMode({ action: 'edit', entity, id });
+        setPanelNama(current); setPanelKap('');
+    };
+    const handlePanelSave = () => {
+        if (!panelMode || !panelNama.trim()) return;
+        if (panelMode.action === 'add') {
+            if (panelMode.entity === 'kompleks') createKompleks();
+            else if (panelMode.entity === 'gedung') createGedung();
+            else createKamar();
+        } else {
+            renameItem(panelMode.entity as 'kompleks' | 'gedung', panelMode.id!, panelNama.trim());
+        }
     };
 
     const handleDrop = (kamarId: number) => {
@@ -282,23 +245,20 @@ export default function KamarManagementPage() {
                     <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kompleks</span>
                         {canEdit && (
-                            <button onClick={() => setAddingKompleks(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
+                            <button onClick={() => openAddPanel('kompleks')} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
                                 <PlusIcon />
                             </button>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto">
-                        {addingKompleks && (
-                            <InlineAdd value={newKompleksNama} onChange={setNewKompleksNama} onConfirm={createKompleks} placeholder="Nama kompleks" loading={loading} />
-                        )}
                         {kompleksList.map(k => (
                             <div key={k.id}
-                                onClick={() => { if (!renaming) setSelKompleks(k.id); }}
+                                onClick={() => { if (!panelMode) setSelKompleks(k.id); }}
                                 className={`flex items-center gap-1 px-3 py-2 border-b border-slate-100 cursor-pointer group/row transition ${selKompleks === k.id ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
                                 <span className={`text-xs font-medium flex-1 truncate ${selKompleks === k.id ? 'text-emerald-700' : 'text-slate-800'}`}>{k.nama}</span>
                                 {canEdit && (
                                     <>
-                                        <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'kompleks', id: k.id, current: k.nama }); }}
+                                        <button onClick={e => { e.stopPropagation(); openEditPanel('kompleks', k.id, k.nama); }}
                                             className="w-5 h-5 flex-shrink-0 text-slate-400 hover:text-emerald-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100">
                                             <Pencil size={10} />
                                         </button>
@@ -319,7 +279,7 @@ export default function KamarManagementPage() {
                     <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gedung</span>
                         {canEdit && selKompleks && (
-                            <button onClick={() => setAddingGedung(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
+                            <button onClick={() => openAddPanel('gedung')} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
                                 <PlusIcon />
                             </button>
                         )}
@@ -328,17 +288,14 @@ export default function KamarManagementPage() {
                         {!selKompleks
                             ? <div className="p-4 text-center text-xs text-slate-400">Pilih kompleks</div>
                             : <>
-                                {addingGedung && (
-                                    <InlineAdd value={newGedungNama} onChange={setNewGedungNama} onConfirm={createGedung} placeholder="Nama gedung" loading={loading} />
-                                )}
                                 {gedungList.map(g => (
                                     <div key={g.id}
-                                        onClick={() => { if (!renaming) setSelGedung(g.id); }}
+                                        onClick={() => { if (!panelMode) setSelGedung(g.id); }}
                                         className={`flex items-center gap-1 px-3 py-2 border-b border-slate-100 cursor-pointer group/row transition ${selGedung === g.id ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
                                         <span className={`text-xs font-medium flex-1 truncate ${selGedung === g.id ? 'text-emerald-700' : 'text-slate-800'}`}>{g.nama}</span>
                                         {canEdit && (
                                             <>
-                                                <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'gedung', id: g.id, current: g.nama }); }}
+                                                <button onClick={e => { e.stopPropagation(); openEditPanel('gedung', g.id, g.nama); }}
                                                     className="w-5 h-5 flex-shrink-0 text-gray-400 hover:text-emerald-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100">
                                                     <Pencil size={10} />
                                                 </button>
@@ -362,7 +319,7 @@ export default function KamarManagementPage() {
                         <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kamar</span>
                             {canEdit && selGedung && (
-                                <button onClick={() => setAddingKamar(v => !v)} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
+                                <button onClick={() => openAddPanel('kamar')} className="w-5 h-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded flex items-center justify-center transition">
                                     <PlusIcon />
                                 </button>
                             )}
@@ -384,17 +341,6 @@ export default function KamarManagementPage() {
                         {!selGedung
                             ? <div className="p-6 text-center text-xs text-slate-400">Pilih gedung</div>
                             : <>
-                                {addingKamar && (
-                                    <InlineAdd
-                                        value={newKamarNama} onChange={setNewKamarNama}
-                                        onConfirm={createKamar} placeholder="Nama kamar" loading={loading}
-                                        extraInput={
-                                            <input type="number" value={newKamarKap} onChange={e => setNewKamarKap(e.target.value)}
-                                                placeholder="Kap" min={1}
-                                                className="w-12 px-2 py-1 rounded border border-emerald-200 text-xs bg-white outline-none focus:border-emerald-400" />
-                                        }
-                                    />
-                                )}
                                 {kamarList.length === 0
                                     ? <div className="p-6 text-center text-xs text-slate-400">Belum ada kamar</div>
                                     : (
@@ -560,15 +506,40 @@ export default function KamarManagementPage() {
                 </div>
             </div>
 
-            {/* Rename Modal for Kompleks/Gedung */}
-            {renaming && (
-                <RenameModal
-                    title={renaming.type === 'kompleks' ? 'Kompleks' : 'Gedung'}
-                    initialValue={renaming.current}
-                    onSave={v => renameItem(renaming.type, renaming.id, v)}
-                    onClose={() => setRenaming(null)}
-                />
-            )}
+            {/* Sidebar Panel for Add/Edit */}
+            {panelMode && <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[1px] z-40" onClick={() => setPanelMode(null)} />}
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-[340px] bg-white shadow-2xl z-50 transform transition-transform duration-300 border-l border-slate-200 flex flex-col ${panelMode ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="h-12 px-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                    <h2 className="text-sm font-bold text-slate-700">
+                        {panelMode?.action === 'edit' ? 'Edit' : 'Tambah'} {panelMode?.entity === 'kompleks' ? 'Kompleks' : panelMode?.entity === 'gedung' ? 'Gedung' : 'Kamar'}
+                    </h2>
+                    <button onClick={() => setPanelMode(null)} className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 transition"><X size={14} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Nama *</label>
+                        <input type="text" autoFocus value={panelNama} onChange={e => setPanelNama(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && panelNama.trim() && handlePanelSave()}
+                            placeholder={`Nama ${panelMode?.entity || ''}...`}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
+                    </div>
+                    {panelMode?.entity === 'kamar' && panelMode.action === 'add' && (
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Kapasitas <span className="normal-case text-slate-400 font-normal">(opsional)</span></label>
+                            <input type="number" value={panelKap} onChange={e => setPanelKap(e.target.value)}
+                                placeholder="Jumlah" min={1}
+                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
+                        </div>
+                    )}
+                </div>
+                <div className="p-3 border-t border-slate-200 flex gap-2 shrink-0">
+                    <button onClick={() => setPanelMode(null)} className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">Batal</button>
+                    <button onClick={handlePanelSave} disabled={!panelNama.trim() || loading}
+                        className="flex-1 py-2 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 transition disabled:opacity-50">
+                        {loading ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                </div>
+            </div>
 
             {/* ── Delete Modal ───────────────────────────────────────────────────── */}
             {deleteTarget && (

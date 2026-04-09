@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 import { Trash2, GripVertical, Pencil, X } from 'lucide-react';
 
 type DeleteTarget = { type: 'jenjang' | 'tingkat' | 'kelas'; id: number; nama: string };
+type PanelMode = { action: 'add' | 'edit'; entity: 'jenjang' | 'tingkat' | 'kelas'; id?: number } | null;
 
 const TrashIcon = () => (
     <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,49 +18,6 @@ const PlusIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
     </svg>
 );
-
-interface InlineAddProps {
-    value: string;
-    onChange: (v: string) => void;
-    onConfirm: () => void;
-    placeholder: string;
-    loading?: boolean;
-    extraInput?: React.ReactNode;
-}
-function InlineAdd({ value, onChange, onConfirm, placeholder, loading, extraInput }: InlineAddProps) {
-    return (
-        <div className="flex gap-1 p-2 border-b border-dashed border-blue-200 bg-blue-50/50">
-            <input value={value} autoFocus onChange={e => onChange(e.target.value)} placeholder={placeholder}
-                onKeyDown={e => e.key === 'Enter' && value && onConfirm()}
-                className="flex-1 min-w-0 px-2 py-1 rounded border border-blue-200 text-xs bg-white outline-none focus:border-blue-400" />
-            {extraInput}
-            <button onClick={() => value && onConfirm()} disabled={!value || loading}
-                className="px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium disabled:opacity-50 transition">OK</button>
-        </div>
-    );
-}
-
-function RenameModal({ title, initialValue, onSave, onClose }: { title: string; initialValue: string; onSave: (v: string) => void; onClose: () => void }) {
-    const [val, setVal] = useState(initialValue);
-    return (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-            <div className="w-full max-w-xs rounded-2xl bg-white shadow-2xl p-5 space-y-4" onClick={e => e.stopPropagation()}>
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-gray-900">Edit {title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={15} /></button>
-                </div>
-                <input autoFocus value={val} onChange={e => setVal(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && val.trim()) onSave(val.trim()); if (e.key === 'Escape') onClose(); }}
-                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200" />
-                <div className="flex gap-2">
-                    <button onClick={onClose} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition">Batal</button>
-                    <button onClick={() => val.trim() && onSave(val.trim())} disabled={!val.trim()}
-                        className="flex-1 py-2 rounded-xl bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50">Simpan</button>
-                </div>
-            </div>
-        </div>
-    );
-}
 
 export default function KelasManagementPage() {
     const navigate = useNavigate();
@@ -74,13 +32,6 @@ export default function KelasManagementPage() {
     const [kelasList, setKelasList] = useState<Kelas[]>([]);
     const [waliList, setWaliList] = useState<User[]>([]);
 
-    const [addingJenjang, setAddingJenjang] = useState(false);
-    const [newJenjangNama, setNewJenjangNama] = useState('');
-    const [addingTingkat, setAddingTingkat] = useState(false);
-    const [newTingkatNama, setNewTingkatNama] = useState('');
-    const [addingKelas, setAddingKelas] = useState(false);
-    const [newKelasNama, setNewKelasNama] = useState('');
-    const [newKelasTahun, setNewKelasTahun] = useState('');
 
     const [draggingUser, setDraggingUser] = useState<string | null>(null);
     const [dropTarget, setDropTarget] = useState<number | null>(null);
@@ -88,11 +39,15 @@ export default function KelasManagementPage() {
     // Global map: userId -> { kelasId, kelasNama } across ALL tingkats
     const [globalWaliMap, setGlobalWaliMap] = useState<Map<string, { kelasId: number; kelasNama: string }>>(new Map());
 
-    const [renaming, setRenaming] = useState<{ type: 'jenjang' | 'tingkat'; id: number; current: string } | null>(null);
+    const [loading, setLoading] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+
+    // Sidebar panel state
+    const [panelMode, setPanelMode] = useState<PanelMode>(null);
+    const [panelNama, setPanelNama] = useState('');
+    const [panelTahun, setPanelTahun] = useState('');
 
     const showMsg = (msg: string) => { setSuccess(msg); setError(''); setTimeout(() => setSuccess(''), 3000); };
     const showErr = (msg: string) => { setError(msg); setTimeout(() => setError(''), 4000); };
@@ -121,36 +76,36 @@ export default function KelasManagementPage() {
     useEffect(() => { if (selTingkat) fetchKelas(selTingkat); else setKelasList([]); }, [selTingkat]);
 
     const createJenjang = async () => {
-        if (!newJenjangNama.trim()) return;
+        if (!panelNama.trim()) return;
         setLoading(true);
         try {
-            const r = await api.post('/jenjang', { nama: newJenjangNama });
+            const r = await api.post('/jenjang', { nama: panelNama });
             showMsg(`Jenjang "${r.data.data.nama}" dibuat`);
-            setAddingJenjang(false); setNewJenjangNama('');
+            setPanelMode(null); setPanelNama('');
             await fetchJenjang(); setSelJenjang(r.data.data.id);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
         finally { setLoading(false); }
     };
 
     const createTingkat = async () => {
-        if (!newTingkatNama.trim() || !selJenjang) return;
+        if (!panelNama.trim() || !selJenjang) return;
         setLoading(true);
         try {
-            const r = await api.post('/tingkat', { nama: newTingkatNama, jenjangId: selJenjang });
+            const r = await api.post('/tingkat', { nama: panelNama, jenjangId: selJenjang });
             showMsg(`Tingkat "${r.data.data.nama}" dibuat`);
-            setAddingTingkat(false); setNewTingkatNama('');
+            setPanelMode(null); setPanelNama('');
             await fetchTingkat(selJenjang); setSelTingkat(r.data.data.id);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
         finally { setLoading(false); }
     };
 
     const createKelas = async () => {
-        if (!newKelasNama.trim() || !selTingkat) return;
+        if (!panelNama.trim() || !selTingkat) return;
         setLoading(true);
         try {
-            await api.post('/kelas', { nama: newKelasNama, tingkatId: selTingkat, tahunAjaran: newKelasTahun || undefined });
+            await api.post('/kelas', { nama: panelNama, tingkatId: selTingkat, tahunAjaran: panelTahun || undefined });
             showMsg('Kelas berhasil dibuat');
-            setAddingKelas(false); setNewKelasNama(''); setNewKelasTahun('');
+            setPanelMode(null); setPanelNama(''); setPanelTahun('');
             await fetchKelas(selTingkat);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
         finally { setLoading(false); }
@@ -178,10 +133,29 @@ export default function KelasManagementPage() {
         try {
             await api.patch(`/${type}/${id}`, { nama });
             showMsg('Nama berhasil diperbarui');
-            setRenaming(null);
+            setPanelMode(null); setPanelNama('');
             if (type === 'jenjang') await fetchJenjang();
             else if (type === 'tingkat' && selJenjang) await fetchTingkat(selJenjang);
         } catch (e: any) { showErr(e.response?.data?.message || 'Gagal'); }
+    };
+
+    const openAddPanel = (entity: 'jenjang' | 'tingkat' | 'kelas') => {
+        setPanelMode({ action: 'add', entity });
+        setPanelNama(''); setPanelTahun('');
+    };
+    const openEditPanel = (entity: 'jenjang' | 'tingkat', id: number, current: string) => {
+        setPanelMode({ action: 'edit', entity, id });
+        setPanelNama(current); setPanelTahun('');
+    };
+    const handlePanelSave = () => {
+        if (!panelMode || !panelNama.trim()) return;
+        if (panelMode.action === 'add') {
+            if (panelMode.entity === 'jenjang') createJenjang();
+            else if (panelMode.entity === 'tingkat') createTingkat();
+            else createKelas();
+        } else {
+            renameItem(panelMode.entity as 'jenjang' | 'tingkat', panelMode.id!, panelNama.trim());
+        }
     };
 
     const handleDrop = (kelasId: number) => {
@@ -248,18 +222,17 @@ export default function KelasManagementPage() {
                     <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jenjang</span>
                         {canEdit && (
-                            <button onClick={() => setAddingJenjang(v => !v)} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
+                            <button onClick={() => openAddPanel('jenjang')} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto">
-                        {addingJenjang && <InlineAdd value={newJenjangNama} onChange={setNewJenjangNama} onConfirm={createJenjang} placeholder="Nama jenjang" loading={loading} />}
                         {jenjangList.map(j => (
-                            <div key={j.id} onClick={() => { if (!renaming) setSelJenjang(j.id); }}
+                            <div key={j.id} onClick={() => { if (!panelMode) setSelJenjang(j.id); }}
                                 className={`flex items-center gap-1 px-3 py-2 border-b border-slate-100 cursor-pointer group/row transition ${selJenjang === j.id ? 'bg-blue-50' : 'hover:bg-slate-50'}`}>
                                 <span className={`text-xs font-medium flex-1 truncate ${selJenjang === j.id ? 'text-blue-700' : 'text-slate-800'}`}>{j.nama}</span>
                                 {canEdit && (
                                     <>
-                                        <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'jenjang', id: j.id, current: j.nama }); }}
+                                        <button onClick={e => { e.stopPropagation(); openEditPanel('jenjang', j.id, j.nama); }}
                                             className="w-5 h-5 flex-shrink-0 text-slate-400 hover:text-blue-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><Pencil size={10} /></button>
                                         <button onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'jenjang', id: j.id, nama: j.nama }); }}
                                             className="w-5 h-5 flex-shrink-0 bg-slate-100 hover:bg-red-100 hover:text-red-600 text-slate-400 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><TrashIcon /></button>
@@ -276,19 +249,18 @@ export default function KelasManagementPage() {
                     <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tingkat</span>
                         {canEdit && selJenjang && (
-                            <button onClick={() => setAddingTingkat(v => !v)} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
+                            <button onClick={() => openAddPanel('tingkat')} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {!selJenjang ? <div className="p-4 text-center text-xs text-gray-400">Pilih jenjang</div> : <>
-                            {addingTingkat && <InlineAdd value={newTingkatNama} onChange={setNewTingkatNama} onConfirm={createTingkat} placeholder="Nama tingkat" loading={loading} />}
                             {tingkatList.map(t => (
-                                <div key={t.id} onClick={() => { if (!renaming) setSelTingkat(t.id); }}
+                                <div key={t.id} onClick={() => { if (!panelMode) setSelTingkat(t.id); }}
                                     className={`flex items-center gap-1 px-3 py-2 border-b border-gray-100 cursor-pointer group/row transition ${selTingkat === t.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}>
                                     <span className={`text-xs font-medium flex-1 truncate ${selTingkat === t.id ? 'text-blue-700' : 'text-gray-800'}`}>{t.nama}</span>
                                     {canEdit && (
                                         <>
-                                            <button onClick={e => { e.stopPropagation(); setRenaming({ type: 'tingkat', id: t.id, current: t.nama }); }}
+                                            <button onClick={e => { e.stopPropagation(); openEditPanel('tingkat', t.id, t.nama); }}
                                                 className="w-5 h-5 flex-shrink-0 text-gray-400 hover:text-blue-600 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><Pencil size={10} /></button>
                                             <button onClick={e => { e.stopPropagation(); setDeleteTarget({ type: 'tingkat', id: t.id, nama: t.nama }); }}
                                                 className="w-5 h-5 flex-shrink-0 bg-gray-100 hover:bg-red-100 hover:text-red-600 text-gray-400 rounded flex items-center justify-center transition opacity-0 group-hover/row:opacity-100"><TrashIcon /></button>
@@ -306,19 +278,11 @@ export default function KelasManagementPage() {
                     <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kelas</span>
                         {canEdit && selTingkat && (
-                            <button onClick={() => setAddingKelas(v => !v)} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
+                            <button onClick={() => openAddPanel('kelas')} className="w-5 h-5 bg-blue-600 hover:bg-blue-700 text-white rounded flex items-center justify-center transition"><PlusIcon /></button>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto">
                         {!selTingkat ? <div className="p-6 text-center text-xs text-gray-400">Pilih tingkat</div> : <>
-                            {addingKelas && (
-                                <InlineAdd value={newKelasNama} onChange={setNewKelasNama} onConfirm={createKelas} placeholder="Nama kelas" loading={loading}
-                                    extraInput={
-                                        <input value={newKelasTahun} onChange={e => setNewKelasTahun(e.target.value)} placeholder="Tahun ajaran"
-                                            className="w-24 px-2 py-1 rounded border border-blue-200 text-xs bg-white outline-none focus:border-blue-400" />
-                                    }
-                                />
-                            )}
                             {kelasList.length === 0
                                 ? <div className="p-6 text-center text-xs text-gray-400">Belum ada kelas</div>
                                 : (
@@ -440,15 +404,40 @@ export default function KelasManagementPage() {
                 </div>
             </div>
 
-            {/* Rename Modal for Jenjang/Tingkat */}
-            {renaming && (
-                <RenameModal
-                    title={renaming.type === 'jenjang' ? 'Jenjang' : 'Tingkat'}
-                    initialValue={renaming.current}
-                    onSave={v => renameItem(renaming.type, renaming.id, v)}
-                    onClose={() => setRenaming(null)}
-                />
-            )}
+            {/* Sidebar Panel for Add/Edit */}
+            {panelMode && <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[1px] z-40" onClick={() => setPanelMode(null)} />}
+            <div className={`fixed top-0 right-0 h-full w-full sm:w-[340px] bg-white shadow-2xl z-50 transform transition-transform duration-300 border-l border-slate-200 flex flex-col ${panelMode ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="h-12 px-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+                    <h2 className="text-sm font-bold text-slate-700">
+                        {panelMode?.action === 'edit' ? 'Edit' : 'Tambah'} {panelMode?.entity === 'jenjang' ? 'Jenjang' : panelMode?.entity === 'tingkat' ? 'Tingkat' : 'Kelas'}
+                    </h2>
+                    <button onClick={() => setPanelMode(null)} className="p-1.5 text-slate-400 hover:text-red-500 rounded hover:bg-slate-100 transition"><X size={14} /></button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Nama *</label>
+                        <input type="text" autoFocus value={panelNama} onChange={e => setPanelNama(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && panelNama.trim() && handlePanelSave()}
+                            placeholder={`Nama ${panelMode?.entity || ''}...`}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-blue-400 outline-none" />
+                    </div>
+                    {panelMode?.entity === 'kelas' && panelMode.action === 'add' && (
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Tahun Ajaran <span className="normal-case text-slate-400 font-normal">(opsional)</span></label>
+                            <input type="text" value={panelTahun} onChange={e => setPanelTahun(e.target.value)}
+                                placeholder="2024/2025"
+                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-blue-400 outline-none" />
+                        </div>
+                    )}
+                </div>
+                <div className="p-3 border-t border-slate-200 flex gap-2 shrink-0">
+                    <button onClick={() => setPanelMode(null)} className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">Batal</button>
+                    <button onClick={handlePanelSave} disabled={!panelNama.trim() || loading}
+                        className="flex-1 py-2 rounded-lg bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700 transition disabled:opacity-50">
+                        {loading ? 'Menyimpan...' : 'Simpan'}
+                    </button>
+                </div>
+            </div>
 
             {/* Delete Modal */}
             {deleteTarget && (
