@@ -53,9 +53,8 @@ export class LaporanService {
 
     async getDashboardStats() {
         const now = new Date();
-        const twelveMonthsAgo = new Date();
-        twelveMonthsAgo.setMonth(now.getMonth() - 11);
-        twelveMonthsAgo.setDate(1);
+        const currentYear = now.getFullYear();
+        const fiveYearsAgo = new Date(currentYear - 4, 0, 1);
 
         const [totalSantri, totalKelas, totalKamar, totalUsers, santriActive, santriInactive] = await Promise.all([
             this.prisma.santri.count(),
@@ -67,41 +66,37 @@ export class LaporanService {
         ]);
 
         const rawPendaftaran = await this.prisma.santri.findMany({
-            where: { tanggalMasuk: { gte: twelveMonthsAgo } },
+            where: { tanggalMasuk: { gte: fiveYearsAgo } },
             select: { tanggalMasuk: true }
         });
 
         const rawMutasi = await this.prisma.santri.findMany({
-            where: { tanggalKeluar: { gte: twelveMonthsAgo } },
+            where: { tanggalKeluar: { gte: fiveYearsAgo } },
             select: { tanggalKeluar: true }
         });
 
-        const countsPendaftaran: Record<string, number> = {};
+        const countsPendaftaran: Record<number, number> = {};
         rawPendaftaran.forEach(s => {
             if (s.tanggalMasuk) {
-                const k = `${s.tanggalMasuk.getFullYear()}-${String(s.tanggalMasuk.getMonth() + 1).padStart(2, '0')}`;
-                countsPendaftaran[k] = (countsPendaftaran[k] || 0) + 1;
+                const y = s.tanggalMasuk.getFullYear();
+                countsPendaftaran[y] = (countsPendaftaran[y] || 0) + 1;
             }
         });
 
-        const countsMutasi: Record<string, number> = {};
+        const countsMutasi: Record<number, number> = {};
         rawMutasi.forEach(s => {
             if (s.tanggalKeluar) {
-                const k = `${s.tanggalKeluar.getFullYear()}-${String(s.tanggalKeluar.getMonth() + 1).padStart(2, '0')}`;
-                countsMutasi[k] = (countsMutasi[k] || 0) + 1;
+                const y = s.tanggalKeluar.getFullYear();
+                countsMutasi[y] = (countsMutasi[y] || 0) + 1;
             }
         });
 
         const seriesData = [];
-        for (let i = 0; i < 12; i++) {
-            const d = new Date(twelveMonthsAgo);
-            d.setMonth(d.getMonth() + i);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            const monthName = d.toLocaleDateString('id-ID', { month: 'short' }) + ' ' + d.getFullYear().toString().substr(-2);
+        for (let y = currentYear - 4; y <= currentYear; y++) {
             seriesData.push({
-                name: monthName,
-                pendaftaran: countsPendaftaran[key] || 0,
-                mutasi: countsMutasi[key] || 0
+                name: String(y),
+                pendaftaran: countsPendaftaran[y] || 0,
+                mutasi: countsMutasi[y] || 0
             });
         }
 
