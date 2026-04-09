@@ -19,7 +19,7 @@ import KamarSayaPage from './pages/KamarSayaPage';
 import KelasSayaPage from './pages/KelasSayaPage';
 import ChatPage from './pages/ChatPage';
 import UserListPage from './pages/UserListPage';
-import UserFormPage from './pages/UserFormPage';
+
 import SantriPublicPage from './pages/SantriPublicPage';
 import PrintSettingsPage from './pages/PrintSettingsPage';
 import BackupDataPage from './pages/BackupDataPage';
@@ -101,8 +101,6 @@ export default function App() {
 
                     {/* Users — Admin only */}
                     <Route path="users" element={<PrivateRoute allowedRoles={['ADMIN']}><DesktopGuard><UserListPage /></DesktopGuard></PrivateRoute>} />
-                    <Route path="users/baru" element={<PrivateRoute allowedRoles={['ADMIN']}><DesktopGuard><UserFormPage /></DesktopGuard></PrivateRoute>} />
-                    <Route path="users/:id/edit" element={<PrivateRoute allowedRoles={['ADMIN']}><DesktopGuard><UserFormPage /></DesktopGuard></PrivateRoute>} />
 
                     {/* Pengaturan */}
                     <Route path="pengaturan/cetak" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH']}><DesktopGuard><PrintSettingsPage /></DesktopGuard></PrivateRoute>} />

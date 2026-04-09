@@ -271,7 +271,7 @@ export default function SantriListPage() {
                 ) : (
                     <div className="min-w-[750px]">{data.map((s, idx) => {
                         const c = completenessOf(s); const pct = Math.round((c / 9) * 100);
-                        const kelasLabel = [s.jenjangPendidikan, s.kelas?.tingkat?.nama, s.kelas?.nama].filter(Boolean).join(' — ');
+                        const kelasLabel = [s.kelas?.tingkat?.jenjang?.nama, s.kelas?.tingkat?.nama, s.kelas?.nama].filter(Boolean).join(' — ');
                         return (
                             <div key={s.id} onClick={() => navigate(`/santri/${s.id}`)}
                                 className="grid grid-cols-[36px_72px_1fr_180px_100px_84px_80px_48px] border-b border-slate-100 hover:bg-slate-50/80 cursor-pointer group transition">

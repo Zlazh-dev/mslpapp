@@ -39,7 +39,8 @@ export default function KhidmahPage() {
     const [showAssignPanel, setShowAssignPanel] = useState(false);
     const [editingData, setEditingData] = useState<DataKhidmah | null>(null);
     const [assignNis, setAssignNis] = useState('');
-    const [assignModelId, setAssignModelId] = useState('');
+    const [assignModelIds, setAssignModelIds] = useState<string[]>([]);
+    const [assignModelId, setAssignModelId] = useState('');  // for edit mode only
     const [assignKeterangan, setAssignKeterangan] = useState('');
 
     // ── UI state ──
@@ -99,19 +100,24 @@ export default function KhidmahPage() {
     // ─── Data Khidmah CRUD ────────────────────────────────────────────────────
 
     const assignKhidmah = async () => {
-        if (!assignNis.trim() || !assignModelId) return;
+        if (!assignNis.trim() || assignModelIds.length === 0) return;
         setLoading(true);
-        try {
-            await api.post('/khidmah/data', {
-                nis: assignNis.trim(),
-                modelKhidmahId: assignModelId,
-                keterangan: assignKeterangan.trim() || undefined,
-            });
-            showMsg('Khidmah berhasil ditambahkan');
-            closePanel();
-            await fetchData(filterModel || undefined);
-        } catch (e: any) { showErr(e.response?.data?.message || 'Gagal menambahkan'); }
-        finally { setLoading(false); }
+        let ok = 0; let fail = 0;
+        for (const mid of assignModelIds) {
+            try {
+                await api.post('/khidmah/data', {
+                    nis: assignNis.trim(),
+                    modelKhidmahId: mid,
+                    keterangan: assignKeterangan.trim() || undefined,
+                });
+                ok++;
+            } catch { fail++; }
+        }
+        if (ok > 0) showMsg(`${ok} khidmah berhasil ditambahkan${fail ? `, ${fail} gagal` : ''}`);
+        else showErr('Gagal menambahkan semua khidmah');
+        closePanel();
+        await fetchData(filterModel || undefined);
+        setLoading(false);
     };
 
     const updateKhidmah = async () => {
@@ -132,7 +138,8 @@ export default function KhidmahPage() {
     const openAddPanel = () => {
         setEditingData(null);
         setAssignNis('');
-        setAssignModelId(models[0]?.id || '');
+        setAssignModelIds([]);
+        setAssignModelId('');
         setAssignKeterangan('');
         setShowAssignPanel(true);
     };
@@ -148,7 +155,7 @@ export default function KhidmahPage() {
     const closePanel = () => {
         setShowAssignPanel(false);
         setEditingData(null);
-        setAssignNis(''); setAssignModelId(''); setAssignKeterangan('');
+        setAssignNis(''); setAssignModelIds([]); setAssignModelId(''); setAssignKeterangan('');
     };
 
     const handleDelete = async () => {
@@ -417,14 +424,32 @@ export default function KhidmahPage() {
                                 className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
                         </div>
                     )}
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Model Khidmah *</label>
-                        <select value={assignModelId} onChange={e => setAssignModelId(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none">
-                            {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
-                        </select>
-                        <p className="text-[9px] text-slate-400 mt-1">Satu santri bisa memiliki lebih dari satu model khidmah</p>
-                    </div>
+                    {editingData ? (
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Model Khidmah *</label>
+                            <select value={assignModelId} onChange={e => setAssignModelId(e.target.value)}
+                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none">
+                                {models.map(m => <option key={m.id} value={m.id}>{m.nama}</option>)}
+                            </select>
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Model Khidmah * <span className="normal-case text-slate-400 font-normal">(pilih satu atau lebih)</span></label>
+                            <div className="space-y-1">
+                                {models.map(m => (
+                                    <label key={m.id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded cursor-pointer transition ${assignModelIds.includes(m.id) ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'}`}>
+                                        <input type="checkbox" checked={assignModelIds.includes(m.id)}
+                                            onChange={e => {
+                                                if (e.target.checked) setAssignModelIds(prev => [...prev, m.id]);
+                                                else setAssignModelIds(prev => prev.filter(id => id !== m.id));
+                                            }}
+                                            className="rounded border-slate-300 text-emerald-500 focus:ring-emerald-400 w-3.5 h-3.5" />
+                                        <span className={`text-xs font-medium ${assignModelIds.includes(m.id) ? 'text-emerald-700' : 'text-slate-600'}`}>{m.nama}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Keterangan</label>
                         <input type="text" value={assignKeterangan} onChange={e => setAssignKeterangan(e.target.value)} placeholder="Opsional..."
@@ -434,7 +459,7 @@ export default function KhidmahPage() {
                 <div className="p-3 border-t border-slate-200 flex gap-2 shrink-0">
                     <button onClick={closePanel} className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition">Batal</button>
                     <button onClick={editingData ? updateKhidmah : assignKhidmah}
-                        disabled={(!editingData && !assignNis.trim()) || !assignModelId || loading}
+                        disabled={(!editingData && (!assignNis.trim() || assignModelIds.length === 0)) || (!!editingData && !assignModelId) || loading}
                         className="flex-1 py-2 rounded-lg bg-emerald-500 text-xs font-semibold text-white hover:bg-emerald-600 transition disabled:opacity-50">
                         {loading ? 'Menyimpan...' : (editingData ? 'Perbarui' : 'Simpan')}
                     </button>
