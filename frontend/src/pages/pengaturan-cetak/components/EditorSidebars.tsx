@@ -194,70 +194,78 @@ interface PropertiesSidebarProps {
 export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelected, onUpdateStyle, onDeleteElement, onMoveLayer, onGroup, onUngroup }: PropertiesSidebarProps) {
     if (!selectedEl) {
         return (
-            <div className="w-80 bg-white border-l flex flex-col items-center justify-center text-gray-400 p-8 text-center gap-3 shrink-0 z-10 overflow-y-auto">
-                <Layers size={40} className="text-gray-200" />
-                <p className="text-sm">Klik salah satu elemen di kanvas untuk memodifikasi properti.</p>
+            <div className="w-64 bg-slate-50 border-l border-slate-200 flex flex-col items-center justify-center text-slate-400 p-6 text-center gap-2 shrink-0 z-10">
+                <Layers size={32} className="text-slate-200" />
+                <p className="text-[11px]">Klik elemen di kanvas untuk memodifikasi properti.</p>
             </div>
         );
     }
 
+    const inputCls = "w-full px-2 py-1 bg-white border border-slate-200 rounded text-[11px] text-slate-700 focus:border-blue-400 outline-none tabular-nums";
+    const labelCls = "text-[10px] text-slate-400 block mb-0.5 uppercase tracking-wider font-medium";
+    const sectionCls = "px-3 py-2.5 border-b border-slate-200";
+    const sectionTitleCls = "text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between";
+
     return (
-        <div className="w-80 bg-white border-l flex flex-col z-10 overflow-y-auto shrink-0">
-            <div className="p-4 space-y-5">
-                <div className="flex items-center justify-between pb-2 border-b">
-                    <h2 className="text-sm font-bold text-gray-800">Properti Elemen</h2>
-                    <div className="flex items-center gap-1">
-                         <button onClick={() => onMoveLayer('forward')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 border border-transparent shadow-sm hover:border-gray-200 bg-white group transition-all" title="Bawa ke Depan (Ctrl+])">
-                            <MoveUp size={14} className="group-hover:-translate-y-0.5 transition-transform" />
-                         </button>
-                         <button onClick={() => onMoveLayer('backward')} className="p-1.5 hover:bg-gray-100 rounded text-gray-600 border border-transparent shadow-sm hover:border-gray-200 bg-white group transition-all" title="Kirim ke Belakang (Ctrl+[)">
-                            <MoveDown size={14} className="group-hover:translate-y-0.5 transition-transform" />
-                         </button>
+        <div className="w-64 bg-slate-50 border-l border-slate-200 flex flex-col z-10 shrink-0 overflow-y-auto">
+            {/* Header */}
+            <div className="px-3 py-2 border-b border-slate-200 bg-white flex items-center justify-between shrink-0">
+                <span className="text-[11px] font-bold text-slate-700">Properti</span>
+                <div className="flex items-center gap-0.5">
+                    <button onClick={() => onMoveLayer('forward')} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 transition" title="Bawa ke Depan">
+                        <MoveUp size={12} />
+                    </button>
+                    <button onClick={() => onMoveLayer('backward')} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 transition" title="Kirim ke Belakang">
+                        <MoveDown size={12} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Multi-select actions */}
+            {multipleSelected && (
+                <div className={sectionCls}>
+                    <p className="text-[10px] text-blue-600 font-medium text-center mb-1.5">Multiple Elemen</p>
+                    <div className="flex gap-1.5">
+                        <button onClick={onGroup} className="flex-1 py-1 bg-white border border-slate-200 text-blue-600 rounded text-[10px] font-medium hover:bg-blue-50 transition">Grup</button>
+                        <button onClick={onUngroup} className="flex-1 py-1 bg-white border border-slate-200 text-blue-600 rounded text-[10px] font-medium hover:bg-blue-50 transition">Ungroup</button>
                     </div>
                 </div>
+            )}
 
-                {multipleSelected && (
-                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg space-y-2 mb-4">
-                        <p className="text-xs text-blue-800 font-medium text-center">Multiple Elemen Terpilih</p>
-                        <div className="flex gap-2">
-                            <button onClick={onGroup} className="flex-1 py-1.5 bg-white border border-blue-200 text-blue-600 rounded text-xs font-medium hover:bg-blue-50">Grup (Ctrl+G)</button>
-                            <button onClick={onUngroup} className="flex-1 py-1.5 bg-white border border-blue-200 text-blue-600 rounded text-xs font-medium hover:bg-blue-50">Ungroup</button>
-                        </div>
-                    </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-3">
+            {/* Position & Size */}
+            <div className={sectionCls}>
+                <div className={sectionTitleCls}>Posisi & Ukuran</div>
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                     <div>
-                        <label className="text-xs text-gray-500 block mb-1">X (px)</label>
-                        <input type="number" className="form-input shadow-none text-sm py-1.5" value={Math.round(selectedEl.x)} onChange={e => onUpdateSelected({ x: Math.max(0, Math.min(Number(e.target.value), 794 - selectedEl.w)) })} />
+                        <label className={labelCls}>X</label>
+                        <input type="number" className={inputCls} value={Math.round(selectedEl.x)} onChange={e => onUpdateSelected({ x: Math.max(0, Math.min(Number(e.target.value), 794 - selectedEl.w)) })} />
                     </div>
                     <div>
-                        <label className="text-xs text-gray-500 block mb-1">Y (px)</label>
-                        <input type="number" className="form-input shadow-none text-sm py-1.5" value={Math.round(selectedEl.y)} onChange={e => onUpdateSelected({ y: Math.max(0, Math.min(Number(e.target.value), 1123 - selectedEl.h)) })} />
+                        <label className={labelCls}>Y</label>
+                        <input type="number" className={inputCls} value={Math.round(selectedEl.y)} onChange={e => onUpdateSelected({ y: Math.max(0, Math.min(Number(e.target.value), 1123 - selectedEl.h)) })} />
                     </div>
                     <div>
-                        <label className="text-xs text-gray-500 block mb-1">Lebar (px)</label>
-                        <input type="number" className="form-input shadow-none text-sm py-1.5" value={Math.round(selectedEl.w)} onChange={e => onUpdateSelected({ w: Math.max(10, Math.min(Number(e.target.value), 794 - selectedEl.x)) })} />
+                        <label className={labelCls}>W</label>
+                        <input type="number" className={inputCls} value={Math.round(selectedEl.w)} onChange={e => onUpdateSelected({ w: Math.max(10, Math.min(Number(e.target.value), 794 - selectedEl.x)) })} />
                     </div>
                     <div>
-                        <label className="text-xs text-gray-500 block mb-1">Tinggi (px)</label>
-                        <input type="number" className="form-input shadow-none text-sm py-1.5" value={Math.round(selectedEl.h)} onChange={e => onUpdateSelected({ h: Math.max(10, Math.min(Number(e.target.value), 1123 - selectedEl.y)) })} />
+                        <label className={labelCls}>H</label>
+                        <input type="number" className={inputCls} value={Math.round(selectedEl.h)} onChange={e => onUpdateSelected({ h: Math.max(10, Math.min(Number(e.target.value), 1123 - selectedEl.y)) })} />
                     </div>
                 </div>
+            </div>
 
-                {selectedEl.type === 'text' && (
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Isi Teks</label>
-                        <textarea className="form-input text-sm shadow-none w-full" rows={2} value={selectedEl.value || ''} onChange={e => onUpdateSelected({ value: e.target.value })} />
-                    </div>
-                )}
-
-                {selectedEl.type === 'field' && (
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Variabel Database</label>
-                        <select className="form-input text-sm shadow-none border-gray-200 w-full" value={selectedEl.field || ''} onChange={e => onUpdateSelected({ field: e.target.value })}>
+            {/* Content – Text / Field / QR / Table */}
+            {(selectedEl.type === 'text' || selectedEl.type === 'field' || selectedEl.type === 'qrcode' || selectedEl.type === 'table') && (
+                <div className={sectionCls}>
+                    <div className={sectionTitleCls}>Konten</div>
+                    {selectedEl.type === 'text' && (
+                        <textarea className={`${inputCls} resize-none`} rows={2} value={selectedEl.value || ''} onChange={e => onUpdateSelected({ value: e.target.value })} placeholder="Isi teks..." />
+                    )}
+                    {selectedEl.type === 'field' && (
+                        <select className={inputCls} value={selectedEl.field || ''} onChange={e => onUpdateSelected({ field: e.target.value })}>
                             <optgroup label="Data Pribadi">
-                                <option value="namaUser">Nama Pengguna / Santri</option>
+                                <option value="namaUser">Nama Pengguna</option>
                                 <option value="namaLengkap">Nama Lengkap</option>
                                 <option value="nis">NIS Santri</option>
                                 <option value="nik">NIK</option>
@@ -265,158 +273,144 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                                 <option value="tanggalLahir">Tanggal Lahir</option>
                                 <option value="tempatLahir">Tempat Lahir</option>
                                 <option value="gender">Jenis Kelamin</option>
-                                <option value="noHp">No HP / Telepon</option>
-                                <option value="foto">Foto Profil (Bawaan)</option>
+                                <option value="noHp">No HP</option>
+                                <option value="foto">Foto Profil</option>
                             </optgroup>
-                            <optgroup label="Penempatan & Akademik">
-                                <option value="jenjangPendidikan">Jenjang Pendidikan</option>
-                                <option value="jalurPendidikan">Jalur Pendidikan</option>
+                            <optgroup label="Penempatan">
+                                <option value="jenjangPendidikan">Jenjang</option>
+                                <option value="jalurPendidikan">Jalur</option>
                                 <option value="kelas.nama">Kelas</option>
                                 <option value="kamar.nama">Kamar</option>
-                                <option value="tanggalMasuk">Tanggal Masuk</option>
-                                <option value="tanggalKeluar">Tanggal Keluar</option>
-                                <option value="status">Status (ACTIVE/INACTIVE)</option>
+                                <option value="tanggalMasuk">Tgl Masuk</option>
+                                <option value="tanggalKeluar">Tgl Keluar</option>
+                                <option value="status">Status</option>
                             </optgroup>
-                            <optgroup label="Keluarga / Wali">
+                            <optgroup label="Keluarga">
                                 <option value="namaAyah">Nama Ayah</option>
-                                <option value="noHpAyah">No HP Ayah</option>
+                                <option value="noHpAyah">HP Ayah</option>
                                 <option value="namaIbu">Nama Ibu</option>
-                                <option value="noHpIbu">No HP Ibu</option>
+                                <option value="noHpIbu">HP Ibu</option>
                                 <option value="namaWali">Nama Wali</option>
-                                <option value="noHpWali">No HP Wali</option>
+                                <option value="noHpWali">HP Wali</option>
                                 <option value="deskripsiWali">Ket. Wali</option>
                             </optgroup>
-                            <optgroup label="AlamatDomisili">
-                                <option value="alamatFull">Alamat Lengkap Digabung</option>
+                            <optgroup label="Alamat">
+                                <option value="alamatFull">Alamat Lengkap</option>
                                 <option value="jalan">Jalan</option>
-                                <option value="rtRw">RT / RW</option>
-                                <option value="kelurahan">Kelurahan / Desa</option>
+                                <option value="rtRw">RT/RW</option>
+                                <option value="kelurahan">Kelurahan</option>
                                 <option value="kecamatan">Kecamatan</option>
-                                <option value="kotaKabupaten">Kota / Kabupaten</option>
+                                <option value="kotaKabupaten">Kota/Kab</option>
                                 <option value="provinsi">Provinsi</option>
                             </optgroup>
                         </select>
-                    </div>
-                )}
-
-                {selectedEl.type === 'qrcode' && (
-                    <div className="rounded-lg bg-teal-50 border border-teal-100 p-3 text-[11px] text-teal-700 leading-relaxed">
-                        <QrCode size={12} className="inline mr-1 mb-0.5" />
-                        QR Code mengarah ke profil santri saat dicetak.
-                    </div>
-                )}
-
-                {selectedEl.type === 'table' && (
-                    <div className="pt-3 border-t space-y-3">
-                        <h3 className="text-xs font-semibold text-gray-400 uppercase flex items-center gap-1"><Table2 size={12} /> Konfigurasi Tabel</h3>
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Sumber Data</label>
-                            <select className="form-input text-sm shadow-none border-gray-200 w-full" value={selectedEl.tableConfig?.dataType || 'presensi'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: e.target.value as any } })}>
+                    )}
+                    {selectedEl.type === 'qrcode' && (
+                        <div className="text-[10px] text-teal-600 bg-teal-50 border border-teal-100 rounded p-2 flex items-center gap-1.5">
+                            <QrCode size={10} /> QR → profil santri saat cetak
+                        </div>
+                    )}
+                    {selectedEl.type === 'table' && (
+                        <div className="space-y-1.5">
+                            <select className={inputCls} value={selectedEl.tableConfig?.dataType || 'presensi'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: e.target.value as any } })}>
                                 <option value="presensi">Presensi Santri</option>
                                 <option value="jadwal">Jadwal Pelajaran</option>
                             </select>
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-[10px] text-slate-400 shrink-0">Header</label>
+                                <input type="color" className="w-6 h-5 cursor-pointer rounded border border-slate-200" value={selectedEl.tableConfig?.headerColor || '#e5e7eb'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: selectedEl.tableConfig?.dataType || 'presensi', headerColor: e.target.value } })} />
+                            </div>
                         </div>
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Warna Header Tabel</label>
-                            <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" value={selectedEl.tableConfig?.headerColor || '#e5e7eb'} onChange={e => onUpdateSelected({ tableConfig: { ...selectedEl.tableConfig, dataType: selectedEl.tableConfig?.dataType || 'presensi', headerColor: e.target.value } })} />
-                        </div>
-                    </div>
-                )}
-
-                <div>
-                    <label className="text-xs text-gray-500 block mb-1">Transparansi (Opacity)</label>
-                    <input type="number" min="0" max="1" step="0.1" className="form-input shadow-none text-sm py-1.5 w-full" value={selectedEl.style.opacity ?? 1} onChange={e => onUpdateStyle({ opacity: Number(e.target.value) })} />
+                    )}
                 </div>
+            )}
 
-                <div className="space-y-3 pt-3 border-t">
-                    <h3 className="text-xs font-semibold text-gray-400 uppercase">Tampilan & Gaya</h3>
-
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Gaya Font</label>
-                        <select className="form-input text-sm shadow-none py-1.5 border-gray-200 w-full" value={selectedEl.style.fontFamily || 'Arial'} onChange={e => onUpdateStyle({ fontFamily: e.target.value })}>
-                            <option value="Arial">Arial</option>
-                            <option value="'Times New Roman', Times, serif">Times New Roman</option>
-                            <option value="'Courier New', Courier, monospace">Courier New</option>
-                            <option value="Georgia, serif">Georgia</option>
-                            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
-                            <option value="Verdana, sans-serif">Verdana</option>
-                            <option value="Impact, sans-serif">Impact</option>
-                            <option value="Tahoma, sans-serif">Tahoma</option>
+            {/* Text styling */}
+            <div className={sectionCls}>
+                <div className={sectionTitleCls}>Teks</div>
+                <div className="space-y-1.5">
+                    <select className={inputCls} value={selectedEl.style.fontFamily || 'Arial'} onChange={e => onUpdateStyle({ fontFamily: e.target.value })}>
+                        <option value="Arial">Arial</option>
+                        <option value="'Times New Roman', Times, serif">Times New Roman</option>
+                        <option value="'Courier New', Courier, monospace">Courier New</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Tahoma, sans-serif">Tahoma</option>
+                    </select>
+                    <div className="grid grid-cols-2 gap-1.5">
+                        <select className={inputCls} value={selectedEl.style.fontWeight || 'normal'} onChange={e => onUpdateStyle({ fontWeight: e.target.value })}>
+                            <option value="normal">Regular</option>
+                            <option value="bold">Bold</option>
                         </select>
+                        <input type="number" className={inputCls} value={selectedEl.style.fontSize || 14} onChange={e => onUpdateStyle({ fontSize: Number(e.target.value) })} />
                     </div>
-
-                    <div>
-                        <label className="text-xs text-gray-500 block mb-1">Ukuran Font (px)</label>
-                        <input type="number" className="form-input text-sm py-1.5 shadow-none w-full" value={selectedEl.style.fontSize || 14} onChange={e => onUpdateStyle({ fontSize: Number(e.target.value) })} />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Ketebalan</label>
-                            <select className="form-input text-sm shadow-none py-1.5" value={selectedEl.style.fontWeight || 'normal'} onChange={e => onUpdateStyle({ fontWeight: e.target.value })}>
-                                <option value="normal">Normal</option>
-                                <option value="bold">Bold (Tebal)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Perataan</label>
-                            <select className="form-input text-sm shadow-none py-1.5" value={selectedEl.style.textAlign || 'left'} onChange={e => onUpdateStyle({ textAlign: e.target.value as any })}>
+                    <div className="grid grid-cols-2 gap-1.5">
+                        <div className="flex items-center gap-1">
+                            <label className="text-[10px] text-slate-400 shrink-0">Align</label>
+                            <select className={inputCls} value={selectedEl.style.textAlign || 'left'} onChange={e => onUpdateStyle({ textAlign: e.target.value as any })}>
                                 <option value="left">Kiri</option>
                                 <option value="center">Tengah</option>
                                 <option value="right">Kanan</option>
                             </select>
                         </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="text-xs text-gray-500 block mb-1">Warna Teks</label>
-                            <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" value={selectedEl.style.color || '#000000'} onChange={e => onUpdateStyle({ color: e.target.value })} />
-                        </div>
-                        <div className={(selectedEl.type === 'rect' || selectedEl.type === 'circle') ? '' : 'opacity-40'}>
-                            <label className="text-xs text-gray-500 block mb-1">Background Bentuk</label>
-                            <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" disabled={selectedEl.type !== 'rect' && selectedEl.type !== 'circle'} value={selectedEl.style.backgroundColor || '#ffffff'} onChange={e => onUpdateStyle({ backgroundColor: e.target.value })} />
+                        <div className="flex items-center gap-1">
+                            <label className="text-[10px] text-slate-400 shrink-0">Opacity</label>
+                            <input type="number" min="0" max="1" step="0.1" className={inputCls} value={selectedEl.style.opacity ?? 1} onChange={e => onUpdateStyle({ opacity: Number(e.target.value) })} />
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {(selectedEl.type === 'rect' || selectedEl.type === 'circle') && (
-                        <div className="pt-3 border-t space-y-3">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase">Garis Tepi (Stroke)</h3>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-xs text-gray-500 block mb-1">Warna Garis</label>
-                                    <input type="color" className="w-full h-8 cursor-pointer rounded overflow-hidden" value={selectedEl.style.strokeColor || '#000000'} onChange={e => onUpdateStyle({ strokeColor: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-gray-500 block mb-1">Tebal (px)</label>
-                                    <input type="number" min="0" className="form-input shadow-none text-sm py-1.5" value={selectedEl.style.strokeWidth || 0} onChange={e => onUpdateStyle({ strokeWidth: Number(e.target.value) })} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-xs text-gray-500 block mb-1">Tipe Garis</label>
-                                    <select className="form-input text-sm shadow-none py-1.5" value={selectedEl.style.strokeStyle || 'solid'} onChange={e => onUpdateStyle({ strokeStyle: e.target.value as any })}>
-                                        <option value="solid">Solid</option>
-                                        <option value="dashed">Dashed</option>
-                                        <option value="dotted">Dotted</option>
-                                    </select>
-                                </div>
-                                {selectedEl.type === 'rect' && (
-                                    <div>
-                                        <label className="text-xs text-gray-500 block mb-1">Radius Sudut (px)</label>
-                                        <input type="number" min="0" className="form-input shadow-none text-sm py-1.5" value={parseInt(selectedEl.style.borderRadius as string || '0')} onChange={e => onUpdateStyle({ borderRadius: `${Number(e.target.value)}px` })} />
-                                    </div>
-                                )}
-                            </div>
+            {/* Fill */}
+            <div className={sectionCls}>
+                <div className={sectionTitleCls}>Fill</div>
+                <div className="flex items-center gap-2">
+                    <input type="color" className="w-7 h-7 cursor-pointer rounded border border-slate-200 shrink-0" value={selectedEl.style.color || '#000000'} onChange={e => onUpdateStyle({ color: e.target.value })} />
+                    <div className="flex-1">
+                        <p className="text-[10px] text-slate-500">Warna Teks</p>
+                        <p className="text-[10px] text-slate-400 font-mono uppercase">{selectedEl.style.color || '#000000'}</p>
+                    </div>
+                </div>
+                {(selectedEl.type === 'rect' || selectedEl.type === 'circle') && (
+                    <div className="flex items-center gap-2 mt-1.5">
+                        <input type="color" className="w-7 h-7 cursor-pointer rounded border border-slate-200 shrink-0" value={selectedEl.style.backgroundColor || '#ffffff'} onChange={e => onUpdateStyle({ backgroundColor: e.target.value })} />
+                        <div className="flex-1">
+                            <p className="text-[10px] text-slate-500">Background</p>
+                            <p className="text-[10px] text-slate-400 font-mono uppercase">{selectedEl.style.backgroundColor || '#ffffff'}</p>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
+            </div>
 
-                <div className="pt-6">
-                    <button onClick={() => onDeleteElement(selectedEl.id)} className="w-full py-2 bg-red-50 text-red-600 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 hover:bg-red-100 transition shadow-sm border border-red-100">
-                        <Trash2 size={16} /> Hapus Elemen Ini
-                    </button>
+            {/* Stroke (shapes only) */}
+            {(selectedEl.type === 'rect' || selectedEl.type === 'circle') && (
+                <div className={sectionCls}>
+                    <div className={sectionTitleCls}>Stroke</div>
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <input type="color" className="w-7 h-7 cursor-pointer rounded border border-slate-200 shrink-0" value={selectedEl.style.strokeColor || '#000000'} onChange={e => onUpdateStyle({ strokeColor: e.target.value })} />
+                            <input type="number" min="0" className={`${inputCls} w-14`} value={selectedEl.style.strokeWidth || 0} onChange={e => onUpdateStyle({ strokeWidth: Number(e.target.value) })} />
+                            <select className={`${inputCls} flex-1`} value={selectedEl.style.strokeStyle || 'solid'} onChange={e => onUpdateStyle({ strokeStyle: e.target.value as any })}>
+                                <option value="solid">Solid</option>
+                                <option value="dashed">Dashed</option>
+                                <option value="dotted">Dotted</option>
+                            </select>
+                        </div>
+                        {selectedEl.type === 'rect' && (
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-[10px] text-slate-400 shrink-0">Radius</label>
+                                <input type="number" min="0" className={inputCls} value={parseInt(selectedEl.style.borderRadius as string || '0')} onChange={e => onUpdateStyle({ borderRadius: `${Number(e.target.value)}px` })} />
+                            </div>
+                        )}
+                    </div>
                 </div>
+            )}
+
+            {/* Delete */}
+            <div className="px-3 py-3 mt-auto">
+                <button onClick={() => onDeleteElement(selectedEl.id)} className="w-full py-1.5 bg-red-50 text-red-500 rounded text-[11px] font-semibold flex items-center justify-center gap-1.5 hover:bg-red-100 transition border border-red-100">
+                    <Trash2 size={12} /> Hapus Elemen
+                </button>
             </div>
         </div>
     );
