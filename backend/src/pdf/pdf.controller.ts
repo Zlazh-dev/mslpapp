@@ -244,8 +244,12 @@ export class PdfController {
             return res.status(400).json({ message: 'konvaJson and kelasId are required' });
         }
 
-        // Generate the HTML for the dynamic preset table
-        const tableHtml = await this.pdfDataService.buildPresensiTableHtml(body.kelasId);
+        // Check if the template already has a custom table — if so, skip the preset rawHtml table
+        const konvaStr = typeof body.konvaJson === 'string' ? body.konvaJson : JSON.stringify(body.konvaJson);
+        const hasCustomTable = konvaStr.includes('"dataType":"custom"');
+
+        // Only generate preset table HTML if no custom table exists in the template
+        const tableHtml = hasCustomTable ? '' : await this.pdfDataService.buildPresensiTableHtml(body.kelasId);
 
         // Fetch header data and santri list for custom table DB columns
         const [kelasHeader, santriList] = await Promise.all([
@@ -257,7 +261,7 @@ export class PdfController {
             konvaJson: body.konvaJson,
             dataParams: kelasHeader,
             qrFields: body.qrFields,
-            rawHtml: tableHtml,
+            rawHtml: tableHtml || undefined,
             santriList,
         };
 
