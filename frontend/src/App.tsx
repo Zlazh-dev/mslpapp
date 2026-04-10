@@ -75,7 +75,7 @@ export default function App() {
                     <Route path="santri/:id/edit" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_PENDATAAN']}><SantriFormPage /></PrivateRoute>} />
 
                     {/* Khidmah */}
-                    <Route path="khidmah" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH']}><KhidmahPage /></PrivateRoute>} />
+                    <Route path="khidmah" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_PENDATAAN', 'STAF_MADRASAH']}><DesktopGuard><KhidmahPage /></DesktopGuard></PrivateRoute>} />
 
                     {/* ── Portal Madrasah ──────────────────────────────────── */}
                     <Route path="madrasah/dashboard" element={<PrivateRoute allowedRoles={['ADMIN', 'STAF_MADRASAH']}><MadrasahDashboardPage /></PrivateRoute>} />
