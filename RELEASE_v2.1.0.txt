@@ -1,0 +1,89 @@
+============================================================
+  LPAPP - RELEASE NOTES v2.1.0
+  Tanggal Rilis: 10 April 2026
+============================================================
+
+FITUR BARU
+----------
+
+1. Portal Madrasah - Manajemen Jadwal Pelajaran
+   - Halaman manajemen jadwal dengan layout split-pane
+   - CRUD jadwal per hari dan per kelas
+   - Assign pengajar (Wali Kelas) ke setiap slot jadwal
+   - Cetak jadwal harian (PDF) untuk seluruh kelas sekaligus
+   - Sortable column headers (A-Z / Z-A) pada tabel jadwal
+
+2. Portal Madrasah - Cetak Presensi
+   - Modal cetak daftar hadir/presensi per kelas
+   - Format print-ready dengan tabel kehadiran
+
+3. Modul Khidmah (Pelayanan)
+   - Halaman baru untuk manajemen tugas khidmah santri
+   - CRUD penugasan khidmah dengan kategori dan periode
+   - Desktop guard untuk aksesibilitas layar besar
+
+4. Server-Side Print Engine
+   - Cetak kartu identitas santri langsung dari server
+   - Konversi template Konva canvas ke gambar server-side
+   - Batch print multiple santri dalam satu operasi
+
+5. Backup System - ZIP Archive
+   - Upgrade dari JSON export ke ZIP archive
+   - Bundle database dump + folder uploads (foto, dokumen)
+   - Restore otomatis data + media dari file ZIP
+
+PERBAIKAN & PENINGKATAN
+------------------------
+
+6. Redesign Dashboard Utama
+   - Layout baru terinspirasi Jaida Analytics
+   - Stat cards dengan progress bar dan badge persentase
+   - Tren data diubah dari per-bulan (12 bulan) ke per-tahun (5 tahun)
+   - Bar chart tahunan: Pendaftaran vs Mutasi
+   - Donut chart distribusi santri per jenjang
+   - Toggle distribusi Kelas / Kamar
+   - Quick actions dengan navigasi cepat
+
+7. Redesign Dashboard Portal Madrasah
+   - Stat cards: Total Kelas, Santri Terdaftar, Guru/Wali Kelas, Rasio
+   - Horizontal bar chart distribusi santri per kelas (top 10)
+   - Donut chart komposisi jenjang
+   - Alert untuk guru yang belum ditugaskan
+
+8. Perbaikan UI/UX
+   - Desktop guard ditambahkan ke halaman Khidmah
+   - Sidebar versi diupdate ke v2.1.0
+   - Service Worker update prompt menampilkan versi terbaru
+
+PERUBAHAN TEKNIS
+-----------------
+
+9. Backend
+   - Modul baru: JadwalModule, KhidmahModule, PdfModule
+   - Endpoint /pdf/jadwal/hari untuk cetak jadwal harian
+   - Endpoint /pdf/print-card untuk server-side ID card generation
+   - LaporanService.getDashboardStats: agregasi tahunan (5 tahun)
+   - systemHealth version string: LPAPP v2.1.0
+   - Prisma schema: model JadwalPelajaran, MataPelajaran, GuruMapel
+
+10. Frontend
+    - Halaman baru: JadwalManagementPage, MadrasahDashboardPage, KhidmahPage
+    - Komponen: JadwalPrintPanel, PresensiPrintModal, ServerPrintModal
+    - Recharts: BarChart, PieChart untuk visualisasi dashboard
+    - Export utilitas: konvaExporter, templateExportImport
+
+11. Infrastructure
+    - Migrasi deployment dari PM2 ke Docker Compose
+    - 3 containers: postgres, backend, frontend
+    - PM2 processes dihapus untuk menghindari port conflict
+
+DEPLOYMENT
+----------
+- Docker Compose: docker compose up -d --build
+- Prisma sync: docker exec mslpapp_backend npx prisma db push
+- Data production: AMAN (volume postgres_data tidak dihapus)
+
+============================================================
+  Versi Sebelumnya: v2.0.0
+  Versi Saat Ini:   v2.1.0
+============================================================
