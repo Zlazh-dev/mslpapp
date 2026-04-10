@@ -104,10 +104,38 @@ function SortableLayerItem({ el, selectedIds, isGroupChild, onSelect, onHoverLay
     );
 }
 
-function GroupHeader({ groupId, groupName, isExpanded, onToggle, childCount, onRename }: {
+/** Plain (non-sortable) display of a layer item — used for group children */
+function PlainLayerItem({ el, selectedIds, onSelect, onHoverLayer, onContextMenu }: {
+    el: CanvasElement; selectedIds: string[];
+    onSelect: (id: string, shiftKey?: boolean) => void; onHoverLayer: (id: string | null) => void;
+    onContextMenu: (e: React.MouseEvent, id: string) => void;
+}) {
+    const { icon, title } = getElementInfo(el);
+    const isSelected = selectedIds.includes(el.id);
+    return (
+        <div
+            onMouseEnter={() => onHoverLayer(el.id)}
+            onMouseLeave={() => onHoverLayer(null)}
+            onClick={(e) => { e.stopPropagation(); onSelect(el.id, e.shiftKey); }}
+            onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); if (!isSelected) onSelect(el.id); onContextMenu(e, el.id); }}
+            className={`flex items-center h-7 cursor-pointer select-none transition-colors pl-7 group ${isSelected ? 'bg-blue-600/20' : 'hover:bg-slate-700/60'}`}
+        >
+            <span className="w-[18px] shrink-0" />{/* indent spacer instead of grip */}
+            <span className="shrink-0 mr-1.5">{icon}</span>
+            <span className={`text-[11px] truncate flex-1 ${isSelected ? 'text-white font-medium' : 'text-slate-400'}`} title={title}>
+                {title}
+            </span>
+        </div>
+    );
+}
+
+/** Sortable group header — drag the grip to reorder entire group */
+function SortableGroupHeader({ groupId, groupName, isExpanded, onToggle, childCount, onRename }: {
     groupId: string; groupName: string; isExpanded: boolean; onToggle: () => void; childCount: number;
     onRename: (name: string) => void;
 }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: groupId });
+    const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 1 };
     const [editing, setEditing] = useState(false);
     const [name, setName] = useState(groupName);
 
@@ -117,34 +145,43 @@ function GroupHeader({ groupId, groupName, isExpanded, onToggle, childCount, onR
         onRename(trimmed);
         setEditing(false);
     };
-
-    // Sync if parent changes
     React.useEffect(() => { setName(groupName); }, [groupName]);
 
     return (
-        <div
-            onClick={(e) => { e.stopPropagation(); if (!editing) onToggle(); }}
-            onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
-            className="flex items-center h-7 cursor-pointer select-none transition-colors pl-1.5 hover:bg-slate-700/60 group"
-        >
-            <span className="shrink-0 text-slate-500 mr-0.5">
-                {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-            </span>
-            <Folder size={11} className="text-slate-500 mr-1.5 shrink-0" />
-            {editing ? (
-                <input
-                    autoFocus
-                    className="flex-1 bg-slate-600 border border-blue-500 rounded px-1 py-0 text-[11px] text-white outline-none mr-1"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    onBlur={commitRename}
-                    onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { setName(groupName); setEditing(false); } }}
+        <div ref={setNodeRef} style={style} className={isDragging ? 'opacity-60' : ''}>
+            <div
+                onClick={(e) => { e.stopPropagation(); if (!editing) onToggle(); }}
+                onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }}
+                className="flex items-center h-7 cursor-pointer select-none transition-colors pl-1.5 hover:bg-slate-700/60 group"
+            >
+                {/* Drag handle for reordering the GROUP */}
+                <div
+                    {...attributes} {...listeners}
                     onClick={e => e.stopPropagation()}
-                />
-            ) : (
-                <span className="text-[11px] text-slate-300 font-medium truncate flex-1" title="Double-click to rename">{groupName}</span>
-            )}
-            <span className="text-[9px] text-slate-500 pr-2 tabular-nums">{childCount}</span>
+                    className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing pr-1 text-slate-500 hover:text-slate-300 transition-opacity shrink-0"
+                    title="Drag to reorder group"
+                >
+                    <GripVertical size={10} />
+                </div>
+                <span className="shrink-0 text-slate-500 mr-0.5">
+                    {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                </span>
+                <Folder size={11} className="text-slate-500 mr-1.5 shrink-0" />
+                {editing ? (
+                    <input
+                        autoFocus
+                        className="flex-1 bg-slate-600 border border-blue-500 rounded px-1 py-0 text-[11px] text-white outline-none mr-1"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        onBlur={commitRename}
+                        onKeyDown={e => { if (e.key === 'Enter') commitRename(); if (e.key === 'Escape') { setName(groupName); setEditing(false); } }}
+                        onClick={e => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className="text-[11px] text-slate-300 font-medium truncate flex-1" title="Double-click to rename">{groupName}</span>
+                )}
+                <span className="text-[9px] text-slate-500 pr-2 tabular-nums">{childCount}</span>
+            </div>
         </div>
     );
 }
@@ -186,9 +223,8 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
     });
 
     const reversedElements = [...elements].reverse();
-    const itemIds = reversedElements.map(e => e.id);
 
-    // Build tree: group consecutive grouped items under a group header
+    // Build tree: one node per "block" (group = single node, single el = single node)
     const seenGroups = new Set<string>();
     type TreeNode = { type: 'group'; groupId: string; children: CanvasElement[] } | { type: 'item'; el: CanvasElement };
     const tree: TreeNode[] = [];
@@ -204,6 +240,9 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
             tree.push({ type: 'item', el });
         }
     }
+
+    // SortableContext uses ONE id per block: groupId for groups, el.id for singles
+    const blockIds = tree.map(node => node.type === 'group' ? node.groupId : node.el.id);
 
     return (
         <div className="w-64 bg-slate-800 border-r border-slate-700 flex flex-col z-20 shrink-0 layer-panel-root relative" onClick={closeContextMenu}>
@@ -226,14 +265,14 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
                             <p className="text-[10px] text-slate-500 leading-snug">Kanvas kosong.<br/>Tambah elemen dari toolbar.</p>
                         </div>
                     )}
-                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                    <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
                         {tree.map((node) => {
                             if (node.type === 'group') {
                                 const isExpanded = !collapsedGroups.has(node.groupId);
                                 const gName = node.children[0]?.groupName || 'Group';
                                 return (
                                     <div key={node.groupId}>
-                                        <GroupHeader
+                                        <SortableGroupHeader
                                             groupId={node.groupId}
                                             groupName={gName}
                                             isExpanded={isExpanded}
@@ -242,11 +281,10 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
                                             onRename={(name) => onRenameGroup(node.groupId, name)}
                                         />
                                         {isExpanded && node.children.map(child => (
-                                            <SortableLayerItem
+                                            <PlainLayerItem
                                                 key={child.id}
                                                 el={child}
                                                 selectedIds={selectedIds}
-                                                isGroupChild={true}
                                                 onSelect={onSelect}
                                                 onHoverLayer={onHoverLayer}
                                                 onContextMenu={handleContextMenu}

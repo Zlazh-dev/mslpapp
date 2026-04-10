@@ -172,40 +172,28 @@ export function CanvasEditor({
         if (!over || active.id === over.id) return;
 
         setElements((prev) => {
-            const activeEl = prev.find(e => e.id === active.id);
-            if (!activeEl) return prev;
+            const reversed = [...prev].reverse();
 
-            const groupId = activeEl.groupId;
-
-            if (groupId) {
-                // Drop on own group member → no-op
-                const overEl = prev.find(e => e.id === over.id);
-                if (!overEl || overEl.groupId === groupId) return prev;
-
-                // Work in reversed space (layer panel shows highest z-index at top)
-                const reversed = [...prev].reverse();
-                const activeIdxRev = reversed.findIndex(e => e.id === active.id);
-                const overIdxRev   = reversed.findIndex(e => e.id === over.id);
-
-                const groupMembersRev = reversed.filter(e => e.groupId === groupId);
-                const restRev         = reversed.filter(e => e.groupId !== groupId);
-
-                const overInRestIdx = restRev.findIndex(e => e.id === over.id);
-                if (overInRestIdx === -1) return prev;
-
-                // Insert group block before or after target based on drag direction
-                const insertIdx = activeIdxRev < overIdxRev ? overInRestIdx + 1 : overInRestIdx;
-                const newRestRev = [...restRev];
-                newRestRev.splice(insertIdx, 0, ...groupMembersRev);
-                return newRestRev.reverse();
+            // Build one block per group (keyed by groupId) or single element (keyed by el.id)
+            const blocks: { id: string; elements: CanvasElement[] }[] = [];
+            const seenGroups = new Set<string>();
+            for (const el of reversed) {
+                if (el.groupId) {
+                    if (!seenGroups.has(el.groupId)) {
+                        seenGroups.add(el.groupId);
+                        blocks.push({ id: el.groupId, elements: reversed.filter(e => e.groupId === el.groupId) });
+                    }
+                } else {
+                    blocks.push({ id: el.id, elements: [el] });
+                }
             }
 
-            // Non-group: original logic
-            const reversed = [...prev].reverse();
-            const oldIndex = reversed.findIndex(e => e.id === active.id);
-            const newIndex = reversed.findIndex(e => e.id === over.id);
-            const newReversed = arrayMove(reversed, oldIndex, newIndex);
-            return newReversed.reverse();
+            const oldIdx = blocks.findIndex(b => b.id === active.id);
+            const newIdx = blocks.findIndex(b => b.id === over.id);
+            if (oldIdx === -1 || newIdx === -1) return prev;
+
+            const newBlocks = arrayMove(blocks, oldIdx, newIdx);
+            return newBlocks.flatMap(b => b.elements).reverse();
         });
     };
 
