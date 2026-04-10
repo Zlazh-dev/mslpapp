@@ -131,7 +131,7 @@ export class LaporanService {
         const userDistribution = Object.keys(rolesCount).map(role => ({ role, count: rolesCount[role] }));
 
         const systemHealth = {
-            version: 'LPAPP v1.2.0',
+            version: 'LPAPP v2.1.0',
             serviceStatus: 'OK',
             lastBackup: new Date(Date.now() - 3600000 * 5).toISOString() // Simulated 5 hours ago
         };

@@ -7,7 +7,7 @@ import { registerSW } from 'virtual:pwa-register'
 
 const updateSW = registerSW({
   onNeedRefresh() {
-    if (confirm("Update Tersedia (LPAPP v2.0.0)! Muat ulang halaman untuk menggunakan versi terbaru?")) {
+    if (confirm("Update Tersedia (LPAPP v2.1.0)! Muat ulang halaman untuk menggunakan versi terbaru?")) {
       updateSW(true)
     }
   },

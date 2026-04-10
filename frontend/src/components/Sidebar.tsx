@@ -197,7 +197,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <LogOut size={16} />
                     Keluar
                 </button>
-                <p className="text-primary-500 text-[9px] text-center mt-3">LPAPP v2.0.0</p>
+                <p className="text-primary-500 text-[9px] text-center mt-3">LPAPP v2.1.0</p>
             </div>
         </div>
     );
