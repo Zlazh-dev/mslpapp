@@ -130,65 +130,38 @@ export function CanvasEditor({
 
     const moveLayer = (id: string, direction: 'forward' | 'backward') => {
         setElements(prev => {
-            const arr = [...prev];
-            const target = arr.find(x => x.id === id);
+            const target = prev.find(x => x.id === id);
             if (!target) return prev;
 
-            // If element belongs to a group, move the entire group as a unit
             const groupId = target.groupId;
+
             if (groupId) {
-                // Find the contiguous block indices that belong to this group
-                const groupIndices = arr.reduce<number[]>((acc, el, i) => {
-                    if (el.groupId === groupId) acc.push(i);
-                    return acc;
-                }, []);
-                if (groupIndices.length === 0) return prev;
+                // Group-aware: treat all members as a single block
+                const nonGroupEls = prev.filter(el => el.groupId !== groupId);
+                const groupEls    = prev.filter(el => el.groupId === groupId);
 
-                const minIdx = groupIndices[0];
-                const maxIdx = groupIndices[groupIndices.length - 1];
+                // Count non-group elements that appear BEFORE the first group member
+                const firstGroupIdx = prev.findIndex(el => el.groupId === groupId);
+                const posInNonGroup = prev.slice(0, firstGroupIdx).filter(el => el.groupId !== groupId).length;
 
-                if (direction === 'forward' && maxIdx < arr.length - 1) {
-                    // Move the whole group block one step forward
-                    const displaced = arr[maxIdx + 1];
-                    // Remove the non-group element after the group and insert before the group
-                    const newArr = [...arr];
-                    newArr.splice(maxIdx + 1, 1);
-                    newArr.splice(minIdx, 0, displaced);
-                    return newArr;
-                } else if (direction === 'backward' && minIdx > 0) {
-                    const displaced = arr[minIdx - 1];
-                    const newArr = [...arr];
-                    newArr.splice(minIdx - 1, 1);
-                    newArr.splice(maxIdx, 0, displaced);
-                    return newArr;
-                }
-                return prev;
+                let insertAfter = posInNonGroup;
+                if (direction === 'forward')  insertAfter = Math.min(insertAfter + 1, nonGroupEls.length);
+                else                           insertAfter = Math.max(insertAfter - 1, 0);
+
+                return [
+                    ...nonGroupEls.slice(0, insertAfter),
+                    ...groupEls,
+                    ...nonGroupEls.slice(insertAfter),
+                ];
             }
 
-            // Single element (no group)
+            // Single (ungrouped) element — simple swap
+            const arr = [...prev];
             const idx = arr.findIndex(x => x.id === id);
             if (direction === 'forward' && idx < arr.length - 1) {
-                // Skip over any group members to move above the whole group
-                let swapIdx = idx + 1;
-                const neighborGroupId = arr[swapIdx].groupId;
-                if (neighborGroupId) {
-                    // Find the last element of this group
-                    while (swapIdx + 1 < arr.length && arr[swapIdx + 1].groupId === neighborGroupId) swapIdx++;
-                }
-                const newArr = [...arr];
-                const moved = newArr.splice(idx, 1)[0];
-                newArr.splice(swapIdx, 0, moved);
-                return newArr;
+                [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
             } else if (direction === 'backward' && idx > 0) {
-                let swapIdx = idx - 1;
-                const neighborGroupId = arr[swapIdx].groupId;
-                if (neighborGroupId) {
-                    while (swapIdx - 1 >= 0 && arr[swapIdx - 1].groupId === neighborGroupId) swapIdx--;
-                }
-                const newArr = [...arr];
-                const moved = newArr.splice(idx, 1)[0];
-                newArr.splice(swapIdx, 0, moved);
-                return newArr;
+                [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
             }
             return arr;
         });
@@ -231,7 +204,7 @@ export function CanvasEditor({
             .map(x => ({ id: x.id, x: x.x, y: x.y, w: x.w, h: x.h }));
             
         setDragStart({ x: e.clientX, y: e.clientY, elements: selectionRecords });
-        try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { }
+        try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { }
     };
 
     const handleResizeDown = (e: React.PointerEvent, el: CanvasElement) => {
@@ -248,7 +221,7 @@ export function CanvasEditor({
             .map(x => ({ id: x.id, x: x.x, y: x.y, w: x.w, h: x.h }));
             
         setDragStart({ x: e.clientX, y: e.clientY, elements: selectionRecords });
-        try { (e.target as HTMLElement).setPointerCapture(e.pointerId); } catch { }
+        try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { }
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
@@ -297,7 +270,7 @@ export function CanvasEditor({
     const handlePointerUp = (e: React.PointerEvent) => {
         setIsDragging(false);
         setIsResizing(false);
-        try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
+        try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
     };
 
     // Updaters (applies to first selection for simple property edits usually)
