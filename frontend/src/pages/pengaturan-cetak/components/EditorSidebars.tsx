@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2, ChevronRight, ChevronDown, Folder, Plus, Minus, X } from 'lucide-react';
+import { Type, Database, User, Square, Circle, Image as ImageIcon, QrCode, Layers, Trash2, GripVertical, MoveUp, MoveDown, Table2, ChevronRight, ChevronDown, Folder, Plus, Minus, X, RotateCw } from 'lucide-react';
 import { CanvasElement, TableColumn, TableRow } from '../types';
 
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -376,6 +376,34 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                     <div>
                         <label className={labelCls}>H</label>
                         <input type="number" className={inputCls} value={Math.round(selectedEl.h)} onChange={e => onUpdateSelected({ h: Math.max(10, Math.min(Number(e.target.value), 1123 - selectedEl.y)) })} />
+                    </div>
+                </div>
+                {/* Rotation */}
+                <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                        <label className={`${labelCls} flex items-center gap-1`}><RotateCw size={9} /> Rotasi</label>
+                        <span className="text-[10px] text-blue-500 font-mono tabular-nums">{Math.round(selectedEl.rotation ?? 0)}°</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <input
+                            type="range" min={0} max={360} step={1}
+                            value={selectedEl.rotation ?? 0}
+                            onChange={e => onUpdateSelected({ rotation: Number(e.target.value) })}
+                            className="flex-1 h-1 accent-blue-500 cursor-pointer"
+                        />
+                        <input
+                            type="number" min={0} max={360}
+                            className={`${inputCls} w-14 text-center`}
+                            value={Math.round(selectedEl.rotation ?? 0)}
+                            onChange={e => onUpdateSelected({ rotation: Math.max(0, Math.min(360, Number(e.target.value))) })}
+                        />
+                        <button
+                            onClick={() => onUpdateSelected({ rotation: 0 })}
+                            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition shrink-0"
+                            title="Reset rotasi"
+                        >
+                            <RotateCw size={11} />
+                        </button>
                     </div>
                 </div>
             </div>

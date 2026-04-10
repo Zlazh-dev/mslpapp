@@ -21,6 +21,7 @@ export type CanvasElement = {
     y: number;
     w: number;
     h: number;
+    rotation?: number; // 0–360 derajat
     value?: string;
     field?: string;
     groupId?: string; // Menyatakan elemen ini adalah anak dari sebuah grup

@@ -131,14 +131,64 @@ export function CanvasEditor({
     const moveLayer = (id: string, direction: 'forward' | 'backward') => {
         setElements(prev => {
             const arr = [...prev];
+            const target = arr.find(x => x.id === id);
+            if (!target) return prev;
+
+            // If element belongs to a group, move the entire group as a unit
+            const groupId = target.groupId;
+            if (groupId) {
+                // Find the contiguous block indices that belong to this group
+                const groupIndices = arr.reduce<number[]>((acc, el, i) => {
+                    if (el.groupId === groupId) acc.push(i);
+                    return acc;
+                }, []);
+                if (groupIndices.length === 0) return prev;
+
+                const minIdx = groupIndices[0];
+                const maxIdx = groupIndices[groupIndices.length - 1];
+
+                if (direction === 'forward' && maxIdx < arr.length - 1) {
+                    // Move the whole group block one step forward
+                    const displaced = arr[maxIdx + 1];
+                    // Remove the non-group element after the group and insert before the group
+                    const newArr = [...arr];
+                    newArr.splice(maxIdx + 1, 1);
+                    newArr.splice(minIdx, 0, displaced);
+                    return newArr;
+                } else if (direction === 'backward' && minIdx > 0) {
+                    const displaced = arr[minIdx - 1];
+                    const newArr = [...arr];
+                    newArr.splice(minIdx - 1, 1);
+                    newArr.splice(maxIdx, 0, displaced);
+                    return newArr;
+                }
+                return prev;
+            }
+
+            // Single element (no group)
             const idx = arr.findIndex(x => x.id === id);
-            if (idx === -1) return prev;
             if (direction === 'forward' && idx < arr.length - 1) {
-                // Swap with next
-                [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
+                // Skip over any group members to move above the whole group
+                let swapIdx = idx + 1;
+                const neighborGroupId = arr[swapIdx].groupId;
+                if (neighborGroupId) {
+                    // Find the last element of this group
+                    while (swapIdx + 1 < arr.length && arr[swapIdx + 1].groupId === neighborGroupId) swapIdx++;
+                }
+                const newArr = [...arr];
+                const moved = newArr.splice(idx, 1)[0];
+                newArr.splice(swapIdx, 0, moved);
+                return newArr;
             } else if (direction === 'backward' && idx > 0) {
-                // Swap with prev
-                [arr[idx], arr[idx - 1]] = [arr[idx - 1], arr[idx]];
+                let swapIdx = idx - 1;
+                const neighborGroupId = arr[swapIdx].groupId;
+                if (neighborGroupId) {
+                    while (swapIdx - 1 >= 0 && arr[swapIdx - 1].groupId === neighborGroupId) swapIdx--;
+                }
+                const newArr = [...arr];
+                const moved = newArr.splice(idx, 1)[0];
+                newArr.splice(swapIdx, 0, moved);
+                return newArr;
             }
             return arr;
         });
@@ -461,6 +511,8 @@ export function CanvasEditor({
                                     top: el.y,
                                     width: el.w,
                                     height: el.h,
+                                    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+                                    transformOrigin: 'center center',
                                     cursor: isDragging && selectedIds.includes(el.id) ? 'grabbing' : 'grab',
                                     outline: selectedIds.includes(el.id) && selectedIds.length === 1 ? '2px solid #3b82f6' : (hoveredId === el.id ? '2px dashed #93c5fd' : 'none'),
                                     outlineOffset: '2px',
@@ -490,7 +542,7 @@ export function CanvasEditor({
                                     </div>
                                 )}
                                 {el.type === 'table' && el.tableConfig?.dataType === 'custom' && el.tableConfig.columns && (
-                                    <div style={{ width: '100%', height: '100%', overflow: 'hidden' }} onPointerDown={e => e.stopPropagation()}>
+                                    <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: `${el.tableConfig.tableFontSize || 11}px`, fontFamily: 'Arial, sans-serif', tableLayout: 'fixed' }}>
                                             <thead>
                                                 <tr>
