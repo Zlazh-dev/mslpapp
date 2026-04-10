@@ -154,7 +154,13 @@ export function LayerSidebar({ elements, selectedIds, onSelect, onHoverLayer, on
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
-    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+    const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => {
+        // Pre-collapse all groups that already exist when the template is loaded
+        const existingGroupIds = new Set(
+            elements.filter(el => el.groupId).map(el => el.groupId as string)
+        );
+        return existingGroupIds;
+    });
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; id: string } | null>(null);
 
     const toggleGroup = (groupId: string) => {

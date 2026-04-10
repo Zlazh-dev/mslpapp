@@ -169,15 +169,44 @@ export function CanvasEditor({
 
     const handleLayerDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
-        if (over && active.id !== over.id) {
-            setElements((prev) => {
+        if (!over || active.id === over.id) return;
+
+        setElements((prev) => {
+            const activeEl = prev.find(e => e.id === active.id);
+            if (!activeEl) return prev;
+
+            const groupId = activeEl.groupId;
+
+            if (groupId) {
+                // Drop on own group member → no-op
+                const overEl = prev.find(e => e.id === over.id);
+                if (!overEl || overEl.groupId === groupId) return prev;
+
+                // Work in reversed space (layer panel shows highest z-index at top)
                 const reversed = [...prev].reverse();
-                const oldIndex = reversed.findIndex(e => e.id === active.id);
-                const newIndex = reversed.findIndex(e => e.id === over.id);
-                const newReversed = arrayMove(reversed, oldIndex, newIndex);
-                return newReversed.reverse();
-            });
-        }
+                const activeIdxRev = reversed.findIndex(e => e.id === active.id);
+                const overIdxRev   = reversed.findIndex(e => e.id === over.id);
+
+                const groupMembersRev = reversed.filter(e => e.groupId === groupId);
+                const restRev         = reversed.filter(e => e.groupId !== groupId);
+
+                const overInRestIdx = restRev.findIndex(e => e.id === over.id);
+                if (overInRestIdx === -1) return prev;
+
+                // Insert group block before or after target based on drag direction
+                const insertIdx = activeIdxRev < overIdxRev ? overInRestIdx + 1 : overInRestIdx;
+                const newRestRev = [...restRev];
+                newRestRev.splice(insertIdx, 0, ...groupMembersRev);
+                return newRestRev.reverse();
+            }
+
+            // Non-group: original logic
+            const reversed = [...prev].reverse();
+            const oldIndex = reversed.findIndex(e => e.id === active.id);
+            const newIndex = reversed.findIndex(e => e.id === over.id);
+            const newReversed = arrayMove(reversed, oldIndex, newIndex);
+            return newReversed.reverse();
+        });
     };
 
     // Drag events
