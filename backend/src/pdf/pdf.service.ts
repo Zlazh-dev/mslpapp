@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import puppeteer, { Browser } from 'puppeteer';
 import * as QRCode from 'qrcode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as https from 'https';
+import * as http from 'http';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -109,6 +113,93 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         return map;
     }
 
+    // ── Fetch URL as Data URI (Node built-in) ────────────────────────
+
+    private fetchUrlAsDataUri(url: string): Promise<string | null> {
+        return new Promise((resolve) => {
+            const client = url.startsWith('https') ? https : http;
+            const req = client.get(url, { timeout: 5000 }, (res) => {
+                if (res.statusCode !== 200) {
+                    resolve(null);
+                    return;
+                }
+                const chunks: Buffer[] = [];
+                res.on('data', (chunk: Buffer) => chunks.push(chunk));
+                res.on('end', () => {
+                    const buf = Buffer.concat(chunks);
+                    const contentType = res.headers['content-type'] || 'image/png';
+                    resolve(`data:${contentType};base64,${buf.toString('base64')}`);
+                });
+            });
+            req.on('error', () => resolve(null));
+            req.on('timeout', () => { req.destroy(); resolve(null); });
+        });
+    }
+
+    // ── Image URL → Data URI Resolver ────────────────────────────────
+
+    /**
+     * Pre-resolves image src attributes in Konva JSON to base64 data URIs.
+     * This ensures Puppeteer inside Docker can render images without network access.
+     */
+    private async resolveImagesToDataUri(node: any): Promise<void> {
+        if (!node) return;
+
+        if (node.className === 'Image' && node.attrs?.src) {
+            const src: string = node.attrs.src;
+
+            // Skip data URIs and QR placeholders (already handled)
+            if (src.startsWith('data:') || !src) {
+                // already a data URI, nothing to do
+            }
+            // Local upload path — read from disk
+            else if (src.includes('/uploads/')) {
+                try {
+                    // Extract the relative path after /uploads/
+                    const uploadsIdx = src.indexOf('/uploads/');
+                    const relativePath = src.substring(uploadsIdx);  // e.g. /uploads/images/logo.png
+                    const diskPath = path.join(process.cwd(), relativePath);
+
+                    if (fs.existsSync(diskPath)) {
+                        const buf = fs.readFileSync(diskPath);
+                        const ext = path.extname(diskPath).toLowerCase().replace('.', '');
+                        const mime = ext === 'png' ? 'image/png'
+                            : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
+                            : ext === 'gif' ? 'image/gif'
+                            : ext === 'webp' ? 'image/webp'
+                            : ext === 'svg' ? 'image/svg+xml'
+                            : 'image/png';
+                        node.attrs.src = `data:${mime};base64,${buf.toString('base64')}`;
+                        this.logger.debug(`Resolved image to data URI: ${relativePath}`);
+                    } else {
+                        this.logger.warn(`Image file not found on disk: ${diskPath}`);
+                    }
+                } catch (err) {
+                    this.logger.warn(`Failed to read image from disk: ${src}`, err);
+                }
+            }
+            // External URL — fetch and convert
+            else if (src.startsWith('http')) {
+                try {
+                    const dataUri = await this.fetchUrlAsDataUri(src);
+                    if (dataUri) {
+                        node.attrs.src = dataUri;
+                        this.logger.debug(`Fetched external image: ${src.substring(0, 60)}`);
+                    }
+                } catch (err) {
+                    this.logger.warn(`Failed to fetch external image: ${src.substring(0, 80)}`, err?.message);
+                }
+            }
+        }
+
+        // Recurse into children
+        if (node.children) {
+            for (const child of node.children) {
+                await this.resolveImagesToDataUri(child);
+            }
+        }
+    }
+
     // ── Main Render Method ───────────────────────────────────────────
 
     async generatePdf(opts: PdfRenderOptions): Promise<Buffer> {
@@ -116,10 +207,16 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
             throw new Error('Puppeteer browser is not initialised');
         }
 
-        const konvaJsonStr =
+        // Parse the Konva JSON so we can modify it
+        const konvaJsonObj =
             typeof opts.konvaJson === 'string'
-                ? opts.konvaJson
-                : JSON.stringify(opts.konvaJson);
+                ? JSON.parse(opts.konvaJson)
+                : JSON.parse(JSON.stringify(opts.konvaJson)); // deep clone
+
+        // Pre-resolve image URLs to base64 data URIs (runs in Node)
+        await this.resolveImagesToDataUri(konvaJsonObj);
+
+        const konvaJsonStr = JSON.stringify(konvaJsonObj);
 
         // Pre-render QR codes in Node.js
         const qrDataUris = opts.qrFields?.length
@@ -315,8 +412,13 @@ html, body {
  */
 window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
 
+    /* ── Helper: detect Arabic/RTL characters ─────────────────────── */
+    const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
+    const hasArabic = (text) => ARABIC_RE.test(text);
+
     /* ── 1. Parse & Traverse ─────────────────────────────────────── */
     const stageJson = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+    const arabicTextNodes = []; // collect for HTML overlay rendering
 
     const processNode = (node) => {
         if (!node) return;
@@ -333,6 +435,12 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
             if (!node.attrs.fontFamily || node.attrs.fontFamily === 'Arial') {
                 node.attrs.fontFamily = "'Noto Sans', 'Noto Naskh Arabic', sans-serif";
             }
+
+            // Mark Arabic text nodes for HTML overlay rendering
+            if (hasArabic(txt)) {
+                arabicTextNodes.push({ ...node.attrs, _originalText: txt });
+                node.attrs._isArabicOverlay = true;
+            }
         }
 
         /* ── Image & QR code injection ── */
@@ -342,8 +450,14 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
             if (nameKey === 'foto_santri') {
                 const photoPath = data['foto_url'];
                 if (photoPath) {
-                    const baseUrl = window.location.origin || 'http://localhost:3000';
-                    node.attrs.src = photoPath.startsWith('http') ? photoPath : baseUrl + photoPath;
+                    // Images are already resolved to data URIs server-side,
+                    // but handle dynamic foto_santri separately
+                    if (photoPath.startsWith('data:') || photoPath.startsWith('http')) {
+                        node.attrs.src = photoPath;
+                    } else {
+                        const baseUrl = window.location.origin || 'http://localhost:3000';
+                        node.attrs.src = baseUrl + photoPath;
+                    }
                 }
             } else if (qrUris[nameKey]) {
                 node.attrs._qrDataUri = qrUris[nameKey];
@@ -361,7 +475,7 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
     /* ── 2. Create Stage ─────────────────────────────────────────── */
     const stage = Konva.Node.create(stageJson, 'konva-container');
 
-    /* ── 3. Post-create: load QR images into Image nodes ─────────── */
+    /* ── 3. Post-create: load images into Image nodes ────────────── */
     const imageNodes = stage.find('Image');
     const imageLoadPromises = [];
 
@@ -375,12 +489,13 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
         imageLoadPromises.push(
             new Promise((resolve) => {
                 const img = new Image();
+                img.crossOrigin = 'anonymous';
                 img.onload = () => {
                     imgNode.image(img);
                     resolve();
                 };
                 img.onerror = () => {
-                    console.warn('Image load failed:', src.substring(0, 60));
+                    console.warn('Image load failed:', src.substring(0, 80));
                     resolve(); // non-fatal
                 };
                 img.src = src;
@@ -390,10 +505,56 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
 
     await Promise.all(imageLoadPromises);
 
-    /* ── 4. Final draw ───────────────────────────────────────────── */
+    /* ── 4. Arabic text: hide Konva nodes, create HTML overlays ──── */
+    const allTextNodes = stage.find('Text');
+    const container = document.getElementById('konva-container');
+
+    allTextNodes.forEach((textNode) => {
+        if (!textNode.getAttr('_isArabicOverlay')) return;
+
+        const absPos = textNode.getAbsolutePosition();
+        const text = textNode.text();
+        const fontSize = textNode.fontSize() || 14;
+        const fontFamily = textNode.fontFamily() || "'Noto Naskh Arabic', serif";
+        const fontStyle = textNode.fontStyle() || 'normal';
+        const fill = textNode.fill() || '#000000';
+        const align = textNode.align() || 'left';
+        const w = textNode.width();
+        const h = textNode.height();
+
+        // Hide the canvas text node
+        textNode.visible(false);
+
+        // Create HTML overlay
+        const div = document.createElement('div');
+        div.style.cssText = [
+            'position:absolute',
+            'left:' + absPos.x + 'px',
+            'top:' + absPos.y + 'px',
+            w ? 'width:' + w + 'px' : '',
+            h ? 'min-height:' + h + 'px' : '',
+            'font-size:' + fontSize + 'px',
+            'font-family:' + fontFamily,
+            'font-style:' + (fontStyle.includes('italic') ? 'italic' : 'normal'),
+            'font-weight:' + (fontStyle.includes('bold') ? 'bold' : 'normal'),
+            'color:' + fill,
+            'text-align:' + align,
+            'direction:rtl',
+            'unicode-bidi:bidi-override',
+            'line-height:1.3',
+            'z-index:5',
+            'white-space:pre-wrap',
+            'display:flex',
+            'align-items:center',
+        ].filter(Boolean).join(';');
+        div.textContent = text;
+        container.appendChild(div);
+    });
+
+    /* ── 5. Final draw ───────────────────────────────────────────── */
     stage.draw();
 
-    /* ── 5. Custom tables: render HTML tables positioned over the canvas ── */
+    /* ── 6. Custom tables: render HTML tables positioned over the canvas ── */
     const allNodes = stage.find('Rect');
     allNodes.forEach((rectNode) => {
         const tc = rectNode.getAttr('tableConfig');
@@ -412,13 +573,10 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
         // Check if any column uses DB fields
         const hasDbCols = cols.some(c => c.type === 'db');
 
-        // Determine actual rows: if santriList is available and table has DB columns,
-        // use santriList to populate rows (one row per santri).
-        // Otherwise fall back to template rows.
+        // Determine actual rows
         let actualRows = templateRows;
         if (hasDbCols && santriList && santriList.length > 0) {
             actualRows = santriList.map((santri, idx) => {
-                // Try to find a matching template row for static cell values
                 const tplRow = templateRows[idx] || {};
                 return { ...tplRow, _santri: santri, _idx: idx };
             });
@@ -435,26 +593,23 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
             const tds = cols.map(c => {
                 let cellVal = '';
                 if (c.type === 'db' && c.field) {
-                    // Use santri-specific data if available, otherwise fall back to single data param
                     cellVal = santriData[c.field] || data[c.field] || '';
                 } else {
-                    // Static column: use template cell value, or auto-number for 'No'-like columns
                     const cells = row.cells || {};
                     cellVal = cells[c.id] || '';
-                    // Auto-number: if static column had sequential numbers, re-index
                     if (!cellVal && c.label && c.label.toLowerCase().includes('no')) {
                         cellVal = String(rowIdx + 1);
                     }
                 }
-                return '<td style="padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + cellVal + '</td>';
+                // Detect Arabic in cell values for proper rendering
+                const dirStyle = hasArabic(cellVal) ? 'direction:rtl;unicode-bidi:bidi-override;font-family:\'Noto Naskh Arabic\',serif;' : '';
+                return '<td style="padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + dirStyle + '">' + cellVal + '</td>';
             }).join('');
             return '<tr style="page-break-inside:avoid;break-inside:avoid;">' + tds + '</tr>';
         }).join('');
 
         const tableHtml = '<table style="width:' + w + 'px;border-collapse:collapse;font-size:' + fSize + ';font-family:Arial,sans-serif;table-layout:fixed;"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
 
-        // Create a positioned div over the canvas
-        const container = document.getElementById('konva-container');
         const div = document.createElement('div');
         div.style.cssText = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;z-index:10;box-sizing:border-box;';
         div.innerHTML = tableHtml;
