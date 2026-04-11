@@ -602,7 +602,7 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
                     }
                 }
                 // Detect Arabic in cell values for proper rendering
-                const dirStyle = hasArabic(cellVal) ? 'direction:rtl;unicode-bidi:bidi-override;font-family:\'Noto Naskh Arabic\',serif;' : '';
+                const dirStyle = hasArabic(cellVal) ? 'direction:rtl;unicode-bidi:bidi-override;font-family:\"Noto Naskh Arabic\",serif;' : '';
                 return '<td style="padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + dirStyle + '">' + cellVal + '</td>';
             }).join('');
             return '<tr style="page-break-inside:avoid;break-inside:avoid;">' + tds + '</tr>';
