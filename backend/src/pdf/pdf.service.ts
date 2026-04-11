@@ -600,16 +600,15 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
                         cellVal = String(rowIdx + 1);
                     }
                 }
-                // Detect Arabic in cell values for proper rendering
                 const isAr = hasArabic(cellVal);
-                const dirStyle = isAr ? 'font-family:\"Noto Naskh Arabic\",serif;' : '';
-                const dirAttr = isAr ? ' dir=\"rtl\"' : '';
-                return '<td' + dirAttr + ' style=\"padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + dirStyle + '\">' + cellVal + '</td>';
+                const dirStyle = isAr ? 'font-family: \\\'Noto Naskh Arabic\\\', serif;' : '';
+                const dirAttr = isAr ? ' dir=\\\"rtl\\\"' : '';
+                return '<td' + dirAttr + ' style=\"padding:' + pad + '; border:' + border + '; text-align:' + (c.align||'left') + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ' + dirStyle + '\">' + cellVal + '</td>';
             }).join('');
             return '<tr style="page-break-inside:avoid;break-inside:avoid;">' + tds + '</tr>';
         }).join('');
 
-        const tableHtml = '<table style="width:' + w + 'px;border-collapse:collapse;font-size:' + fSize + ';font-family:\'Noto Sans\', \'Noto Naskh Arabic\', sans-serif;table-layout:fixed;"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
+        const tableHtml = '<table style=\"width:' + w + 'px; border-collapse:collapse; font-size:' + fSize + '; font-family: \\\'Noto Sans\\\', \\\'Noto Naskh Arabic\\\', sans-serif; table-layout:fixed;\"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
 
         const div = document.createElement('div');
         div.style.cssText = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;z-index:10;box-sizing:border-box;';
