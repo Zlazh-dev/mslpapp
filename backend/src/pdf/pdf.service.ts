@@ -527,6 +527,7 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
 
         // Create HTML overlay
         const div = document.createElement('div');
+        div.setAttribute('dir', 'rtl');
         div.style.cssText = [
             'position:absolute',
             'left:' + absPos.x + 'px',
@@ -539,8 +540,6 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
             'font-weight:' + (fontStyle.includes('bold') ? 'bold' : 'normal'),
             'color:' + fill,
             'text-align:' + align,
-            'direction:rtl',
-            'unicode-bidi:embed',
             'line-height:1.3',
             'z-index:5',
             'white-space:pre-wrap',
@@ -602,13 +601,15 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
                     }
                 }
                 // Detect Arabic in cell values for proper rendering
-                const dirStyle = hasArabic(cellVal) ? 'direction:rtl;unicode-bidi:embed;font-family:\"Noto Naskh Arabic\",serif;' : '';
-                return '<td style="padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + dirStyle + '">' + cellVal + '</td>';
+                const isAr = hasArabic(cellVal);
+                const dirStyle = isAr ? 'font-family:\"Noto Naskh Arabic\",serif;' : '';
+                const dirAttr = isAr ? ' dir=\"rtl\"' : '';
+                return '<td' + dirAttr + ' style=\"padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + dirStyle + '\">' + cellVal + '</td>';
             }).join('');
             return '<tr style="page-break-inside:avoid;break-inside:avoid;">' + tds + '</tr>';
         }).join('');
 
-        const tableHtml = '<table style="width:' + w + 'px;border-collapse:collapse;font-size:' + fSize + ';font-family:Arial,sans-serif;table-layout:fixed;"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
+        const tableHtml = '<table style="width:' + w + 'px;border-collapse:collapse;font-size:' + fSize + ';font-family:\'Noto Sans\', \'Noto Naskh Arabic\', sans-serif;table-layout:fixed;"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
 
         const div = document.createElement('div');
         div.style.cssText = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;z-index:10;box-sizing:border-box;';
