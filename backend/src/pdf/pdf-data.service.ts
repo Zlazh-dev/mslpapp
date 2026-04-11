@@ -143,6 +143,7 @@ export class PdfDataService {
             kelas_lengkap: santri.kelas
                 ? `${santri.kelas.tingkat?.jenjang?.nama ?? ''} ${santri.kelas.tingkat?.nama ?? ''} ${santri.kelas.nama}`.trim()
                 : '-',
+            kelas_deskripsi: (santri.kelas as any)?.deskripsi ?? '-',
             wali_kelas: (santri.kelas?.waliKelas as any)?.name ?? '-',
             kamar: santri.kamar?.nama ?? '-',
             'kamar.nama': santri.kamar?.nama ?? '-',
@@ -350,6 +351,7 @@ export class PdfDataService {
         return {
             'kelas.nama': kelas.nama,
             kelas_lengkap: [kelas.tingkat?.jenjang?.nama, kelas.tingkat?.nama, kelas.nama].filter(Boolean).join(' '),
+            kelas_deskripsi: (kelas as any).deskripsi || '-',
             'tahunAjaran': kelas.tahunAjaran || '-',
             'jenjangPendidikan': kelas.tingkat?.jenjang?.nama || '-',
             'waliKelas': kelas.waliKelas?.name || '-'
@@ -453,6 +455,7 @@ export class PdfDataService {
             kelas_lengkap: s.kelas
                 ? [s.kelas.tingkat?.jenjang?.nama, s.kelas.tingkat?.nama, s.kelas.nama].filter(Boolean).join(' ')
                 : '-',
+            kelas_deskripsi: (s.kelas as any)?.deskripsi ?? '-',
             'kamar.nama': s.kamar?.nama ?? '-',
             jenjangPendidikan: s.jenjangPendidikan ?? '-',
             namaAyah: s.namaAyah ?? '-',

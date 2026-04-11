@@ -95,7 +95,7 @@ export default function KelasListPage() {
                         <tr>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">No</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Nama Kelas</th>
-                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Deskripsi</th>
+                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tempat</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tingkat / Jenjang</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tahun Ajaran</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Wali Kelas</th>
@@ -150,7 +150,7 @@ export default function KelasListPage() {
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-gray-600 block mb-1">Deskripsi (opsional)</label>
+                            <label className="text-xs font-semibold text-gray-600 block mb-1">Tempat (opsional)</label>
                             <input value={formDeskripsi} onChange={e => setFormDeskripsi(e.target.value)} placeholder="Contoh: Ruang Utama Lt. 2"
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
                         </div>

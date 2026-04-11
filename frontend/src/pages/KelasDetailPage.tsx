@@ -53,7 +53,7 @@ function EditKelasPanel({ kelas, onClose, onSaved }: { kelas: Kelas; onClose: ()
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Deskripsi</label>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Tempat</label>
                         <input value={deskripsi} onChange={e => setDeskripsi(e.target.value)} placeholder="Contoh: Ruang Utama Lt. 2"
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
                     </div>
@@ -186,7 +186,7 @@ export default function KelasDetailPage() {
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     <InfoChip label="Jenjang" value={kelas.tingkat?.jenjang?.nama} />
                     <InfoChip label="Tingkat" value={kelas.tingkat?.nama} />
-                    <InfoChip label="Deskripsi" value={(kelas as any).deskripsi} />
+                    <InfoChip label="Tempat" value={(kelas as any).deskripsi} />
                     <InfoChip label="TA" value={kelas.tahunAjaran} />
                     <InfoChip label="Wali" value={kelas.waliKelas?.name} />
                 </div>

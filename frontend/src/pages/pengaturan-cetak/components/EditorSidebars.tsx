@@ -481,6 +481,7 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                                 <option value="jalurPendidikan">Jalur</option>
                                 <option value="kelas.nama">Kelas</option>
                                 <option value="kelas_lengkap">Kelas Lengkap (Jenjang+Tingkat+Nama)</option>
+                                <option value="kelas_deskripsi">Tempat Kelas</option>
                                 <option value="kamar.nama">Kamar</option>
                                 <option value="tanggalMasuk">Tgl Masuk</option>
                                 <option value="tanggalKeluar">Tgl Keluar</option>
@@ -558,6 +559,7 @@ export function PropertiesSidebar({ selectedEl, multipleSelected, onUpdateSelect
                     { value: 'noHp', label: 'No HP' },
                     { value: 'kelas.nama', label: 'Kelas' },
                     { value: 'kelas_lengkap', label: 'Kelas Lengkap' },
+                    { value: 'kelas_deskripsi', label: 'Tempat Kelas' },
                     { value: 'kamar.nama', label: 'Kamar' },
                     { value: 'jenjangPendidikan', label: 'Jenjang' },
                     { value: 'pengajar', label: 'Pengajar' },
