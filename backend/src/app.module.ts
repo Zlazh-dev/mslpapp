@@ -28,7 +28,15 @@ import { KhidmahModule } from './khidmah/khidmah.module';
         ServeStaticModule.forRoot({
             rootPath: join(process.cwd(), 'uploads'),
             serveRoot: '/uploads',
-            serveStaticOptions: { index: false },
+            serveStaticOptions: { 
+                index: false,
+                setHeaders: (res, path) => {
+                    if (path.endsWith('.pdf')) {
+                        res.setHeader('Content-Disposition', 'inline');
+                        res.setHeader('Content-Type', 'application/pdf');
+                    }
+                }
+            },
         }),
         PrismaModule,
         AuthModule,

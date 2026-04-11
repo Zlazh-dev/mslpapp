@@ -51,6 +51,7 @@ export class KelasService {
         const data = await this.prisma.kelas.create({
             data: {
                 nama: dto.nama,
+                deskripsi: dto.deskripsi || null,
                 tahunAjaran: dto.tahunAjaran,
                 tingkatId: dto.tingkatId,
                 waliKelasId: dto.waliKelasId || null,
@@ -75,6 +76,7 @@ export class KelasService {
             where: { id },
             data: {
                 ...(dto.nama !== undefined && { nama: dto.nama }),
+                ...('deskripsi' in dto && { deskripsi: dto.deskripsi || null }),
                 ...(dto.tahunAjaran !== undefined && { tahunAjaran: dto.tahunAjaran }),
                 ...(dto.tingkatId !== undefined && { tingkatId: dto.tingkatId }),
                 ...('waliKelasId' in dto && { waliKelasId: dto.waliKelasId || null }),

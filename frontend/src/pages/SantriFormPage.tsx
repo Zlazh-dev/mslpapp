@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../lib/api';
 import { ChevronDown, Info, ArrowLeft, Save, UploadCloud, CheckCircle, FileText, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
 const schema = z.object({
@@ -112,6 +113,10 @@ export default function SantriFormPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [fotoFile, setFotoFile] = useState<File | null>(null);
     const [kkFile, setKkFile] = useState<File | null>(null);
+    const [kkFile2, setKkFile2] = useState<File | null>(null);
+    const fotoFileInputRef = useRef<HTMLInputElement>(null);
+    const kkFileInputRef = useRef<HTMLInputElement>(null);
+    const kkFileInputRef2 = useRef<HTMLInputElement>(null);
 
     // Modal state
     const [modal, setModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
@@ -184,10 +189,14 @@ export default function SantriFormPage() {
     };
 
     const onSubmit = async (formData: FormData) => {
+        // Guard: in wizard mode, only allow submission from step 5
+        if (!isEdit && currentStep < 5) {
+            return;
+        }
         setSaving(true);
         try {
             const payload: any = { ...formData };
-            
+
             // Format empty strings to undefined/null
             ['gender', 'tempatLahir', 'tanggalLahir', 'noHp', 'nik', 'noKk', 'tanggalMasuk', 'tanggalKeluar', 'jalurPendidikan',
                 'namaAyah', 'namaIbu', 'noHpAyah', 'noHpIbu', 'namaWali', 'noHpWali', 'deskripsiWali',
@@ -202,6 +211,9 @@ export default function SantriFormPage() {
                 }
                 if (kkFile) {
                     payload.kkFileUrl = await uploadFile(kkFile, 'kk');
+                }
+                if (kkFile2) {
+                    payload.kkFileUrl2 = await uploadFile(kkFile2, 'kk');
                 }
             }
 
@@ -245,10 +257,18 @@ export default function SantriFormPage() {
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
-        if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
-            e.preventDefault();
+        if (e.key === 'Enter') {
+            // In wizard mode (not edit), block ALL Enter-based form submissions
+            // until the user reaches step 5. Step navigation should only happen
+            // via the explicit "Lanjutkan" button click.
             if (!isEdit && currentStep < 5) {
-                handleNextStep();
+                e.preventDefault();
+                return;
+            }
+            // In edit mode or step 5, prevent Enter on regular inputs from submitting
+            if (e.target instanceof HTMLInputElement) {
+                if (e.target.type === 'file' || e.target.type === 'submit' || e.target.type === 'button') return;
+                e.preventDefault();
             }
         }
     };
@@ -354,18 +374,13 @@ export default function SantriFormPage() {
 
     const renderAlamat = () => (
         <>
-            <FormField label="Provinsi" error={errors.provinsi?.message}>
-                <input {...register('provinsi')} className="form-input" placeholder="Provinsi" />
-            </FormField>
-            <FormField label="Kota / Kabupaten" error={errors.kotaKabupaten?.message}>
-                <input {...register('kotaKabupaten')} className="form-input" placeholder="Kota atau Kabupaten" />
-            </FormField>
-            <FormField label="Kecamatan" error={errors.kecamatan?.message}>
-                <input {...register('kecamatan')} className="form-input" placeholder="Kecamatan" />
-            </FormField>
-            <FormField label="Kelurahan / Desa" error={errors.kelurahan?.message}>
-                <input {...register('kelurahan')} className="form-input" placeholder="Kelurahan atau Desa" />
-            </FormField>
+            <AddressAutocomplete
+                provinsi={watch('provinsi') || ''}
+                kotaKabupaten={watch('kotaKabupaten') || ''}
+                kecamatan={watch('kecamatan') || ''}
+                kelurahan={watch('kelurahan') || ''}
+                onChange={(field, value) => setValue(field, value, { shouldValidate: true })}
+            />
             <FormField label="Jalan" error={errors.jalan?.message} fullWidth>
                 <input {...register('jalan')} className="form-input" placeholder="Nama jalan dan nomor rumah" />
             </FormField>
@@ -376,41 +391,56 @@ export default function SantriFormPage() {
     );
 
     const renderUploads = () => (
-        <div className="col-span-1 sm:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="col-span-1 sm:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Foto Profil Upload */}
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition duration-150">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4">
-                    {fotoFile ? <img src={URL.createObjectURL(fotoFile)} alt="Preview" className="w-full h-full object-cover rounded-full" /> : <ImageIcon size={28} className="text-emerald-600" />}
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition duration-150 relative">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mb-4 overflow-hidden shadow-inner">
+                    {fotoFile ? <img src={URL.createObjectURL(fotoFile)} alt="Preview" className="w-full h-full object-cover" /> : <ImageIcon size={28} className="text-emerald-600" />}
                 </div>
                 <h3 className="text-sm font-bold text-gray-800 mb-1">Foto Profil Santri</h3>
-                <p className="text-xs text-gray-400 text-center mb-4 max-w-[200px]">Format JPG, PNG, atau WebP. Maks 5MB.</p>
-                <label className="cursor-pointer">
-                    <span className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:border-emerald-500 hover:text-emerald-600 transition shadow-sm inline-flex items-center gap-2">
-                        <UploadCloud size={16} /> Pilih File
-                    </span>
-                    <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,image/gif" onChange={e => {
-                        if (e.target.files && e.target.files[0]) setFotoFile(e.target.files[0]);
-                    }} />
-                </label>
-                {fotoFile && <div className="mt-3 text-xs font-semibold text-emerald-600 flex items-center gap-1"><CheckCircle size={14}/> {fotoFile.name}</div>}
+                <p className="text-xs text-gray-400 text-center mb-4 max-w-[200px]">Format JPG/PNG. Maks 5MB.</p>
+                <button type="button" onClick={() => fotoFileInputRef.current?.click()}
+                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:border-emerald-500 hover:text-emerald-600 transition shadow-sm inline-flex items-center gap-2">
+                    <UploadCloud size={16} /> Pilih File
+                </button>
+                <input type="file" ref={fotoFileInputRef} className="hidden" accept="image/*" onChange={e => {
+                    if (e.target.files && e.target.files[0]) setFotoFile(e.target.files[0]);
+                }} />
+                {fotoFile && <div className="mt-3 text-[11px] font-semibold text-emerald-600 flex items-center gap-1.5 truncate max-w-full"><CheckCircle size={14} className="shrink-0" /> <span className="truncate">{fotoFile.name}</span></div>}
             </div>
 
-            {/* KK Upload */}
-            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition duration-150">
-                <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-4">
-                   <FileText size={28} className="text-blue-600" />
+            {/* KK Upload 1 */}
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition duration-150 relative">
+                <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 shadow-inner">
+                    <FileText size={28} className="text-blue-600" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-800 mb-1">Kartu Keluarga (KK)</h3>
-                <p className="text-xs text-gray-400 text-center mb-4 max-w-[200px]">Format PDF, Word, atau Gambar. Maks 10MB.</p>
-                <label className="cursor-pointer">
-                    <span className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:border-blue-500 hover:text-blue-600 transition shadow-sm inline-flex items-center gap-2">
-                        <UploadCloud size={16} /> Pilih Dokumen
-                    </span>
-                    <input type="file" className="hidden" accept=".pdf,.doc,.docx,image/jpeg,image/png,image/webp" onChange={e => {
-                        if (e.target.files && e.target.files[0]) setKkFile(e.target.files[0]);
-                    }} />
-                </label>
-                {kkFile && <div className="mt-3 text-xs font-semibold text-blue-600 flex items-center gap-1"><CheckCircle size={14}/> {kkFile.name}</div>}
+                <h3 className="text-sm font-bold text-gray-800 mb-1">Dokumen KK 1</h3>
+                <p className="text-xs text-gray-400 text-center mb-4 max-w-[200px]">Format Doc/PDF/IMG. Maks 10MB.</p>
+                <button type="button" onClick={() => kkFileInputRef.current?.click()}
+                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:border-blue-500 hover:text-blue-600 transition shadow-sm inline-flex items-center gap-2">
+                    <UploadCloud size={16} /> Pilih Dokumen 1
+                </button>
+                <input type="file" ref={kkFileInputRef} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={e => {
+                    if (e.target.files && e.target.files[0]) setKkFile(e.target.files[0]);
+                }} />
+                {kkFile && <div className="mt-3 text-[11px] font-semibold text-blue-600 flex items-center gap-1.5 truncate max-w-full"><CheckCircle size={14} className="shrink-0" /> <span className="truncate">{kkFile.name}</span></div>}
+            </div>
+
+            {/* KK Upload 2 */}
+            <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition duration-150 relative">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-100 flex items-center justify-center mb-4 shadow-inner">
+                    <FileText size={28} className="text-indigo-600" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-800 mb-1">Dokumen Akte</h3>
+                <p className="text-xs text-gray-400 text-center mb-4 max-w-[200px]">(Opsional) Upload lembar Akte Kelahiran</p>
+                <button type="button" onClick={() => kkFileInputRef2.current?.click()}
+                    className="px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-lg hover:border-indigo-500 hover:text-indigo-600 transition shadow-sm inline-flex items-center gap-2">
+                    <UploadCloud size={16} /> Pilih Dokumen 2
+                </button>
+                <input type="file" ref={kkFileInputRef2} className="hidden" accept=".pdf,.doc,.docx,image/*" onChange={e => {
+                    if (e.target.files && e.target.files[0]) setKkFile2(e.target.files[0]);
+                }} />
+                {kkFile2 && <div className="mt-3 text-[11px] font-semibold text-indigo-600 flex items-center gap-1.5 truncate max-w-full"><CheckCircle size={14} className="shrink-0" /> <span className="truncate">{kkFile2.name}</span></div>}
             </div>
         </div>
     );
@@ -511,9 +541,9 @@ export default function SantriFormPage() {
 
                     {/* Footer Actions */}
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                        <button 
-                            type="button" 
-                            onClick={() => setCurrentStep(s => Math.max(1, s - 1))} 
+                        <button
+                            type="button"
+                            onClick={() => setCurrentStep(s => Math.max(1, s - 1))}
                             disabled={currentStep === 1 || saving}
                             className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 bg-white font-semibold text-sm hover:bg-gray-50 focus:ring-2 focus:ring-gray-100 transition disabled:opacity-0"
                         >
@@ -521,17 +551,20 @@ export default function SantriFormPage() {
                         </button>
 
                         {currentStep < 5 ? (
-                            <button 
-                                type="button" 
-                                onClick={handleNextStep}
+                            <button
+                                key="btn-next"
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); handleNextStep(); }}
                                 className="px-6 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 shadow-sm shadow-emerald-600/20 focus:ring-4 focus:ring-emerald-100 transition flex items-center gap-1.5"
                             >
                                 Lanjutkan <ChevronRight size={16} />
                             </button>
                         ) : (
-                            <button 
-                                type="submit" 
+                            <button
+                                key="btn-submit"
+                                type="button"
                                 disabled={saving}
+                                onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onError)(); }}
                                 className={`px-8 py-2.5 rounded-xl font-bold text-sm text-white shadow-sm transition flex items-center gap-1.5 focus:ring-4 ${(fotoFile && kkFile) ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 focus:ring-emerald-100' : 'bg-gray-400 hover:bg-gray-500 focus:ring-gray-100'}`}
                             >
                                 {saving ? 'Memproses...' : (fotoFile && kkFile) ? 'Lanjutkan & Simpan' : 'Lewati & Simpan'}

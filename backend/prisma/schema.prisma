@@ -130,6 +130,7 @@ model Tingkat {
 model Kelas {
   id          Int      @id @default(autoincrement())
   nama        String
+  deskripsi   String?
   tahunAjaran String?
   tingkatId   Int
   tingkat     Tingkat  @relation(fields: [tingkatId], references: [id], onDelete: Cascade)
@@ -185,6 +186,7 @@ model Santri {
   kamarId   Int?
   foto      String?
   kkFileUrl String?
+  kkFileUrl2 String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 

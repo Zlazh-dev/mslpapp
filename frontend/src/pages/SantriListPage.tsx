@@ -245,10 +245,11 @@ export default function SantriListPage() {
 
             {/* ── Column header ────────────────────────────────── */}
             <div className="bg-slate-50 border-b border-slate-200 shrink-0">
-                <div className="grid grid-cols-[36px_72px_1fr_180px_100px_84px_80px_48px] min-w-[750px]">
+                <div className="grid grid-cols-[36px_72px_1fr_160px_160px_100px_84px_80px_48px] min-w-[850px]">
                     <div className="px-2 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 text-center">#</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">NIS</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Nama</div>
+                    <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">TTL</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Kelas</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Kamar</div>
                     <div className="px-3 py-[7px] text-[10px] font-bold text-slate-400 border-r border-slate-200 uppercase tracking-wider">Masuk</div>
@@ -260,24 +261,26 @@ export default function SantriListPage() {
             {/* ── Body ────────────────────────────────────────── */}
             <div className="flex-1 overflow-auto">
                 {loading ? (
-                    <div className="min-w-[750px]">{Array.from({ length: 10 }).map((_, i) => (
-                        <div key={i} className="grid grid-cols-[36px_72px_1fr_180px_100px_84px_80px_48px] border-b border-slate-100 animate-pulse">
-                            {Array.from({ length: 8 }).map((_, j) => <div key={j} className="px-3 py-3 border-r border-slate-100"><div className="h-3 bg-slate-100 rounded" /></div>)}
+                    <div className="min-w-[850px]">{Array.from({ length: 10 }).map((_, i) => (
+                        <div key={i} className="grid grid-cols-[36px_72px_1fr_160px_160px_100px_84px_80px_48px] border-b border-slate-100 animate-pulse">
+                            {Array.from({ length: 9 }).map((_, j) => <div key={j} className="px-3 py-3 border-r border-slate-100"><div className="h-3 bg-slate-100 rounded" /></div>)}
                         </div>))}</div>
                 ) : data.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-slate-400">
                         <p className="text-xs">{search || activeFilterCount || nisYear ? 'Tidak ada santri yang sesuai filter' : 'Belum ada data santri'}</p>
                     </div>
                 ) : (
-                    <div className="min-w-[750px]">{data.map((s, idx) => {
+                    <div className="min-w-[850px]">{data.map((s, idx) => {
                         const c = completenessOf(s); const pct = Math.round((c / 9) * 100);
                         const kelasLabel = [s.kelas?.tingkat?.jenjang?.nama, s.kelas?.tingkat?.nama, s.kelas?.nama].filter(Boolean).join(' — ');
+                        const ttl = [s.tempatLahir, s.tanggalLahir ? new Date(s.tanggalLahir).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(', ');
                         return (
                             <div key={s.id} onClick={() => navigate(`/santri/${s.id}`)}
-                                className="grid grid-cols-[36px_72px_1fr_180px_100px_84px_80px_48px] border-b border-slate-100 hover:bg-slate-50/80 cursor-pointer group transition">
+                                className="grid grid-cols-[36px_72px_1fr_160px_160px_100px_84px_80px_48px] border-b border-slate-100 hover:bg-slate-50/80 cursor-pointer group transition">
                                 <div className="px-2 py-[7px] text-[11px] text-slate-400 border-r border-slate-100 text-center tabular-nums">{startIndex + idx + 1}</div>
                                 <div className="px-3 py-[7px] text-[11px] font-mono font-medium text-slate-600 border-r border-slate-100 truncate">{s.nis}</div>
                                 <div className="px-3 py-[7px] text-[12px] font-medium text-slate-800 border-r border-slate-100 truncate group-hover:text-emerald-700 transition">{s.namaLengkap}</div>
+                                <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 truncate">{ttl || <span className="text-slate-300">—</span>}</div>
                                 <div className="px-3 py-[7px] text-[11px] text-slate-600 border-r border-slate-100 truncate">{kelasLabel || <span className="text-slate-300">—</span>}</div>
                                 <div className="px-3 py-[7px] text-[11px] text-slate-600 border-r border-slate-100 truncate">{s.kamar?.nama || <span className="text-slate-300">—</span>}</div>
                                 <div className="px-3 py-[7px] text-[11px] text-slate-500 border-r border-slate-100 whitespace-nowrap">

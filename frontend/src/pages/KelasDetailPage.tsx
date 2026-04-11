@@ -12,6 +12,7 @@ const LIMIT = 20;
 // ── Edit Modal (slide-in from right) ──────────────────────────────────────────
 function EditKelasPanel({ kelas, onClose, onSaved }: { kelas: Kelas; onClose: () => void; onSaved: () => void }) {
     const [nama, setNama] = useState(kelas.nama);
+    const [deskripsi, setDeskripsi] = useState((kelas as any).deskripsi ?? '');
     const [tahunAjaran, setTahunAjaran] = useState(kelas.tahunAjaran ?? '');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -26,6 +27,7 @@ function EditKelasPanel({ kelas, onClose, onSaved }: { kelas: Kelas; onClose: ()
         try {
             await api.patch(`/kelas/${kelas.id}`, {
                 nama: nama.trim(),
+                deskripsi: deskripsi.trim() || undefined,
                 tahunAjaran: tahunAjaran.trim() || undefined,
             });
             onSaved();
@@ -48,6 +50,11 @@ function EditKelasPanel({ kelas, onClose, onSaved }: { kelas: Kelas; onClose: ()
                         <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nama Kelas</label>
                         <input value={nama} onChange={e => setNama(e.target.value)} placeholder="Nama kelas"
                             onKeyDown={e => e.key === 'Enter' && handleSave()}
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
+                    </div>
+                    <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Deskripsi</label>
+                        <input value={deskripsi} onChange={e => setDeskripsi(e.target.value)} placeholder="Contoh: Ruang Utama Lt. 2"
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100" />
                     </div>
                     <div>
@@ -179,6 +186,7 @@ export default function KelasDetailPage() {
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     <InfoChip label="Jenjang" value={kelas.tingkat?.jenjang?.nama} />
                     <InfoChip label="Tingkat" value={kelas.tingkat?.nama} />
+                    <InfoChip label="Deskripsi" value={(kelas as any).deskripsi} />
                     <InfoChip label="TA" value={kelas.tahunAjaran} />
                     <InfoChip label="Wali" value={kelas.waliKelas?.name} />
                 </div>

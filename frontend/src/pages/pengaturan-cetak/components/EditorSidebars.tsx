@@ -35,6 +35,9 @@ export function ToolsSidebar({ onAddElement, onAddFoto, onAddQr, onAddTable, onI
             <button onClick={() => onAddElement('circle')} title="Bentuk Lingkaran" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-orange-500 hover:bg-orange-100 hover:text-orange-600 transition group border border-gray-100">
                 <Circle size={18} />
             </button>
+            <button onClick={() => onAddElement('line')} title="Garis Garis" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-stone-500 hover:bg-stone-100 hover:text-stone-600 transition group border border-gray-100">
+                <Minus size={18} />
+            </button>
             <button onClick={() => imageInputRef.current?.click()} title="Unggah Gambar Statis" className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 text-purple-500 hover:bg-purple-100 hover:text-purple-600 transition group border border-gray-100 relative">
                 <ImageIcon size={18} />
                 {uploadingImage && <span className="absolute -top-1 -right-1 w-3 h-3 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin bg-white" />}

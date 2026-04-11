@@ -22,7 +22,7 @@ export default function BackupDataPage() {
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [alertModal, setAlertModal] = useState({ show: false, message: '' });
 
-    const handleExport = () => {
+    const handleExport = async () => {
         setExportLoading(true);
         const token = useAuthStore.getState().token;
         
@@ -32,11 +32,51 @@ export default function BackupDataPage() {
             return;
         }
 
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-        window.location.href = `${baseUrl}/backup/export?token=${token}`;
-        
-        // Reset loading state safely since download doesn't reload the page
-        setTimeout(() => setExportLoading(false), 2000);
+        try {
+            const response = await api.get('/backup/export', {
+                responseType: 'blob', // Important for file download
+            });
+
+            // Extract filename from content-disposition header if available
+            const contentDisposition = response.headers['content-disposition'];
+            let filename = `mslpapp_backup_${new Date().toISOString().slice(0, 10)}.zip`;
+            if (contentDisposition) {
+                const match = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (match && match[1]) {
+                    filename = match[1];
+                }
+            }
+
+            // Create a Blob URL and trigger download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error: any) {
+            console.error('Backup export failed:', error);
+            
+            // Handle blob error response
+            if (error.response && error.response.data instanceof Blob) {
+                const text = await error.response.data.text();
+                try {
+                    const errorData = JSON.parse(text);
+                    setAlertModal({ show: true, message: errorData.message || 'Gagal mengunduh backup.' });
+                } catch (e) {
+                    setAlertModal({ show: true, message: 'Gagal mengunduh backup.' });
+                }
+            } else {
+                setAlertModal({ 
+                    show: true, 
+                    message: error.response?.data?.message || 'Gagal mengunduh backup.' 
+                });
+            }
+        } finally {
+            setExportLoading(false);
+        }
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

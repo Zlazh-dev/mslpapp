@@ -9,10 +9,19 @@ export const ShapeElement: React.FC<ShapeElementProps> = ({ el }) => {
     const rx = el.w / 2;
     const ry = el.h / 2;
     const isCircle = el.type === 'circle';
+    const isLine = el.type === 'line';
 
     return (
         <svg fill="none" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{pointerEvents: 'none'}}>
-            {isCircle ? (
+            {isLine ? (
+                <line 
+                    x1={0} y1={Math.max(0, el.h / 2)} 
+                    x2={el.w} y2={Math.max(0, el.h / 2)} 
+                    stroke={typeof el.style?.border === 'string' ? (el.style.border.split(' ')[2] || String(el.style.borderColor || '#000')) : String(el.style?.borderColor || '#000')}
+                    strokeWidth={typeof el.style?.border === 'string' ? (parseInt(el.style.border) || 2) : 2}
+                    strokeDasharray={el.style?.borderStyle === 'dashed' ? '5,5' : el.style?.borderStyle === 'dotted' ? '2,2' : 'none'}
+                />
+            ) : isCircle ? (
                 <ellipse 
                     cx={rx} 
                     cy={ry} 
@@ -21,6 +30,7 @@ export const ShapeElement: React.FC<ShapeElementProps> = ({ el }) => {
                     fill={String(el.style?.backgroundColor || 'transparent')} 
                     stroke={typeof el.style?.border === 'string' ? (el.style.border.split(' ')[2] || String(el.style.borderColor || '#000')) : String(el.style?.borderColor || '#000')}
                     strokeWidth={typeof el.style?.border === 'string' ? (parseInt(el.style.border) || 1) : 1}
+                    strokeDasharray={el.style?.borderStyle === 'dashed' ? '5,5' : el.style?.borderStyle === 'dotted' ? '2,2' : 'none'}
                 />
             ) : (
                 <rect 
@@ -32,6 +42,7 @@ export const ShapeElement: React.FC<ShapeElementProps> = ({ el }) => {
                     fill={String(el.style?.backgroundColor || 'transparent')} 
                     stroke={typeof el.style?.border === 'string' ? (el.style.border.split(' ')[2] || String(el.style.borderColor || '#000')) : String(el.style?.borderColor || '#000')}
                     strokeWidth={typeof el.style?.border === 'string' ? (parseInt(el.style.border) || 1) : 1}
+                    strokeDasharray={el.style?.borderStyle === 'dashed' ? '5,5' : el.style?.borderStyle === 'dotted' ? '2,2' : 'none'}
                 />
             )}
         </svg>

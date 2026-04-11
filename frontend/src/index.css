@@ -64,3 +64,445 @@
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
+
+/* ── Login page animations ─────────────────────────────── */
+@keyframes loginFadeSlideIn {
+  from { opacity: 0; filter: blur(4px); transform: translateY(16px); }
+  to   { opacity: 1; filter: blur(0px); transform: translateY(0px); }
+}
+@keyframes loginSlideRight {
+  from { opacity: 0; filter: blur(4px); transform: translateX(40px); }
+  to   { opacity: 1; filter: blur(0px); transform: translateX(0px); }
+}
+@keyframes loginTestimonial {
+  from { opacity: 0; filter: blur(4px); transform: translateY(20px) scale(0.96); }
+  to   { opacity: 1; filter: blur(0px); transform: translateY(0px) scale(1); }
+}
+
+.login-animate {
+  opacity: 0;
+  animation: loginFadeSlideIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.login-slide-right {
+  opacity: 0;
+  animation: loginSlideRight 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.login-testimonial {
+  opacity: 0;
+  animation: loginTestimonial 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Staggered delays */
+.login-delay-100  { animation-delay: 0.1s; }
+.login-delay-200  { animation-delay: 0.2s; }
+.login-delay-300  { animation-delay: 0.3s; }
+.login-delay-400  { animation-delay: 0.4s; }
+.login-delay-500  { animation-delay: 0.5s; }
+.login-delay-600  { animation-delay: 0.6s; }
+.login-delay-700  { animation-delay: 0.7s; }
+.login-delay-800  { animation-delay: 0.8s; }
+.login-delay-900  { animation-delay: 0.9s; }
+.login-delay-1000 { animation-delay: 1.0s; }
+
+/* ── Splash Screen ─────────────────────────────────────── */
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  background: #0c0a14;
+}
+
+/* Grain/noise overlay for texture */
+.splash-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  opacity: 0.35;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+
+/* Aurora wave layers */
+.aurora-blob {
+  position: absolute;
+  left: -15%;
+  width: 130%;
+  filter: blur(60px);
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+/* Wave 1 — steel blue, base layer (bottom-left & edges) */
+.aurora-1 {
+  bottom: -25%;
+  height: 70%;
+  background: linear-gradient(
+    160deg,
+    rgba(59, 91, 160, 0.8) 0%,
+    rgba(79, 110, 180, 0.7) 35%,
+    rgba(99, 130, 200, 0.5) 65%,
+    rgba(59, 91, 160, 0.3) 100%
+  );
+  border-radius: 45% 55% 35% 65% / 40% 50% 50% 60%;
+  animation:
+    auroraWaveFadeIn 1.5s ease-out forwards,
+    auroraWave1 8s ease-in-out infinite alternate;
+}
+
+/* Wave 2 — warm orange/amber (center-left dominant) */
+.aurora-2 {
+  bottom: -5%;
+  left: -20%;
+  height: 60%;
+  width: 80%;
+  background: radial-gradient(
+    ellipse at 40% 50%,
+    rgba(245, 158, 66, 0.85) 0%,
+    rgba(234, 120, 50, 0.7) 30%,
+    rgba(220, 90, 40, 0.4) 60%,
+    transparent 100%
+  );
+  border-radius: 55% 45% 50% 50% / 55% 45% 55% 45%;
+  animation:
+    auroraWaveFadeIn 1.8s 0.3s ease-out forwards,
+    auroraWave2 10s ease-in-out infinite alternate;
+}
+
+/* Wave 3 — rose/coral pink (center) */
+.aurora-3 {
+  bottom: 0%;
+  left: -5%;
+  height: 55%;
+  width: 100%;
+  background: radial-gradient(
+    ellipse at 55% 45%,
+    rgba(236, 72, 120, 0.8) 0%,
+    rgba(220, 60, 100, 0.65) 30%,
+    rgba(200, 50, 90, 0.35) 60%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 45% 55% / 60% 40% 60% 40%;
+  animation:
+    auroraWaveFadeIn 2s 0.6s ease-out forwards,
+    auroraWave3 7s ease-in-out infinite alternate;
+}
+
+/* Wave 4 — deep purple/violet (right side) */
+.aurora-4 {
+  top: -10%;
+  left: 10%;
+  bottom: auto;
+  height: 65%;
+  width: 100%;
+  background: radial-gradient(
+    ellipse at 70% 40%,
+    rgba(120, 60, 190, 0.8) 0%,
+    rgba(100, 50, 170, 0.65) 30%,
+    rgba(80, 40, 150, 0.35) 60%,
+    transparent 100%
+  );
+  border-radius: 48% 52% 42% 58% / 45% 55% 48% 52%;
+  animation:
+    auroraWaveFadeIn 2.2s 0.8s ease-out forwards,
+    auroraWave4 9s ease-in-out infinite alternate;
+}
+
+/* Wave 5 — cyan/teal accent (far right edge) */
+.aurora-5 {
+  top: 10%;
+  right: -15%;
+  left: auto;
+  bottom: auto;
+  height: 50%;
+  width: 60%;
+  background: radial-gradient(
+    ellipse at 60% 50%,
+    rgba(56, 189, 248, 0.6) 0%,
+    rgba(34, 170, 230, 0.45) 35%,
+    rgba(20, 150, 210, 0.2) 65%,
+    transparent 100%
+  );
+  border-radius: 52% 48% 55% 45% / 50% 50% 45% 55%;
+  animation:
+    auroraWaveFadeIn 2.5s 1s ease-out forwards,
+    auroraWave5 11s ease-in-out infinite alternate;
+}
+
+/* Staggered fade-in for waves */
+@keyframes auroraWaveFadeIn {
+  0%   { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Wave 1 — slow, broad ocean swell */
+@keyframes auroraWave1 {
+  0% {
+    border-radius: 45% 55% 35% 65% / 40% 50% 50% 60%;
+    transform: translateX(0) translateY(0) scaleX(1);
+  }
+  25% {
+    border-radius: 50% 50% 45% 55% / 55% 45% 50% 50%;
+  }
+  50% {
+    border-radius: 55% 45% 50% 50% / 45% 55% 45% 55%;
+    transform: translateX(3%) translateY(-12px) scaleX(1.03);
+  }
+  75% {
+    border-radius: 48% 52% 55% 45% / 50% 50% 55% 45%;
+  }
+  100% {
+    border-radius: 40% 60% 45% 55% / 55% 45% 40% 60%;
+    transform: translateX(-3%) translateY(8px) scaleX(0.97);
+  }
+}
+
+/* Wave 2 — medium speed, diagonal drift */
+@keyframes auroraWave2 {
+  0% {
+    border-radius: 55% 45% 50% 50% / 55% 45% 55% 45%;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+  30% {
+    border-radius: 45% 55% 55% 45% / 50% 50% 45% 55%;
+    transform: translateX(-3%) translateY(-15px) rotate(-0.8deg);
+  }
+  60% {
+    border-radius: 50% 50% 45% 55% / 45% 55% 55% 45%;
+    transform: translateX(3%) translateY(8px) rotate(0.6deg);
+  }
+  100% {
+    border-radius: 60% 40% 50% 50% / 50% 50% 40% 60%;
+    transform: translateX(-1%) translateY(-6px) rotate(-0.3deg);
+  }
+}
+
+/* Wave 3 — shimmery top layer */
+@keyframes auroraWave3 {
+  0% {
+    border-radius: 50% 50% 45% 55% / 60% 40% 60% 40%;
+    transform: translateX(0) translateY(0) scaleY(1);
+  }
+  25% {
+    border-radius: 45% 55% 50% 50% / 55% 45% 55% 45%;
+    transform: translateX(2%) translateY(-8px) scaleY(1.06);
+  }
+  50% {
+    border-radius: 55% 45% 55% 45% / 45% 55% 50% 50%;
+    transform: translateX(-4%) translateY(5px) scaleY(0.95);
+  }
+  75% {
+    border-radius: 48% 52% 45% 55% / 55% 45% 45% 55%;
+    transform: translateX(1%) translateY(-12px) scaleY(1.04);
+  }
+  100% {
+    border-radius: 52% 48% 50% 50% / 50% 50% 55% 45%;
+    transform: translateX(-2%) translateY(3px) scaleY(1);
+  }
+}
+
+/* Wave 4 — emerald sway */
+@keyframes auroraWave4 {
+  0% {
+    border-radius: 48% 52% 42% 58% / 45% 55% 48% 52%;
+    transform: translateX(0) translateY(0) rotate(0deg);
+  }
+  33% {
+    border-radius: 52% 48% 50% 50% / 50% 50% 52% 48%;
+    transform: translateX(4%) translateY(-10px) rotate(0.5deg);
+  }
+  66% {
+    border-radius: 45% 55% 48% 52% / 55% 45% 45% 55%;
+    transform: translateX(-2%) translateY(6px) rotate(-0.4deg);
+  }
+  100% {
+    border-radius: 50% 50% 45% 55% / 48% 52% 50% 50%;
+    transform: translateX(1%) translateY(-4px) rotate(0.2deg);
+  }
+}
+
+/* Wave 5 — magenta float at top */
+@keyframes auroraWave5 {
+  0% {
+    border-radius: 52% 48% 55% 45% / 50% 50% 45% 55%;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  25% {
+    border-radius: 48% 52% 50% 50% / 55% 45% 50% 50%;
+    transform: translateX(-3%) translateY(10px) scale(1.04);
+  }
+  50% {
+    border-radius: 55% 45% 45% 55% / 48% 52% 55% 45%;
+    transform: translateX(2%) translateY(-5px) scale(0.97);
+  }
+  75% {
+    border-radius: 50% 50% 52% 48% / 52% 48% 48% 52%;
+    transform: translateX(-1%) translateY(8px) scale(1.02);
+  }
+  100% {
+    border-radius: 45% 55% 50% 50% / 50% 50% 52% 48%;
+    transform: translateX(3%) translateY(-3px) scale(1);
+  }
+}
+
+/* Center logo */
+.splash-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+.splash-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  animation: splashLogoBreathe 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 30px rgba(56, 189, 248, 0.3));
+}
+@keyframes splashLogoBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
+/* Big counter — bottom right */
+.splash-counter {
+  position: absolute;
+  bottom: 40px;
+  right: 48px;
+  z-index: 10;
+}
+.splash-counter-num {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 8rem;
+  font-weight: 800;
+  line-height: 1;
+  color: transparent;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-stroke: 1px rgba(255,255,255,0.08);
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+/* Exit animation */
+.splash-exit {
+  animation: splashExit 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes splashExit {
+  to {
+    opacity: 0;
+    transform: scale(1.02);
+    filter: blur(8px);
+  }
+}
+
+/* ── Hero Aurora Panel (Login right side) ─────────────── */
+.hero-aurora {
+  background: #0c0a14;
+}
+
+.hero-wave {
+  position: absolute;
+  left: -15%;
+  width: 130%;
+  filter: blur(50px);
+}
+
+/* Grain overlay for hero */
+.hero-aurora-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  opacity: 0.3;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+}
+
+/* Hero wave positions — adapted for contained panel */
+.hero-wave-1 {
+  bottom: -30%;
+  height: 75%;
+  background: linear-gradient(
+    160deg,
+    rgba(59, 91, 160, 0.8) 0%,
+    rgba(79, 110, 180, 0.7) 35%,
+    rgba(99, 130, 200, 0.5) 65%,
+    rgba(59, 91, 160, 0.3) 100%
+  );
+  border-radius: 45% 55% 35% 65% / 40% 50% 50% 60%;
+  animation: auroraWave1 8s ease-in-out infinite alternate;
+}
+
+.hero-wave-2 {
+  bottom: -10%;
+  left: -25%;
+  height: 65%;
+  width: 85%;
+  background: radial-gradient(
+    ellipse at 40% 50%,
+    rgba(245, 158, 66, 0.85) 0%,
+    rgba(234, 120, 50, 0.7) 30%,
+    rgba(220, 90, 40, 0.4) 60%,
+    transparent 100%
+  );
+  border-radius: 55% 45% 50% 50% / 55% 45% 55% 45%;
+  animation: auroraWave2 10s ease-in-out infinite alternate;
+}
+
+.hero-wave-3 {
+  bottom: 0%;
+  left: -10%;
+  height: 60%;
+  width: 110%;
+  background: radial-gradient(
+    ellipse at 55% 45%,
+    rgba(236, 72, 120, 0.8) 0%,
+    rgba(220, 60, 100, 0.65) 30%,
+    rgba(200, 50, 90, 0.35) 60%,
+    transparent 100%
+  );
+  border-radius: 50% 50% 45% 55% / 60% 40% 60% 40%;
+  animation: auroraWave3 7s ease-in-out infinite alternate;
+}
+
+.hero-wave-4 {
+  top: -15%;
+  left: 5%;
+  bottom: auto;
+  height: 70%;
+  width: 110%;
+  background: radial-gradient(
+    ellipse at 65% 40%,
+    rgba(120, 60, 190, 0.8) 0%,
+    rgba(100, 50, 170, 0.65) 30%,
+    rgba(80, 40, 150, 0.35) 60%,
+    transparent 100%
+  );
+  border-radius: 48% 52% 42% 58% / 45% 55% 48% 52%;
+  animation: auroraWave4 9s ease-in-out infinite alternate;
+}
+
+.hero-wave-5 {
+  top: 5%;
+  right: -20%;
+  left: auto;
+  bottom: auto;
+  height: 55%;
+  width: 65%;
+  background: radial-gradient(
+    ellipse at 60% 50%,
+    rgba(56, 189, 248, 0.6) 0%,
+    rgba(34, 170, 230, 0.45) 35%,
+    rgba(20, 150, 210, 0.2) 65%,
+    transparent 100%
+  );
+  border-radius: 52% 48% 55% 45% / 50% 50% 45% 55%;
+  animation: auroraWave5 11s ease-in-out infinite alternate;
+}

@@ -542,20 +542,28 @@ export function CanvasEditor({
                                                             <th key={col.id} style={{
                                                                 width: `${col.width}%`,
                                                                 backgroundColor: el.tableConfig!.headerColor || '#cbd5e1',
-                                                                padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                                padding: `${Math.max(el.tableConfig!.cellPadding || 6, 8)}px`,
                                                                 border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
                                                                 textAlign: col.align || 'left',
                                                                 fontWeight: 'bold',
                                                                 cursor: 'text',
                                                                 position: 'relative',
                                                             }}
+                                                            onPointerDown={(e) => {
+                                                                e.stopPropagation();
+                                                                if (e.detail >= 2) {
+                                                                    setEditingHeader({ elId: el.id, colId: col.id });
+                                                                } else {
+                                                                    setSelectedIds([el.id]);
+                                                                }
+                                                            }}
                                                             onDoubleClick={(e) => { e.stopPropagation(); setEditingHeader({ elId: el.id, colId: col.id }); }}
                                                             >
                                                                 {isEditingThis ? (
                                                                     <input
                                                                         autoFocus
-                                                                        className="w-full bg-white/80 border border-blue-400 rounded px-0.5 text-inherit font-bold outline-none"
-                                                                        style={{ fontSize: 'inherit', textAlign: col.align || 'left' }}
+                                                                        className="bg-white border border-blue-400 rounded text-inherit font-bold outline-none"
+                                                                        style={{ fontSize: 'inherit', textAlign: col.align || 'left', width: '100%', boxSizing: 'border-box', padding: '4px 6px', minHeight: '28px' }}
                                                                         defaultValue={col.label}
                                                                         onBlur={(e) => {
                                                                             const newLabel = e.target.value.trim() || col.label;
@@ -566,6 +574,7 @@ export function CanvasEditor({
                                                                         }}
                                                                         onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingHeader(null); }}
                                                                         onClick={e => e.stopPropagation()}
+                                                                        onPointerDown={e => e.stopPropagation()}
                                                                     />
                                                                 ) : col.label}
                                                             </th>
@@ -581,13 +590,21 @@ export function CanvasEditor({
                                                             const isStatic = col.type === 'static';
                                                             return (
                                                                 <td key={col.id} style={{
-                                                                    padding: `${el.tableConfig!.cellPadding || 6}px`,
+                                                                    padding: `${Math.max(el.tableConfig!.cellPadding || 6, 8)}px`,
                                                                     border: el.tableConfig!.borderStyle === 'none' ? 'none' : '1px solid #000',
                                                                     textAlign: col.align || 'left',
                                                                     color: col.type === 'db' ? '#9ca3af' : '#1e293b',
                                                                     fontStyle: col.type === 'db' ? 'italic' : 'normal',
                                                                     cursor: isStatic ? 'text' : 'default',
                                                                     position: 'relative',
+                                                                }}
+                                                                onPointerDown={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (e.detail >= 2 && isStatic) {
+                                                                        setEditingCell({ elId: el.id, rowId: row.id, colId: col.id });
+                                                                    } else {
+                                                                        setSelectedIds([el.id]);
+                                                                    }
                                                                 }}
                                                                 onDoubleClick={(e) => {
                                                                     if (!isStatic) return;
@@ -598,8 +615,8 @@ export function CanvasEditor({
                                                                     {isEditingThis ? (
                                                                         <input
                                                                             autoFocus
-                                                                            className="w-full bg-blue-50 border border-blue-400 rounded px-0.5 outline-none"
-                                                                            style={{ fontSize: 'inherit', textAlign: col.align || 'left', color: '#1e293b' }}
+                                                                            className="bg-blue-50 border border-blue-400 rounded outline-none"
+                                                                            style={{ fontSize: 'inherit', textAlign: col.align || 'left', color: '#1e293b', width: '100%', boxSizing: 'border-box', padding: '4px 6px', minHeight: '28px' }}
                                                                             defaultValue={row.cells[col.id] || ''}
                                                                             onBlur={(e) => {
                                                                                 const val = e.target.value;
@@ -610,6 +627,7 @@ export function CanvasEditor({
                                                                             }}
                                                                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingCell(null); }}
                                                                             onClick={e => e.stopPropagation()}
+                                                                            onPointerDown={e => e.stopPropagation()}
                                                                         />
                                                                     ) : (col.type === 'db' ? `[${col.field}]` : (row.cells[col.id] || ''))}
                                                                 </td>
@@ -631,7 +649,7 @@ export function CanvasEditor({
                                         </div>
                                     </div>
                                 )}
-                                {(el.type === 'rect' || el.type === 'circle') && (
+                                {(el.type === 'rect' || el.type === 'circle' || el.type === 'line') && (
                                     <ShapeElement el={el} />
                                 )}
                                 {selectedIds.length === 1 && selectedIds[0] === el.id && (

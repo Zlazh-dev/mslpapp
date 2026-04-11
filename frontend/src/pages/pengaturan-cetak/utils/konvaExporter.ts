@@ -136,6 +136,17 @@ function elementToKonvaNode(el: CanvasElement): any {
                     fill: 'transparent'
                 }
             };
+            
+        case 'line':
+            return {
+                className: 'Line',
+                attrs: {
+                    points: [el.x, el.y + el.h / 2, el.x + el.w, el.y + el.h / 2],
+                    stroke: el.style.strokeColor || (el.style.borderColor as string) || '#000000',
+                    strokeWidth: parseFloat(String(el.style.strokeWidth || el.style.borderWidth || 1)) || 2,
+                    dash: el.style.borderStyle === 'dashed' ? [5, 5] : el.style.borderStyle === 'dotted' ? [2, 2] : undefined,
+                },
+            };
 
         default:
             return null;

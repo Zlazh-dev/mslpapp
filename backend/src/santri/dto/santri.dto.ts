@@ -42,6 +42,7 @@ export class CreateSantriDto {
     @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kamarId?: number;
     @ApiProperty({ required: false }) @IsOptional() @IsString() foto?: string;
     @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl?: string;
+    @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl2?: string;
 }
 
 export class UpdateSantriDto {
@@ -81,8 +82,9 @@ export class UpdateSantriDto {
     // Penempatan (Int IDs, allow null to unassign)
     @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kelasId?: number | null;
     @ApiProperty({ required: false }) @IsOptional() @Type(() => Number) @IsInt() kamarId?: number | null;
-    @ApiProperty({ required: false }) @IsOptional() @IsString() foto?: string;
-    @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl?: string;
+    @ApiProperty({ required: false }) @IsOptional() @IsString() foto?: string | null;
+    @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl?: string | null;
+    @ApiProperty({ required: false }) @IsOptional() @IsString() kkFileUrl2?: string | null;
 }
 
 export class QuerySantriDto {

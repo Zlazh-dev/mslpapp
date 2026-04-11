@@ -58,7 +58,7 @@ export class PdfDataService {
         };
 
         return {
-            // ── Core Identity ──
+            // ── Core Identity (snake_case for backward compat) ──
             nama_santri: santri.namaLengkap,
             nis: santri.nis,
             gender: santri.gender === 'L' ? 'Laki-laki' : santri.gender === 'P' ? 'Perempuan' : '-',
@@ -75,7 +75,19 @@ export class PdfDataService {
             tanggal_keluar: formatDate(santri.tanggalKeluar),
             foto_url: santri.foto ?? '',
 
-            // ── Orang Tua / Wali ──
+            // ── Core Identity (camelCase — matches frontend template editor field names) ──
+            namaLengkap: santri.namaLengkap,
+            namaUser: santri.namaLengkap,
+            tempatLahir: santri.tempatLahir ?? '-',
+            tanggalLahir: formatDate(santri.tanggalLahir),
+            noHp: santri.noHp ?? '-',
+            noKk: santri.noKk ?? '-',
+            jalurPendidikan: santri.jalurPendidikan ?? '-',
+            jenjangPendidikan: santri.jenjangPendidikan ?? '-',
+            tanggalMasuk: formatDate(santri.tanggalMasuk),
+            tanggalKeluar: formatDate(santri.tanggalKeluar),
+
+            // ── Orang Tua / Wali (snake_case) ──
             nama_ayah: santri.namaAyah ?? '-',
             nama_ibu: santri.namaIbu ?? '-',
             no_hp_ayah: santri.noHpAyah ?? '-',
@@ -84,14 +96,35 @@ export class PdfDataService {
             no_hp_wali: santri.noHpWali ?? '-',
             deskripsi_wali: santri.deskripsiWali ?? '-',
 
+            // ── Orang Tua / Wali (camelCase) ──
+            namaAyah: santri.namaAyah ?? '-',
+            namaIbu: santri.namaIbu ?? '-',
+            noHpAyah: santri.noHpAyah ?? '-',
+            noHpIbu: santri.noHpIbu ?? '-',
+            namaWali: santri.namaWali ?? '-',
+            noHpWali: santri.noHpWali ?? '-',
+            deskripsiWali: santri.deskripsiWali ?? '-',
+
             // ── Alamat ──
             provinsi: santri.provinsi ?? '-',
             kota_kabupaten: santri.kotaKabupaten ?? '-',
+            kotaKabupaten: santri.kotaKabupaten ?? '-',
             kecamatan: santri.kecamatan ?? '-',
             kelurahan: santri.kelurahan ?? '-',
             jalan: santri.jalan ?? '-',
             rt_rw: santri.rtRw ?? '-',
+            rtRw: santri.rtRw ?? '-',
             alamat_lengkap: [
+                santri.jalan,
+                santri.rtRw ? `RT/RW ${santri.rtRw}` : null,
+                santri.kelurahan,
+                santri.kecamatan,
+                santri.kotaKabupaten,
+                santri.provinsi,
+            ]
+                .filter(Boolean)
+                .join(', ') || '-',
+            alamatFull: [
                 santri.jalan,
                 santri.rtRw ? `RT/RW ${santri.rtRw}` : null,
                 santri.kelurahan,
@@ -104,6 +137,7 @@ export class PdfDataService {
 
             // ── Kelas & Kamar ──
             kelas: santri.kelas?.nama ?? '-',
+            'kelas.nama': santri.kelas?.nama ?? '-',
             jenjang: santri.kelas?.tingkat?.jenjang?.nama ?? '-',
             tingkat: santri.kelas?.tingkat?.nama ?? '-',
             kelas_lengkap: santri.kelas
@@ -111,6 +145,7 @@ export class PdfDataService {
                 : '-',
             wali_kelas: (santri.kelas?.waliKelas as any)?.name ?? '-',
             kamar: santri.kamar?.nama ?? '-',
+            'kamar.nama': santri.kamar?.nama ?? '-',
             gedung: santri.kamar?.gedung?.nama ?? '-',
             kompleks: santri.kamar?.gedung?.kompleks?.nama ?? '-',
             kamar_lengkap: santri.kamar

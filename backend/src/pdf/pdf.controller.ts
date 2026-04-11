@@ -269,7 +269,7 @@ export class PdfController {
         
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="presensi_kelas_${body.kelasId}.pdf"`,
+            'Content-Disposition': `inline; filename="presensi_kelas_${body.kelasId}.pdf"`,
             'Content-Length': pdfBuffer.length,
         });
         
@@ -299,7 +299,7 @@ export class PdfController {
         const HARI = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Ahad'];
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="jadwal_${HARI[body.hari] || body.hari}.pdf"`,
+            'Content-Disposition': `inline; filename="jadwal_${HARI[body.hari] || body.hari}.pdf"`,
             'Content-Length': pdfBuffer.length,
         });
         
@@ -318,7 +318,7 @@ export class PdfController {
 
             res.set({
                 'Content-Type': 'application/pdf',
-                'Content-Disposition': `attachment; filename="${filename}"`,
+                'Content-Disposition': `inline; filename="${filename}"`,
                 'Content-Length': buffer.length.toString(),
             });
 

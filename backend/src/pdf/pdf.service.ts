@@ -57,6 +57,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         try {
             this.browser = await puppeteer.launch({
                 headless: true,
+                executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -127,6 +128,9 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
 
         const page = await this.browser.newPage();
 
+        page.on('console', msg => this.logger.debug(`[Headless] ${msg.type().toUpperCase()}: ${msg.text()}`));
+        page.on('pageerror', err => this.logger.error(`[Headless] Uncaught exception: ${err.toString()}`));
+
         try {
             // Build the full HTML payload
             const html = this.buildHtml(opts);
@@ -152,14 +156,23 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
                 opts.santriList || [],
             );
 
-            // PDF generation
-            const stageW = opts.pageWidth ?? 794;   // A4 @ 96 DPI
-            const stageH = opts.pageHeight ?? 1123;  // A4 @ 96 DPI
+            const konvaStage = typeof opts.konvaJson === 'string' ? JSON.parse(opts.konvaJson) : opts.konvaJson;
+            this.logger.debug(`Konva Stage JSON nodes count: ${konvaStage?.children?.[0]?.children?.length}`);
+            
+            const fallbackW = konvaStage?.attrs?.width || 794;
+            const fallbackH = konvaStage?.attrs?.height || 1123;
+            
+            const stageW = opts.pageWidth ?? fallbackW;
+            const stageH = opts.pageHeight ?? fallbackH;
+
+            // If width is suspiciously small (like 215 for F4 width in mm), assume 'mm'. Otherwise 'px'.
+            const wUnit = stageW < 500 ? 'mm' : 'px';
+            const hUnit = stageH < 500 ? 'mm' : 'px';
 
             const pdfUint8 = await page.pdf({
                 printBackground: true,
-                width: `${stageW}px`,
-                height: `${stageH}px`,
+                width: `${stageW}${wUnit}`,
+                height: `${stageH}${hUnit}`,
                 margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
             });
 
@@ -322,16 +335,18 @@ window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
             }
         }
 
-        /* ── QR code injection ──
-         * Convention: an Image node whose name starts with "qr_" (e.g. "qr_nis")
-         * will have its image source replaced with the pre-rendered data URI.
-         */
+        /* ── Image & QR code injection ── */
         if (node.className === 'Image' && node.attrs && node.attrs.name) {
-            const qrKey = node.attrs.name;
-            if (qrUris[qrKey]) {
-                // We store as a custom attr; Konva.Node.create won't auto-load
-                // images, so we handle it after stage creation.
-                node.attrs._qrDataUri = qrUris[qrKey];
+            const nameKey = node.attrs.name;
+            
+            if (nameKey === 'foto_santri') {
+                const photoPath = data['foto_url'];
+                if (photoPath) {
+                    const baseUrl = window.location.origin || 'http://localhost:3000';
+                    node.attrs.src = photoPath.startsWith('http') ? photoPath : baseUrl + photoPath;
+                }
+            } else if (qrUris[nameKey]) {
+                node.attrs._qrDataUri = qrUris[nameKey];
             }
         }
 

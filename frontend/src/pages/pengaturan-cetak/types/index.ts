@@ -16,7 +16,7 @@ export type TableRow = {
 
 export type CanvasElement = {
     id: string;
-    type: 'text' | 'field' | 'image' | 'rect' | 'circle' | 'qrcode' | 'group' | 'table';
+    type: 'text' | 'field' | 'image' | 'rect' | 'circle' | 'qrcode' | 'group' | 'table' | 'line';
     x: number;
     y: number;
     w: number;

@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 
 export class CreateKelasDto {
     @IsString() @IsNotEmpty() nama: string;
+    @IsOptional() @IsString() deskripsi?: string;
     @Type(() => Number) @IsInt() tingkatId: number;
     @IsOptional() @IsString() tahunAjaran?: string;
     @IsOptional() @IsString() waliKelasId?: string;

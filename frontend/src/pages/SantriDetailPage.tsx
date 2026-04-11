@@ -4,7 +4,7 @@ import api from '../lib/api';
 import { Santri } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import QRCode from 'qrcode';
-import { usePrinter } from '../hooks/usePrinter';
+import PrintSidebar from '../components/PrintSidebar';
 import {
     ArrowLeft, Edit2, Camera, MoreVertical, FileText, Upload, X,
     User as UserIcon, Users, MapPin, GraduationCap, BookOpen,
@@ -61,9 +61,8 @@ export default function SantriDetailPage() {
     const [showQr, setShowQr] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState('');
 
-    // Print Modal
-    const [printModal, setPrintModal] = useState<{ isOpen: boolean; templates: any[]; paperSize: 'A4' | 'F4', orientation: 'portrait' | 'landscape' }>({ isOpen: false, templates: [], paperSize: 'A4', orientation: 'portrait' });
-    const { print } = usePrinter();
+    // Print Sidebar
+    const [showPrintSidebar, setShowPrintSidebar] = useState(false);
 
     // Khidmah
     const [khidmahList, setKhidmahList] = useState<{id: string; modelKhidmah: {id: string; nama: string}; keterangan: string | null}[]>([]);
@@ -78,211 +77,7 @@ export default function SantriDetailPage() {
             .then(setQrDataUrl);
     }, []);
 
-    const handleCetakClick = async (s: Santri) => {
-        try {
-            const res = await api.get('/settings/CETAK_TEMPLATES');
-            if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-                setPrintModal({ isOpen: true, templates: res.data.data, paperSize: 'A4', orientation: 'portrait' });
-            } else {
-                printBiodata(s, null);
-            }
-        } catch (e) {
-            printBiodata(s, null);
-        }
-    };
 
-    const printBiodata = useCallback(async (s: Santri, specificLayoutElements: any[] | null = null, paperSize: 'A4' | 'F4' = 'A4', orientation: 'portrait' | 'landscape' = 'portrait') => {
-        let customLayout = specificLayoutElements;
-        if (!customLayout) {
-            try {
-                const res = await api.get('/settings/CETAK_TEMPLATES');
-                if (res.data?.data && Array.isArray(res.data.data)) {
-                    const tpls = res.data.data;
-                    const def = tpls.find((t: any) => t.isDefault) || tpls[0];
-                    if (def && def.elements) {
-                        customLayout = def.elements;
-                    }
-                }
-                if (!customLayout) {
-                    // fallback to old single layout
-                    const resOld = await api.get('/settings/CETAK_BIODATA_LAYOUT');
-                    if (resOld.data?.data && Array.isArray(resOld.data.data) && resOld.data.data.length > 0) {
-                        customLayout = resOld.data.data;
-                    }
-                }
-            } catch (e) {
-                // fallback to original template if setting fails
-            }
-        }
-
-        const fmtDate = (d?: string | null) => d ? new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
-        const alamatParts = [s.jalan, s.rtRw && `RT/RW ${s.rtRw}`, s.kelurahan, s.kecamatan, s.kotaKabupaten, s.provinsi].filter(Boolean);
-        const alamat = alamatParts.join(', ') || '—';
-        const fotoUrl = s.foto ? (s.foto.startsWith('http') ? s.foto : BACKEND + s.foto) : null;
-
-        if (customLayout) {
-            // Pre-generate QR code data URLs for all qrcode elements
-            const qrDataUrls: Record<string, string> = {};
-            for (const el of customLayout) {
-                if (el.type === 'qrcode') {
-                    // Always point to public profile, ignoring legacy field values
-                    const qrValue = `${window.location.origin}/p/santri/${s.id}`;
-                    try {
-                        qrDataUrls[el.id] = await QRCode.toDataURL(qrValue, { width: Math.min(el.w, el.h) || 100, margin: 1 });
-                    } catch { /* skip if fails */ }
-                }
-            }
-
-            const pxToMm = (px: number | string | undefined) => {
-                if (px === undefined) return '0mm';
-                const num = typeof px === 'string' ? parseFloat(px) : px;
-                if (isNaN(num)) return typeof px === 'string' ? px : '0mm';
-                return (num * 25.4 / 96).toFixed(3) + 'mm';
-            };
-
-            const elementsHtml = customLayout.map((el: any) => {
-                let text = '';
-                let imgHtml = '';
-
-                if (el.type === 'image' && el.value) {
-                    const imgUrl = el.value.startsWith('http') ? el.value : BACKEND + el.value;
-                    imgHtml = `<img src="${imgUrl}" style="width:100%;height:100%;object-fit:fill;" />`;
-                } else if (el.type === 'field' && el.field === 'foto') {
-                    // Special handling: render santri photo
-                    if (fotoUrl) {
-                        imgHtml = `<img src="${fotoUrl}" style="width:100%;height:100%;object-fit:cover;" />`;
-                    } else {
-                        // Fallback: initial letter styled box
-                        const ini = s.namaLengkap?.charAt(0)?.toUpperCase() || '?';
-                        imgHtml = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#d1fae5,#6ee7b7);font-size:${pxToMm(32)};font-weight:700;color:#065f46;">${ini}</div>`;
-                    }
-                } else if (el.type === 'qrcode') {
-                    const dataUrl = qrDataUrls[el.id];
-                    imgHtml = dataUrl
-                        ? `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1mm;"><img src="${dataUrl}" style="width:calc(100% - 2mm);height:calc(100% - 2mm);object-fit:contain;" /><span style="font-size:${pxToMm(8)};font-family:sans-serif;color:#6b7280;line-height:1;">Profil</span></div>`
-                        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:${pxToMm(10)};font-family:sans-serif;">QR Error</div>`;
-                } else if (el.type === 'text') {
-                    text = el.value || '';
-                } else if (el.type === 'field') {
-                    const keys = (el.field || '').split('.');
-                    let val: any = s;
-                    for (const k of keys) { val = val ? val[k] : undefined; }
-
-                    const JALUR_LBL: Record<string, string> = { FORMAL: 'Formal', TAHFIDZ: 'Tahfidz', MAHAD_ALY: "Ma'had Aly" };
-                    if (el.field === 'tanggalLahir' || el.field === 'tanggalMasuk' || el.field === 'tanggalKeluar') { val = fmtDate(val); }
-                    else if (el.field === 'gender') { val = val === 'L' ? 'Laki-laki' : 'Perempuan'; }
-                    else if (el.field === 'status') { val = val === 'INACTIVE' ? 'Nonaktif' : 'Aktif'; }
-                    else if (el.field === 'jalurPendidikan') { val = val ? (JALUR_LBL[val] || val) : ''; }
-                    else if (el.field === 'alamatFull') { val = alamat; }
-                    else if (el.field === 'namaUser') { val = user?.name && user.name !== user.username ? user.name : (user?.username || '-'); }
-
-                    text = val || '';
-                }
-
-                const st = el.style || {};
-                const flexJc = st.textAlign === 'center' ? 'center' : (st.textAlign === 'right' ? 'flex-end' : 'flex-start');
-                
-                // Convert borders/strokes/radius to mm for precision printing
-                const strokeProps = el.type === 'rect' || el.type === 'circle' ? `border:${pxToMm(st.strokeWidth)} ${st.strokeStyle} ${st.strokeColor};` : `border:${st.border || 'none'};`;
-                const radiusProps = el.type === 'rect' && st.borderRadius ? `border-radius:${pxToMm(st.borderRadius)};` : (el.type === 'circle' ? 'border-radius:100%;' : '');
-                const bgProps = el.type === 'rect' || el.type === 'circle' ? `background-color:transparent;` : `background-color:${st.backgroundColor || 'transparent'};`;
-
-                let innerContent = text;
-                if (el.type === 'rect' || el.type === 'circle') {
-                    innerContent = `<div style="position:absolute;inset:0;${bgProps}${strokeProps}${radiusProps}box-sizing:border-box;"></div>${imgHtml}`;
-                } else {
-                    innerContent = text + imgHtml;
-                }
-
-                const styleStr = `position:absolute; left:${pxToMm(el.x)}; top:${pxToMm(el.y)}; width:${pxToMm(el.w)}; height:${pxToMm(el.h)}; font-family:${st.fontFamily || 'Arial'}; font-size:${pxToMm(st.fontSize || 14)}; font-weight:${st.fontWeight || 'normal'}; color:${st.color || '#000'}; text-align:${st.textAlign || 'left'}; opacity:${st.opacity ?? 1}; display:flex; align-items:center; justify-content:${flexJc}; overflow:hidden; box-sizing:border-box; ${!['rect','circle'].includes(el.type) ? bgProps : ''} ${!['rect','circle'].includes(el.type) ? strokeProps : ''}`;
-
-                return `<div style="${styleStr}">${innerContent}</div>`;
-            }).join('');
-
-            print({ contentHtml: elementsHtml, paperSize, orientation });
-            return;
-        }
-
-        const JALUR: Record<string, string> = { FORMAL: 'Formal', TAHFIDZ: 'Tahfidz', MAHAD_ALY: "Ma'had Aly" };
-
-        const row = (label: string, value: string) =>
-            `<tr><td class="label">${label}</td><td class="val">${value}</td></tr>`;
-
-        const fallbackHtml = `
-<div class="header">
-  <img class="logo" src="${window.location.origin}/logo.png" onerror="this.style.display='none'" />
-  <div class="org"><h1>LPAPP — Manajemen Santri</h1><p>Data Biodata Santri</p></div>
-</div>
-<div class="profile">
-  ${fotoUrl ? `<img class="foto" src="${fotoUrl}" />` : `<div class="foto-placeholder">${s.namaLengkap.charAt(0)}</div>`}
-  <div class="identity">
-    <h2>${s.namaLengkap}</h2>
-    <span class="badge gray">NIS: ${s.nis}</span>
-    <span class="badge ${s.gender === 'L' ? 'blue' : 'pink'}">${s.gender === 'L' ? 'Putra' : 'Putri'}</span>
-    ${s.status === 'INACTIVE' ? '<span class="badge orange">Nonaktif</span>' : ''}
-    ${s.kelas ? `<br/><span style="font-size:9pt;color:#6b7280;margin-top:4px;display:block">Kelas: ${s.kelas.nama}</span>` : ''}
-    ${s.kamar ? `<span style="font-size:9pt;color:#6b7280">Kamar: ${s.kamar.nama}</span>` : ''}
-  </div>
-</div>
-<div class="grid">
-<div>
-<div class="section-title">Data Pribadi</div>
-<table>
-${row('Tempat Lahir', s.tempatLahir || '—')}
-${row('Tanggal Lahir', fmtDate(s.tanggalLahir))}
-${row('Jenis Kelamin', s.gender === 'L' ? 'Laki-laki' : 'Perempuan')}
-${row('No HP', s.noHp || '—')}
-${row('Jalur Pendidikan', s.jalurPendidikan ? JALUR[s.jalurPendidikan] : '—')}
-${row('Tanggal Masuk', fmtDate(s.tanggalMasuk))}
-${s.tanggalKeluar ? row('Tanggal Keluar', fmtDate(s.tanggalKeluar)) : ''}
-</table>
-<div class="section-title">Alamat</div>
-<p style="font-size:10pt;color:#111;padding:2px 0">${alamat}</p>
-</div>
-<div>
-<div class="section-title">Orang Tua</div>
-<table>
-${row('Nama Ayah', s.namaAyah || '—')}
-${row('No HP Ayah', s.noHpAyah || '—')}
-${row('Nama Ibu', s.namaIbu || '—')}
-${row('No HP Ibu', s.noHpIbu || '—')}
-</table>
-<div class="section-title">Wali</div>
-<table>
-${row('Nama Wali', s.namaWali || '—')}
-${row('No HP Wali', s.noHpWali || '—')}
-${row('Keterangan', s.deskripsiWali || '—')}
-</table>
-</div>
-</div>
-<div class="footer">
-  <span>Dicetak: ${new Date().toLocaleString('id-ID')}</span>
-  <span>LPAPP — Data Santri</span>
-</div>`;
-
-        const fallbackStyles = `
-            *{margin:0;padding:0;box-sizing:border-box}
-            body{font-family:'Segoe UI',Arial,sans-serif;font-size:11pt;color:#1a1a1a;background:#fff;padding:24px 32px}
-            .header{display:flex;align-items:center;gap:16px;border-bottom:3px solid #065f46;padding-bottom:12px;margin-bottom:16px}
-            .logo{width:56px;height:56px;object-fit:contain}
-            .org h1{font-size:15pt;font-weight:700;color:#065f46}
-            .org p{font-size:9pt;color:#666}
-            .profile{display:flex;gap:20px;align-items:flex-start;margin-bottom:16px}
-            .foto{width:90px;height:110px;object-fit:cover;border-radius:8px;border:2px solid #e5e7eb}
-            .foto-placeholder{width:90px;height:110px;border-radius:8px;border:2px solid #e5e7eb;background:linear-gradient(135deg,#ecfdf5,#d1fae5);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#34d399}
-            .identity h2{font-size:16pt;font-weight:700;color:#065f46;margin-bottom:6px}
-            .badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:8.5pt;font-weight:600;margin-right:4px}
-            .blue{background:#dbeafe;color:#1d4ed8}.pink{background:#fce7f3;color:#be185d}.gray{background:#f3f4f6;color:#374151}.orange{background:#fed7aa;color:#c2410c}
-            .section-title{font-size:10.5pt;font-weight:700;color:#065f46;border-left:3px solid #065f46;padding-left:8px;margin-bottom:6px;margin-top:12px}
-            table{width:100%;border-collapse:collapse}
-            .label{width:38%;color:#6b7280;padding:4px 0;vertical-align:top;font-size:10pt}
-            .val{color:#111;padding:4px 0;font-size:10pt;font-weight:500}
-            .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
-            .footer{margin-top:20px;border-top:1px solid #e5e7eb;padding-top:10px;display:flex;justify-content:space-between;font-size:8.5pt;color:#9ca3af}
-        `;
-
-        print({ contentHtml: fallbackHtml, paperSize: 'A4', orientation: 'portrait', customStyles: fallbackStyles });
-    }, [print]);
 
     // Photo upload
     const fotoInputRef = useRef<HTMLInputElement>(null);
@@ -290,8 +85,10 @@ ${row('Keterangan', s.deskripsiWali || '—')}
 
     // KK upload
     const kkInputRef = useRef<HTMLInputElement>(null);
-    const [uploadingKK, setUploadingKK] = useState(false);
+    const [uploadingKK, setUploadingKK] = useState<1 | 2 | null>(null);
     const [kkPreview, setKkPreview] = useState<{ url: string; name: string; type: string } | null>(null);
+    const [kkPreview2, setKkPreview2] = useState<{ url: string; name: string; type: string } | null>(null);
+    const [activeTargetSlot, setActiveTargetSlot] = useState<1 | 2>(1);
 
     // Nilai
     const [nilai, setNilai] = useState<any[]>([]);
@@ -338,13 +135,25 @@ ${row('Keterangan', s.deskripsiWali || '—')}
     };
 
     const fetchSantri = () => {
-        api.get(`/santri/${id}`).then(r => {
+        api.get(`/santri/${id}`).then(async r => {
             const s: Santri = r.data.data;
             setSantri(s);
-            if (s.kkFileUrl) {
-                const ext = s.kkFileUrl.split('.').pop()?.toLowerCase() || '';
-                setKkPreview({ url: BACKEND + s.kkFileUrl, name: s.kkFileUrl.split('/').pop() || 'Dokumen KK', type: ext });
-            }
+            
+            const loadPreview = async (url: string | null, fallbackName: string) => {
+                if (!url) return null;
+                const ext = url.split('.').pop()?.toLowerCase() || '';
+                const fileName = url.split('/').pop() || fallbackName;
+                try {
+                    const blobRes = await api.get(url, { responseType: 'blob' });
+                    const blobUrl = URL.createObjectURL(blobRes.data);
+                    return { url: blobUrl, name: fileName, type: ext };
+                } catch {
+                    return { url: BACKEND + url, name: fileName, type: ext };
+                }
+            };
+
+            setKkPreview(await loadPreview(s.kkFileUrl ?? null, 'Dokumen KK 1'));
+            setKkPreview2(await loadPreview((s as any).kkFileUrl2 ?? null, 'Dokumen KK 2'));
         }).finally(() => setLoading(false));
     };
 
@@ -394,19 +203,31 @@ ${row('Keterangan', s.deskripsiWali || '—')}
     const handleKKUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !santri) return;
-        setUploadingKK(true);
+        const slot = activeTargetSlot;
+        setUploadingKK(slot);
         try {
             const fd = new FormData();
             fd.append('file', file);
             const res = await api.post('/upload/kk', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-            await api.put(`/santri/${santri.id}`, { kkFileUrl: res.data.url });
+            await api.put(`/santri/${santri.id}`, { [slot === 1 ? 'kkFileUrl' : 'kkFileUrl2']: res.data.url });
+            
             const ext = res.data.url.split('.').pop()?.toLowerCase() || '';
-            setKkPreview({ url: BACKEND + res.data.url, name: res.data.originalName || file.name, type: ext });
+            const blobUrl = URL.createObjectURL(file);
+            const previewData = { url: blobUrl, name: res.data.originalName || file.name, type: ext };
+            
+            if (slot === 1) setKkPreview(previewData);
+            else setKkPreview2(previewData);
+            
             fetchSantri();
         } finally {
-            setUploadingKK(false);
+            setUploadingKK(null);
             e.target.value = '';
         }
+    };
+
+    const triggerKKUpload = (slot: 1 | 2) => {
+        setActiveTargetSlot(slot);
+        kkInputRef.current?.click();
     };
 
     const handleDeactivate = async () => {
@@ -485,7 +306,7 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                                         <KeyRound size={14} /> Jadikan User
                                     </button>
                                 )}
-                                <button onClick={() => { setShowKebab(false); handleCetakClick(santri); }}
+                                <button onClick={() => { setShowKebab(false); setShowPrintSidebar(true); }}
                                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm font-medium text-emerald-600 hover:bg-emerald-50 transition-colors">
                                     <Printer size={14} /> Cetak Biodata
                                 </button>
@@ -737,57 +558,79 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                                         <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center"><FileText size={15} className="text-blue-600" /></div>
                                         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wide">File Kartu Keluarga (KK)</h3>
                                     </div>
-                                    {canEdit && (
-                                        <button onClick={() => kkInputRef.current?.click()} disabled={uploadingKK}
-                                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 text-xs font-semibold text-white hover:opacity-90 transition-all shadow-md disabled:opacity-50">
-                                            <Upload size={13} />{uploadingKK ? 'Mengupload...' : kkPreview ? 'Ganti File' : 'Upload KK'}
-                                        </button>
-                                    )}
                                 </div>
-                                <div className="space-y-4">
-                                    {kkPreview ? (
-                                        <div>
-                                            {kkPreview.type === 'pdf' && (
-                                                <div className="rounded-xl overflow-hidden border border-slate-200">
-                                                    <iframe src={kkPreview.url} className="w-full h-[500px]" title="Preview KK" />
-                                                </div>
-                                            )}
-                                            {['jpg', 'jpeg', 'png', 'webp'].includes(kkPreview.type) && (
-                                                <div className="rounded-xl overflow-hidden border border-slate-200 max-h-[500px] flex items-center justify-center bg-slate-50">
-                                                    <img src={kkPreview.url} alt="KK" className="max-w-full max-h-[500px] object-contain" />
-                                                </div>
-                                            )}
-                                            {['doc', 'docx'].includes(kkPreview.type) && (
-                                                <div className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
-                                                    <div className="w-12 h-14 bg-blue-100 rounded-lg flex items-center justify-center shrink-0"><FileText size={24} className="text-blue-500" /></div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-slate-800 truncate">{kkPreview.name}</p>
-                                                        <p className="text-xs text-slate-400 mt-0.5">File Word — klik untuk download</p>
-                                                    </div>
-                                                    <a href={kkPreview.url} download className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors">Download</a>
-                                                </div>
-                                            )}
-                                            <div className="flex items-center justify-between mt-3">
-                                                <p className="text-xs text-slate-400">{kkPreview.name}</p>
-                                                <div className="flex items-center gap-3">
-                                                    <a href={kkPreview.url} target="_blank" rel="noreferrer" className="text-xs text-teal-600 hover:underline">Buka tab baru</a>
-                                                    {canEdit && (
-                                                        <button onClick={async () => { await api.put(`/santri/${santri.id}`, { kkFileUrl: null }); setKkPreview(null); fetchSantri(); }}
-                                                            className="text-xs text-red-400 hover:text-red-600 flex items-center gap-1">
-                                                            <X size={12} /> Hapus
-                                                        </button>
-                                                    )}
-                                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+                                    {[
+                                        { slot: 1, preview: kkPreview, field: 'kkFileUrl' },
+                                        { slot: 2, preview: kkPreview2, field: 'kkFileUrl2' }
+                                    ].map(({ slot, preview, field }) => (
+                                        <div key={slot} className="border border-slate-200 rounded-xl p-4 bg-white relative">
+                                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                                                <h4 className="text-sm font-semibold text-slate-800">Dokumen {slot}</h4>
+                                                {canEdit && (
+                                                    <button onClick={() => triggerKKUpload(slot as 1 | 2)} disabled={uploadingKK === slot}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-[11px] font-semibold hover:bg-indigo-100 transition-colors disabled:opacity-50">
+                                                        <Upload size={12} />{uploadingKK === slot ? 'Loading...' : preview ? 'Ganti' : 'Upload'}
+                                                    </button>
+                                                )}
                                             </div>
+                                            
+                                            {preview ? (
+                                                <div>
+                                                    {preview.type === 'pdf' && (
+                                                        <div className="rounded-xl overflow-hidden border border-slate-200">
+                                                            <iframe src={preview.url} className="w-full h-[400px]" title={`Preview KK ${slot}`} />
+                                                        </div>
+                                                    )}
+                                                    {['jpg', 'jpeg', 'png', 'webp'].includes(preview.type) && (
+                                                        <div className="rounded-xl overflow-hidden border border-slate-200 h-[400px] flex items-center justify-center bg-slate-50 relative group">
+                                                            <img src={preview.url} alt={`KK ${slot}`} className="max-w-full max-h-full object-contain" />
+                                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                                                <a href={preview.url} download className="pointer-events-auto px-4 py-2 bg-white rounded-lg text-sm font-semibold text-slate-800 shadow-lg hover:bg-slate-50 flex items-center gap-2">
+                                                                    <Download size={16} /> Download
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {['doc', 'docx'].includes(preview.type) && (
+                                                        <div className="flex items-center gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50">
+                                                            <div className="w-12 h-14 bg-blue-100 rounded-lg flex items-center justify-center shrink-0"><FileText size={24} className="text-blue-500" /></div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-medium text-slate-800 truncate">{preview.name}</p>
+                                                            </div>
+                                                            <a href={preview.url} download className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors">Download</a>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center justify-between mt-3">
+                                                        <p className="text-[10px] text-slate-400 truncate pr-4">{preview.name}</p>
+                                                        <div className="flex items-center gap-2 shrink-0">
+                                                            {['jpg', 'jpeg', 'png', 'webp'].includes(preview.type) && (
+                                                            <a href={preview.url} download className="text-[11px] text-teal-600 hover:underline flex items-center gap-1"><Download size={11}/> Unduh</a>
+                                                            )}
+                                                            <a href={preview.url} target="_blank" rel="noreferrer" className="text-[11px] text-blue-600 hover:underline">Buka tab</a>
+                                                            {canEdit && (
+                                                                <button onClick={async () => { 
+                                                                    await api.put(`/santri/${santri.id}`, { [field]: null }); 
+                                                                    if (slot === 1) setKkPreview(null); else setKkPreview2(null); 
+                                                                    fetchSantri(); 
+                                                                }}
+                                                                    className="text-[11px] text-red-500 hover:text-red-700 flex items-center gap-1">
+                                                                    <X size={11} /> Hapus
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div onClick={() => canEdit && triggerKKUpload(slot as 1 | 2)}
+                                                    className={`flex flex-col items-center justify-center h-[400px] border-2 border-dashed border-slate-200 rounded-xl ${canEdit ? 'cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-colors' : ''}`}>
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-2"><FileText size={20} className="text-slate-400" /></div>
+                                                    <p className="text-sm text-slate-400 font-medium">Belum ada dokumen {slot}</p>
+                                                    {canEdit && <p className="text-xs text-slate-300 mt-1">Klik untuk upload</p>}
+                                                </div>
+                                            )}
                                         </div>
-                                    ) : (
-                                        <div onClick={() => canEdit && kkInputRef.current?.click()}
-                                            className={`flex flex-col items-center justify-center py-16 border-2 border-dashed border-slate-200 rounded-xl ${canEdit ? 'cursor-pointer hover:border-teal-400 hover:bg-teal-50/30 transition-colors' : ''}`}>
-                                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3"><FileText size={22} className="text-slate-400" /></div>
-                                            <p className="text-sm text-slate-400 font-medium">Belum ada dokumen KK</p>
-                                            {canEdit && <p className="text-xs text-slate-300 mt-1">Klik untuk upload</p>}
-                                        </div>
-                                    )}
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -958,59 +801,16 @@ ${row('Keterangan', s.deskripsiWali || '—')}
                 </div>
             )}
 
-            {/* ── Print Template Dialog ── */}
-            {printModal.isOpen && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm" onClick={() => setPrintModal(p => ({ ...p, isOpen: false }))}>
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="px-6 py-4 border-b bg-slate-50 flex flex-col gap-4">
-                            <div className="flex justify-between items-center w-full">
-                                <h3 className="font-bold text-slate-800 flex items-center gap-2"><Printer size={18} className="text-teal-600" /> Pengaturan Cetak</h3>
-                                <button onClick={() => setPrintModal(p => ({ ...p, isOpen: false }))} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200 transition"><X size={18} /></button>
-                            </div>
-                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                                <select 
-                                    className="form-input py-2 sm:py-1.5 px-3 text-sm sm:text-xs bg-white border border-slate-200 rounded-lg shadow-sm font-medium text-slate-700 flex-1"
-                                    value={printModal.paperSize}
-                                    onChange={e => setPrintModal(p => ({ ...p, paperSize: e.target.value as 'A4' | 'F4' }))}
-                                >
-                                    <option value="A4">A4 (210x297mm)</option>
-                                    <option value="F4">F4 / Folio (215x330mm)</option>
-                                </select>
-                                <select 
-                                    className="form-input py-2 sm:py-1.5 px-3 text-sm sm:text-xs bg-white border border-slate-200 rounded-lg shadow-sm font-medium text-slate-700 flex-1"
-                                    value={printModal.orientation}
-                                    onChange={e => setPrintModal(p => ({ ...p, orientation: e.target.value as 'portrait' | 'landscape' }))}
-                                >
-                                    <option value="portrait">Portrait (Vertikal)</option>
-                                    <option value="landscape">Landscape (Horizontal)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3 bg-slate-50/50">
-                            {printModal.templates.map(tpl => (
-                                <div
-                                    key={tpl.id}
-                                    onClick={() => {
-                                        setPrintModal(p => ({ ...p, isOpen: false }));
-                                        printBiodata(santri!, tpl.elements, printModal.paperSize, printModal.orientation);
-                                    }}
-                                    className="bg-white border rounded-xl p-4 flex items-center justify-between cursor-pointer hover:border-teal-500 hover:ring-2 hover:ring-teal-100 shadow-sm group transition-all"
-                                >
-                                    <div>
-                                        <h4 className="font-bold text-slate-800 text-sm group-hover:text-teal-700 transition">{tpl.name}</h4>
-                                        <p className="text-xs text-slate-500 mt-1.5">
-                                            {tpl.isDefault ? <span className="text-teal-700 font-semibold bg-teal-100/60 px-2 py-1 rounded-md">★ Template Default</span> : `Tersimpan: ${new Date(tpl.updatedAt).toLocaleDateString('id-ID')}`}
-                                        </p>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-teal-100 group-hover:text-teal-600 transition">
-                                        <Printer size={14} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* ── Print Sidebar ── */}
+            <PrintSidebar
+                isOpen={showPrintSidebar}
+                onClose={() => setShowPrintSidebar(false)}
+                title="Cetak Biodata"
+                subtitle={santri ? `${santri.namaLengkap} — NIS: ${santri.nis}` : ''}
+                pdfEndpoint="/pdf/biodata"
+                requestBody={{ santriId: santri?.id, qrFields: ['qr_data', 'qr_nis'] }}
+                filenamePrefix={`biodata_${santri?.nis || 'santri'}`}
+            />
         </div>
     );
 }

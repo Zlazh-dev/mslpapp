@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../lib/api';
-import { Plus, Trash2, Search, X, ClipboardList, Tags, AlertCircle, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Search, X, ClipboardList, Tags, AlertCircle, Edit2, CheckCircle } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +49,10 @@ export default function KhidmahPage() {
     const [error, setError] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<{ type: 'model' | 'data'; id: string; label: string } | null>(null);
 
+    const [santriOptions, setSantriOptions] = useState<{nis: string, namaLengkap: string}[]>([]);
+    const [searchSantri, setSearchSantri] = useState('');
+    const [isSearchingSantri, setIsSearchingSantri] = useState(false);
+
     const showMsg = (msg: string) => { setSuccess(msg); setError(''); setTimeout(() => setSuccess(''), 3000); };
     const showErr = (msg: string) => { setError(msg); setTimeout(() => setError(''), 4000); };
 
@@ -68,7 +72,11 @@ export default function KhidmahPage() {
         } catch { showErr('Gagal memuat data khidmah'); }
     };
 
-    useEffect(() => { fetchModels(); fetchData(); }, []);
+    useEffect(() => { 
+        fetchModels(); 
+        fetchData(); 
+        api.get('/santri?limit=1000').then(r => setSantriOptions(r.data.data)).catch(() => {});
+    }, []);
     useEffect(() => { fetchData(filterModel || undefined); }, [filterModel]);
 
     // ─── Model CRUD ───────────────────────────────────────────────────────────
@@ -138,6 +146,8 @@ export default function KhidmahPage() {
     const openAddPanel = () => {
         setEditingData(null);
         setAssignNis('');
+        setSearchSantri('');
+        setIsSearchingSantri(false);
         setAssignModelIds([]);
         setAssignModelId('');
         setAssignKeterangan('');
@@ -292,7 +302,7 @@ export default function KhidmahPage() {
                                                         {entry.modelKhidmah.nama}
                                                     </button>
                                                     <button onClick={() => setDeleteTarget({ type: 'data', id: entry.id, label: `${g.santri.namaLengkap} - ${entry.modelKhidmah.nama}` })}
-                                                        className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-teal-400 hover:bg-red-100 hover:text-red-500 transition opacity-0 group-hover/badge:opacity-100">
+                                                        className="ml-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center text-teal-500 bg-teal-100/50 hover:bg-red-100 hover:text-red-500 transition opacity-70 group-hover/badge:opacity-100">
                                                         <X size={8} />
                                                     </button>
                                                 </span>
@@ -433,10 +443,48 @@ export default function KhidmahPage() {
                         </div>
                     )}
                     {!editingData && (
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">NIS Santri *</label>
-                            <input type="text" autoFocus value={assignNis} onChange={e => setAssignNis(e.target.value)} placeholder="Masukkan NIS..."
-                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" />
+                        <div className="relative">
+                            <label className="block text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Cari Santri / NIS *</label>
+                            <input 
+                                type="text" 
+                                autoFocus 
+                                value={searchSantri} 
+                                onChange={e => {
+                                    setSearchSantri(e.target.value);
+                                    setIsSearchingSantri(true);
+                                    if (e.target.value === '') setAssignNis('');
+                                }} 
+                                onFocus={() => setIsSearchingSantri(true)}
+                                onBlur={() => setTimeout(() => setIsSearchingSantri(false), 200)}
+                                placeholder="Ketik Nama atau NIS..."
+                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 focus:border-emerald-400 outline-none" 
+                            />
+                            {isSearchingSantri && searchSantri && (
+                                <div className="absolute top-full left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded shadow-lg z-50">
+                                    {santriOptions.filter(s => s.namaLengkap.toLowerCase().includes(searchSantri.toLowerCase()) || s.nis.toLowerCase().includes(searchSantri.toLowerCase())).slice(0, 20).map(s => (
+                                        <div 
+                                            key={s.nis} 
+                                            className="px-3 py-2 cursor-pointer hover:bg-emerald-50 text-xs border-b border-slate-50 last:border-0"
+                                            onClick={() => {
+                                                setAssignNis(s.nis);
+                                                setSearchSantri(`${s.namaLengkap} (${s.nis})`);
+                                                setIsSearchingSantri(false);
+                                            }}
+                                        >
+                                            <div className="font-semibold text-slate-700">{s.namaLengkap}</div>
+                                            <div className="text-[10px] font-mono text-slate-400">{s.nis}</div>
+                                        </div>
+                                    ))}
+                                    {santriOptions.filter(s => s.namaLengkap.toLowerCase().includes(searchSantri.toLowerCase()) || s.nis.toLowerCase().includes(searchSantri.toLowerCase())).length === 0 && (
+                                        <div className="px-3 py-2 text-xs text-slate-400 italic text-center">Santri tidak ditemukan</div>
+                                    )}
+                                </div>
+                            )}
+                            {assignNis && !isSearchingSantri && (
+                                <div className="mt-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-flex items-center gap-1">
+                                    <CheckCircle size={10} /> NIS Terpilih: {assignNis}
+                                </div>
+                            )}
                         </div>
                     )}
                     {editingData ? (

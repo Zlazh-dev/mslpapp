@@ -15,7 +15,21 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-RUN apk add --no-cache openssl
+# ── System dependencies for Puppeteer (Chromium) and fonts ──
+RUN apk add --no-cache \
+    openssl \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    font-noto \
+    font-noto-arabic
+
+# ── Puppeteer config: use system Chromium instead of downloading ──
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
 RUN npm install -g @nestjs/cli
 
@@ -27,6 +41,9 @@ COPY --from=builder /app/prisma ./prisma
 
 RUN npm install prisma --save-dev
 RUN npx prisma generate
+
+# ── Create uploads directories ──
+RUN mkdir -p /app/uploads/foto /app/uploads/kk
 
 EXPOSE 3000
 

@@ -23,6 +23,7 @@ export default function KelasListPage() {
     const [formTahun, setFormTahun] = useState('');
     const [formWali, setFormWali] = useState('');
     const [saving, setSaving] = useState(false);
+    const [formDeskripsi, setFormDeskripsi] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<Kelas | null>(null);
 
     const fetchData = async () => {
@@ -40,17 +41,17 @@ export default function KelasListPage() {
 
     useEffect(() => { fetchData(); }, [tingkatId]);
 
-    const openCreate = () => { setEditing(null); setFormNama(''); setFormTahun(''); setFormWali(''); setShowForm(true); };
+    const openCreate = () => { setEditing(null); setFormNama(''); setFormTahun(''); setFormWali(''); setFormDeskripsi(''); setShowForm(true); };
     const openEdit = (k: Kelas) => {
         setEditing(k); setFormNama(k.nama); setFormTahun(k.tahunAjaran || '');
-        setFormWali(k.waliKelasId || ''); setShowForm(true);
+        setFormWali(k.waliKelasId || ''); setFormDeskripsi((k as any).deskripsi || ''); setShowForm(true);
     };
 
     const handleSave = async () => {
         if (!formNama.trim()) return;
         setSaving(true);
         try {
-            const body: any = { nama: formNama, tahunAjaran: formTahun || undefined, waliKelasId: formWali || null };
+            const body: any = { nama: formNama, tahunAjaran: formTahun || undefined, waliKelasId: formWali || null, deskripsi: formDeskripsi || undefined };
             if (editing) await api.patch(`/kelas/${editing.id}`, body);
             else await api.post('/kelas', { ...body, tingkatId: parseInt(tingkatId!) });
             setShowForm(false);
@@ -94,6 +95,7 @@ export default function KelasListPage() {
                         <tr>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">No</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Nama Kelas</th>
+                            <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Deskripsi</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tingkat / Jenjang</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Tahun Ajaran</th>
                             <th className="px-4 py-2.5 text-left text-[10px] font-bold text-gray-500 uppercase">Wali Kelas</th>
@@ -103,13 +105,14 @@ export default function KelasListPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {loading ? Array.from({ length: 4 }).map((_, i) => (
-                            <tr key={i} className="animate-pulse">{[1, 2, 3, 4, 5, 6, 7].map(j => <td key={j} className="px-4 py-3"><div className="h-3 bg-gray-100 rounded" /></td>)}</tr>
+                            <tr key={i} className="animate-pulse">{[1, 2, 3, 4, 5, 6, 7, 8].map(j => <td key={j} className="px-4 py-3"><div className="h-3 bg-gray-100 rounded" /></td>)}</tr>
                         )) : data.length === 0 ? (
-                            <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-gray-400">Belum ada kelas di tingkat ini</td></tr>
+                            <tr><td colSpan={8} className="px-4 py-12 text-center text-sm text-gray-400">Belum ada kelas di tingkat ini</td></tr>
                         ) : data.map((k, i) => (
                             <tr key={k.id} className="hover:bg-gray-50 transition group">
                                 <td className="px-4 py-3 text-xs text-gray-400">{i + 1}</td>
                                 <td className="px-4 py-3 text-sm font-semibold text-gray-800">{k.nama}</td>
+                                <td className="px-4 py-3 text-xs text-gray-500">{(k as any).deskripsi || <span className="text-gray-300">—</span>}</td>
                                 <td className="px-4 py-3 text-xs text-gray-500">
                                     {k.tingkat?.jenjang?.nama} › {k.tingkat?.nama}
                                 </td>
@@ -144,6 +147,11 @@ export default function KelasListPage() {
                         <div>
                             <label className="text-xs font-semibold text-gray-600 block mb-1">Nama Kelas</label>
                             <input value={formNama} onChange={e => setFormNama(e.target.value)} placeholder="Contoh: VII-A"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-semibold text-gray-600 block mb-1">Deskripsi (opsional)</label>
+                            <input value={formDeskripsi} onChange={e => setFormDeskripsi(e.target.value)} placeholder="Contoh: Ruang Utama Lt. 2"
                                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none" />
                         </div>
                         <div>
