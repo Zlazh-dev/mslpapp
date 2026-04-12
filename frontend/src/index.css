@@ -506,3 +506,17 @@
   border-radius: 52% 48% 55% 45% / 50% 50% 45% 55%;
   animation: auroraWave5 11s ease-in-out infinite alternate;
 }
+
+/* ── Global Print Directives ───────────────────────────── */
+@media print {
+  @page {
+    /* Mengunci paksa ke ukuran kertas F4 / Folio (21.59cm x 33.02cm) */
+    size: 21.59cm 33.02cm portrait;
+    margin: 15mm; 
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

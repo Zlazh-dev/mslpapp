@@ -59,8 +59,11 @@ function AutocompleteInput({
 
     const handleInputChange = (val: string) => {
         setFilter(val);
-        // If user types manually and it doesn't match any option, just set the value
-        onChange(val, '');
+        // If user types manually, try to auto-match an exact option
+        const matchedOpt = options.find(o => o.name.toLowerCase() === val.toLowerCase());
+        const idToPass = matchedOpt ? matchedOpt.id : '';
+        
+        onChange(val, idToPass);
         if (!open && val) setOpen(true);
     };
 
@@ -237,7 +240,7 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
                 value={kotaKabupaten}
                 options={regencies}
                 loading={loadingReg}
-                disabled={!provId && !kotaKabupaten}
+                disabled={!provinsi}
                 placeholder="Pilih kota/kabupaten"
                 onChange={handleRegChange}
             />
@@ -246,7 +249,7 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
                 value={kecamatan}
                 options={districts}
                 loading={loadingDist}
-                disabled={!regId && !kecamatan}
+                disabled={!kotaKabupaten}
                 placeholder="Pilih kecamatan"
                 onChange={handleDistChange}
             />
@@ -255,7 +258,7 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
                 value={kelurahan}
                 options={villages}
                 loading={loadingVil}
-                disabled={!distId && !kelurahan}
+                disabled={!kecamatan}
                 placeholder="Pilih kelurahan/desa"
                 onChange={handleVilChange}
             />

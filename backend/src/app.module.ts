@@ -30,6 +30,7 @@ import { KhidmahModule } from './khidmah/khidmah.module';
             serveRoot: '/uploads',
             serveStaticOptions: { 
                 index: false,
+                fallthrough: false,
                 setHeaders: (res, path) => {
                     if (path.endsWith('.pdf')) {
                         res.setHeader('Content-Disposition', 'inline');

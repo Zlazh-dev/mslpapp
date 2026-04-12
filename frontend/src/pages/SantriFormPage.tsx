@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import api from '../lib/api';
-import { ChevronDown, Info, ArrowLeft, Save, UploadCloud, CheckCircle, FileText, Image as ImageIcon, ChevronRight } from 'lucide-react';
+import { ChevronDown, Info, ArrowLeft, Save, UploadCloud, CheckCircle, FileText, Image as ImageIcon, ChevronRight, Home, GraduationCap, Search } from 'lucide-react';
 import AddressAutocomplete from '../components/AddressAutocomplete';
 
 // ─── Zod Schema ───────────────────────────────────────────────────────────────
@@ -59,7 +59,10 @@ const WIZARD_STEPS = [
     { id: 3, title: 'Wali', fields: ['namaWali', 'noHpWali', 'deskripsiWali'] },
     { id: 4, title: 'Alamat', fields: ['provinsi', 'kotaKabupaten', 'kecamatan', 'kelurahan', 'jalan', 'rtRw'] },
     { id: 5, title: 'Upload Dokumen', fields: [] },
+    { id: 6, title: 'Penempatan', fields: [] },
 ];
+
+const TOTAL_STEPS = 6;
 
 // ─── Accordion Section ────────────────────────────────────────────────────────
 function AccordionSection({ title, badge, defaultOpen = false, children }: {
@@ -117,6 +120,15 @@ export default function SantriFormPage() {
     const fotoFileInputRef = useRef<HTMLInputElement>(null);
     const kkFileInputRef = useRef<HTMLInputElement>(null);
     const kkFileInputRef2 = useRef<HTMLInputElement>(null);
+
+    // Penempatan state
+    const [selectedKamarId, setSelectedKamarId] = useState<number | null>(null);
+    const [selectedKelasId, setSelectedKelasId] = useState<number | null>(null);
+    const [kamarList, setKamarList] = useState<any[]>([]);
+    const [kelasList, setKelasList] = useState<any[]>([]);
+    const [kamarSearch, setKamarSearch] = useState('');
+    const [kelasSearch, setKelasSearch] = useState('');
+    const [loadingPenempatan, setLoadingPenempatan] = useState(false);
 
     // Modal state
     const [modal, setModal] = useState<{ show: boolean, title: string, message: string }>({ show: false, title: '', message: '' });
@@ -179,6 +191,17 @@ export default function SantriFormPage() {
         }
     }, [id, isEdit, reset]);
 
+    // Fetch kamar & kelas lists when entering penempatan step
+    useEffect(() => {
+        if (currentStep === 6 && kamarList.length === 0) {
+            setLoadingPenempatan(true);
+            Promise.all([
+                api.get('/kamar').then(r => setKamarList(r.data.data || [])).catch(() => {}),
+                api.get('/kelas').then(r => setKelasList(r.data.data || [])).catch(() => {}),
+            ]).finally(() => setLoadingPenempatan(false));
+        }
+    }, [currentStep]);
+
     const uploadFile = async (file: File, endpoint: string) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -189,8 +212,8 @@ export default function SantriFormPage() {
     };
 
     const onSubmit = async (formData: FormData) => {
-        // Guard: in wizard mode, only allow submission from step 5
-        if (!isEdit && currentStep < 5) {
+        // Guard: in wizard mode, only allow submission from final step
+        if (!isEdit && currentStep < TOTAL_STEPS) {
             return;
         }
         setSaving(true);
@@ -217,6 +240,10 @@ export default function SantriFormPage() {
                 }
             }
 
+            // Penempatan
+            if (selectedKamarId) payload.kamarId = selectedKamarId;
+            if (selectedKelasId) payload.kelasId = selectedKelasId;
+
             if (isEdit) {
                 await api.put(`/santri/${id}`, payload);
             } else {
@@ -240,7 +267,7 @@ export default function SantriFormPage() {
         const currentFields = WIZARD_STEPS[currentStep - 1].fields as any[];
         const isStepValid = await trigger(currentFields);
         if (isStepValid) {
-            setCurrentStep(s => Math.min(5, s + 1));
+            setCurrentStep(s => Math.min(TOTAL_STEPS, s + 1));
         } else {
             console.log('Validation failed', errors);
         }
@@ -261,7 +288,7 @@ export default function SantriFormPage() {
             // In wizard mode (not edit), block ALL Enter-based form submissions
             // until the user reaches step 5. Step navigation should only happen
             // via the explicit "Lanjutkan" button click.
-            if (!isEdit && currentStep < 5) {
+            if (!isEdit && currentStep < TOTAL_STEPS) {
                 e.preventDefault();
                 return;
             }
@@ -445,6 +472,134 @@ export default function SantriFormPage() {
         </div>
     );
 
+    const renderPenempatan = () => {
+        const formatKamar = (k: any) => {
+            const parts = [k.gedung?.kompleks?.nama, k.gedung?.nama, k.nama].filter(Boolean);
+            return parts.join(' — ');
+        };
+        const formatKelas = (k: any) => {
+            const parts = [k.tingkat?.jenjang?.nama, k.tingkat?.nama, k.nama].filter(Boolean);
+            return parts.join(' — ');
+        };
+
+        const filteredKamar = kamarList.filter(k =>
+            formatKamar(k).toLowerCase().includes(kamarSearch.toLowerCase())
+        );
+        const filteredKelas = kelasList.filter(k =>
+            formatKelas(k).toLowerCase().includes(kelasSearch.toLowerCase())
+        );
+
+        const selectedKamar = kamarList.find(k => k.id === selectedKamarId);
+        const selectedKelas = kelasList.find(k => k.id === selectedKelasId);
+
+        if (loadingPenempatan) {
+            return (
+                <div className="col-span-1 sm:col-span-2 flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500" />
+                </div>
+            );
+        }
+
+        return (
+            <div className="col-span-1 sm:col-span-2 space-y-6">
+                <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-blue-700">Penempatan kamar dan kelas bersifat opsional. Anda bisa mengaturnya nanti dari halaman detail santri.</p>
+                </div>
+
+                {/* Kamar */}
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <Home size={16} className="text-amber-500" /> Penempatan Kamar
+                    </label>
+                    {selectedKamar ? (
+                        <div className="flex items-center justify-between p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+                            <div>
+                                <p className="text-sm font-semibold text-amber-800">{formatKamar(selectedKamar)}</p>
+                                <p className="text-xs text-amber-600 mt-0.5">Kapasitas: {selectedKamar.kapasitas ?? '-'} · Terisi: {selectedKamar._count?.santris ?? 0}</p>
+                            </div>
+                            <button type="button" onClick={() => setSelectedKamarId(null)} className="text-xs text-amber-600 hover:text-red-500 font-semibold transition">Ganti</button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="relative mb-2">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    value={kamarSearch}
+                                    onChange={e => setKamarSearch(e.target.value)}
+                                    placeholder="Cari kamar..."
+                                    className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-100 bg-gray-50 focus:bg-white transition"
+                                />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100">
+                                {filteredKamar.length === 0 ? (
+                                    <div className="py-6 text-center text-xs text-gray-400">Tidak ada kamar ditemukan</div>
+                                ) : filteredKamar.map(k => (
+                                    <button
+                                        key={k.id}
+                                        type="button"
+                                        onClick={() => { setSelectedKamarId(k.id); setKamarSearch(''); }}
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-amber-50 transition text-left"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-800">{formatKamar(k)}</p>
+                                            <p className="text-[10px] text-gray-500">Kapasitas: {k.kapasitas ?? '-'} · Terisi: {k._count?.santris ?? 0}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Kelas */}
+                <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                        <GraduationCap size={16} className="text-blue-500" /> Penempatan Kelas
+                    </label>
+                    {selectedKelas ? (
+                        <div className="flex items-center justify-between p-3.5 bg-blue-50 border border-blue-200 rounded-xl">
+                            <div>
+                                <p className="text-sm font-semibold text-blue-800">{formatKelas(selectedKelas)}</p>
+                                <p className="text-xs text-blue-600 mt-0.5">Wali Kelas: {selectedKelas.waliKelas?.name ?? '-'} · Terisi: {selectedKelas._count?.santris ?? 0}</p>
+                            </div>
+                            <button type="button" onClick={() => setSelectedKelasId(null)} className="text-xs text-blue-600 hover:text-red-500 font-semibold transition">Ganti</button>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="relative mb-2">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    value={kelasSearch}
+                                    onChange={e => setKelasSearch(e.target.value)}
+                                    placeholder="Cari kelas..."
+                                    className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 bg-gray-50 focus:bg-white transition"
+                                />
+                            </div>
+                            <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100">
+                                {filteredKelas.length === 0 ? (
+                                    <div className="py-6 text-center text-xs text-gray-400">Tidak ada kelas ditemukan</div>
+                                ) : filteredKelas.map(k => (
+                                    <button
+                                        key={k.id}
+                                        type="button"
+                                        onClick={() => { setSelectedKelasId(k.id); setKelasSearch(''); }}
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-blue-50 transition text-left"
+                                    >
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-medium text-gray-800">{formatKelas(k)}</p>
+                                            <p className="text-[10px] text-gray-500">Wali: {k.waliKelas?.name ?? '-'} · Terisi: {k._count?.santris ?? 0}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <form onSubmit={handleSubmit(onSubmit, onError)} onKeyDown={handleKeyDown} className="space-y-6">
             {/* Header */}
@@ -536,6 +691,7 @@ export default function SantriFormPage() {
                             {currentStep === 3 && renderDataWali()}
                             {currentStep === 4 && renderAlamat()}
                             {currentStep === 5 && renderUploads()}
+                            {currentStep === 6 && renderPenempatan()}
                         </div>
                     </div>
 
@@ -550,7 +706,7 @@ export default function SantriFormPage() {
                             <ArrowLeft size={16} className="inline mr-1 mb-0.5" /> Kembali
                         </button>
 
-                        {currentStep < 5 ? (
+                        {currentStep < TOTAL_STEPS ? (
                             <button
                                 key="btn-next"
                                 type="button"
@@ -565,9 +721,10 @@ export default function SantriFormPage() {
                                 type="button"
                                 disabled={saving}
                                 onClick={(e) => { e.preventDefault(); handleSubmit(onSubmit, onError)(); }}
-                                className={`px-8 py-2.5 rounded-xl font-bold text-sm text-white shadow-sm transition flex items-center gap-1.5 focus:ring-4 ${(fotoFile && kkFile) ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 focus:ring-emerald-100' : 'bg-gray-400 hover:bg-gray-500 focus:ring-gray-100'}`}
+                                className="px-8 py-2.5 rounded-xl font-bold text-sm text-white shadow-sm transition flex items-center gap-1.5 focus:ring-4 bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20 focus:ring-emerald-100"
                             >
-                                {saving ? 'Memproses...' : (fotoFile && kkFile) ? 'Lanjutkan & Simpan' : 'Lewati & Simpan'}
+                                <Save size={16} />
+                                {saving ? 'Memproses...' : 'Simpan Santri'}
                             </button>
                         )}
                     </div>

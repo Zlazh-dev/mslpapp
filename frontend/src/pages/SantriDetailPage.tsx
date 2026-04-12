@@ -340,11 +340,22 @@ export default function SantriDetailPage() {
                     {/* Photo Card */}
                     <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
                         <div className="relative group">
+                            {/* Evaluasi kondisional dipastikan aman. Placeholder dicetak jika gambar NULL */}
                             {fotoUrl ? (
-                                <img src={fotoUrl} alt={santri.namaLengkap} className="w-full aspect-[3/4] object-cover" />
+                                <img 
+                                    src={fotoUrl} 
+                                    alt={santri.namaLengkap} 
+                                    className="w-full aspect-[3/4] object-cover block print:block print:visible opacity-100" 
+                                    loading="eager" 
+                                />
                             ) : (
-                                <div className="w-full aspect-[3/4] bg-gradient-to-br from-teal-400 via-teal-500 to-emerald-600 flex items-center justify-center">
-                                    <span className="text-white/90 text-7xl font-bold select-none">{initial}</span>
+                                <div 
+                                    className="w-full aspect-[3/4] bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center print:border-gray-400 print:bg-gray-50"
+                                    style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' as any }}
+                                >
+                                    <span className="text-xs text-gray-400 print:text-gray-500 font-medium tracking-wide">
+                                        FOTO KOSONG
+                                    </span>
                                 </div>
                             )}
                             {isInactive && (

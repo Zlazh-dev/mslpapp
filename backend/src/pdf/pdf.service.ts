@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import puppeteer, { Browser } from 'puppeteer';
 import * as QRCode from 'qrcode';
-import * as fs from 'fs';
+import * as fs from 'fs/promises';
+import { existsSync } from 'fs';
 import * as path from 'path';
 import * as https from 'https';
 import * as http from 'http';
@@ -14,59 +15,89 @@ import * as http from 'http';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface PdfRenderOptions {
-    /** Konva Stage JSON (string or object) */
     konvaJson: string | Record<string, any>;
-    /** Flat key→value map for {{placeholder}} substitution */
     dataParams: Record<string, string>;
-    /** Optional table rows to render below the Konva canvas */
     tableData?: {
         title: string;
         columns: { key: string; label: string; width?: string }[];
         rows: Array<Record<string, string>>;
     };
-    /** Optional raw HTML to render below the canvas */
     rawHtml?: string;
-    /** Fields whose value should be rendered as a QR code image */
     qrFields?: string[];
-    /** Page dimensions — defaults to A4 portrait */
     pageWidth?: number;
     pageHeight?: number;
-    /** List of santri data for custom table DB column filling */
     santriList?: Array<Record<string, string>>;
+}
+
+// ─── FileSystem LRU Cache ────────────────────────────────────────────────────
+
+class FileSystemImageCache {
+    private cache = new Map<string, { base64: string, expiry: number }>();
+    private readonly maxSize = 50; 
+    private readonly ttlMs = 1000 * 60 * 15; // 15 mins TTL
+
+    public async get(diskPath: string): Promise<string | null> {
+        const now = Date.now();
+        const cached = this.cache.get(diskPath);
+        
+        if (cached) {
+            if (now > cached.expiry) {
+                this.cache.delete(diskPath); // Evict expired
+            } else {
+                // Refresh LRU
+                this.cache.delete(diskPath);
+                this.cache.set(diskPath, cached);
+                return cached.base64;
+            }
+        }
+
+        try {
+            const exists = await fs.access(diskPath).then(() => true).catch(() => false);
+            if (!exists) return null;
+
+            const buf = await fs.readFile(diskPath);
+            const ext = path.extname(diskPath).toLowerCase().replace('.', '');
+            const mime = ext === 'png' ? 'image/png'
+                : ['jpg', 'jpeg'].includes(ext) ? 'image/jpeg'
+                : ext === 'webp' ? 'image/webp'
+                : 'image/png';
+                
+            const base64Uri = `data:${mime};base64,${buf.toString('base64')}`;
+            
+            // Apply LRU
+            if (this.cache.size >= this.maxSize) {
+                const oldestKey = this.cache.keys().next().value;
+                this.cache.delete(oldestKey);
+            }
+            
+            this.cache.set(diskPath, { base64: base64Uri, expiry: now + this.ttlMs });
+            return base64Uri;
+        } catch (err) {
+            return null;
+        }
+    }
 }
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
-/**
- * PdfService
- * ──────────
- * Singleton-browser Puppeteer service that:
- *  1. Reconstructs a Konva stage from JSON in a headless Chromium page.
- *  2. Substitutes {{placeholder}} text nodes with real data.
- *  3. Generates QR code data-URIs server-side and injects them into
- *     Konva Image nodes or standalone <img> elements.
- *  4. Optionally renders HTML tables below the canvas with proper
- *     page-break rules so rows are never cut mid-way.
- *  5. Exports the result as a PDF buffer.
- */
 @Injectable()
 export class PdfService implements OnModuleInit, OnModuleDestroy {
     private browser: Browser | null = null;
     private readonly logger = new Logger(PdfService.name);
-
-    // ── Lifecycle ────────────────────────────────────────────────────
+    private imageCache = new FileSystemImageCache();
 
     async onModuleInit() {
         this.logger.log('Launching Puppeteer singleton browser …');
         try {
             this.browser = await puppeteer.launch({
-                headless: true,
+                headless: true, // Use standard true for v19+, new in v20+
                 executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--font-render-hinting=none',
+                    '--allow-file-access-from-files'
                 ],
             });
             this.logger.log('Puppeteer browser ready.');
@@ -78,26 +109,17 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
     async onModuleDestroy() {
         if (this.browser) {
             await this.browser.close();
-            this.logger.log('Puppeteer browser closed.');
         }
     }
 
-    // ── QR Helper (runs in Node, NOT in the browser) ────────────────
-
-    /**
-     * Pre-generates QR code data-URIs for requested fields so the
-     * headless page never needs network access for QR generation.
-     */
     private async buildQrDataUris(
         dataParams: Record<string, string>,
         qrFields: string[],
     ): Promise<Record<string, string>> {
         const map: Record<string, string> = {};
-
         for (const field of qrFields) {
             const value = dataParams[field];
             if (!value) continue;
-
             try {
                 map[field] = await QRCode.toDataURL(value, {
                     width: 256,
@@ -109,11 +131,8 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
                 this.logger.warn(`QR generation failed for field "${field}"`, err);
             }
         }
-
         return map;
     }
-
-    // ── Fetch URL as Data URI (Node built-in) ────────────────────────
 
     private fetchUrlAsDataUri(url: string): Promise<string | null> {
         return new Promise((resolve) => {
@@ -136,105 +155,80 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         });
     }
 
-    // ── Image URL → Data URI Resolver ────────────────────────────────
-
-    /**
-     * Pre-resolves image src attributes in Konva JSON to base64 data URIs.
-     * This ensures Puppeteer inside Docker can render images without network access.
-     */
     private async resolveImagesToDataUri(node: any): Promise<void> {
         if (!node) return;
 
         if (node.className === 'Image' && node.attrs?.src) {
             const src: string = node.attrs.src;
-
-            // Skip data URIs and QR placeholders (already handled)
             if (src.startsWith('data:') || !src) {
-                // already a data URI, nothing to do
-            }
-            // Local upload path — read from disk
-            else if (src.includes('/uploads/')) {
+                // ignore
+            } else if (src.includes('/uploads/')) {
                 try {
-                    // Extract the relative path after /uploads/
                     const uploadsIdx = src.indexOf('/uploads/');
-                    const relativePath = src.substring(uploadsIdx);  // e.g. /uploads/images/logo.png
+                    const relativePath = src.substring(uploadsIdx + 1);  
                     const diskPath = path.join(process.cwd(), relativePath);
 
-                    if (fs.existsSync(diskPath)) {
-                        const buf = fs.readFileSync(diskPath);
-                        const ext = path.extname(diskPath).toLowerCase().replace('.', '');
-                        const mime = ext === 'png' ? 'image/png'
-                            : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg'
-                            : ext === 'gif' ? 'image/gif'
-                            : ext === 'webp' ? 'image/webp'
-                            : ext === 'svg' ? 'image/svg+xml'
-                            : 'image/png';
-                        node.attrs.src = `data:${mime};base64,${buf.toString('base64')}`;
-                        this.logger.debug(`Resolved image to data URI: ${relativePath}`);
+                    const dataUri = await this.imageCache.get(diskPath);
+                    if (dataUri) {
+                        node.attrs.src = dataUri;
                     } else {
-                        this.logger.warn(`Image file not found on disk: ${diskPath}`);
+                        node.attrs.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; 
                     }
                 } catch (err) {
                     this.logger.warn(`Failed to read image from disk: ${src}`, err);
+                    node.attrs.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='; 
                 }
-            }
-            // External URL — fetch and convert
-            else if (src.startsWith('http')) {
+            } else if (src.startsWith('http')) {
                 try {
                     const dataUri = await this.fetchUrlAsDataUri(src);
-                    if (dataUri) {
-                        node.attrs.src = dataUri;
-                        this.logger.debug(`Fetched external image: ${src.substring(0, 60)}`);
-                    }
+                    if (dataUri) node.attrs.src = dataUri;
                 } catch (err) {
-                    this.logger.warn(`Failed to fetch external image: ${src.substring(0, 80)}`, err?.message);
+                    this.logger.warn(`Failed to fetch external image`, err?.message);
                 }
             }
         }
 
-        // Recurse into children
         if (node.children) {
-            for (const child of node.children) {
-                await this.resolveImagesToDataUri(child);
-            }
+            await Promise.all(node.children.map(child => this.resolveImagesToDataUri(child)));
         }
     }
 
-    // ── Main Render Method ───────────────────────────────────────────
-
     async generatePdf(opts: PdfRenderOptions): Promise<Buffer> {
-        if (!this.browser) {
-            throw new Error('Puppeteer browser is not initialised');
-        }
+        if (!this.browser) throw new Error('Puppeteer browser is not initialised');
 
-        // Parse the Konva JSON so we can modify it
-        const konvaJsonObj =
-            typeof opts.konvaJson === 'string'
+        const konvaJsonObj = typeof opts.konvaJson === 'string'
                 ? JSON.parse(opts.konvaJson)
-                : JSON.parse(JSON.stringify(opts.konvaJson)); // deep clone
+                : JSON.parse(JSON.stringify(opts.konvaJson)); 
 
-        // Pre-resolve image URLs to base64 data URIs (runs in Node)
         await this.resolveImagesToDataUri(konvaJsonObj);
-
         const konvaJsonStr = JSON.stringify(konvaJsonObj);
 
-        // Pre-render QR codes in Node.js
+        // Also resolve any /uploads/ paths in dataParams (e.g. foto_url) to base64
+        for (const [key, val] of Object.entries(opts.dataParams)) {
+            if (val && typeof val === 'string' && val.includes('/uploads/')) {
+                const uploadsIdx = val.indexOf('/uploads/');
+                const relativePath = val.substring(uploadsIdx + 1);
+                const diskPath = path.join(process.cwd(), relativePath);
+                const dataUri = await this.imageCache.get(diskPath);
+                if (dataUri) {
+                    opts.dataParams[key] = dataUri;
+                    this.logger.debug(`Resolved dataParam "${key}" to base64`);
+                }
+            }
+        }
+
         const qrDataUris = opts.qrFields?.length
             ? await this.buildQrDataUris(opts.dataParams, opts.qrFields)
             : {};
 
         const page = await this.browser.newPage();
-
         page.on('console', msg => this.logger.debug(`[Headless] ${msg.type().toUpperCase()}: ${msg.text()}`));
         page.on('pageerror', err => this.logger.error(`[Headless] Uncaught exception: ${err.toString()}`));
 
         try {
-            // Build the full HTML payload
             const html = this.buildHtml(opts);
-
             await page.setContent(html, { waitUntil: 'networkidle0' });
 
-            // Run the render script inside the page context
             await page.evaluate(
                 async (
                     jsonStr: string,
@@ -242,10 +236,21 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
                     qrUris: Record<string, string>,
                     santriList: Array<Record<string, string>>,
                 ) => {
-                    // Wait for all web-fonts to be fully available
-                    await (document as any).fonts.ready;
-                    // Delegate to the global render function injected in the HTML
-                    await (window as any).renderKonva(jsonStr, data, qrUris, santriList);
+                    return new Promise<void>((resolve) => {
+                        (document as any).fonts.ready.then(async () => {
+                            // Hybrid rendering
+                            await (window as any).renderKonva(jsonStr, data, qrUris, santriList);
+                            
+                            // Arabic Reflow Hard-Flush Logic
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    const flush = document.body.offsetHeight;
+                                    (window as any).PDF_READY = true;
+                                    resolve();
+                                });
+                            });
+                        });
+                    });
                 },
                 konvaJsonStr,
                 opts.dataParams,
@@ -254,23 +259,29 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
             );
 
             const konvaStage = typeof opts.konvaJson === 'string' ? JSON.parse(opts.konvaJson) : opts.konvaJson;
-            this.logger.debug(`Konva Stage JSON nodes count: ${konvaStage?.children?.[0]?.children?.length}`);
-            
-            const fallbackW = konvaStage?.attrs?.width || 794;
-            const fallbackH = konvaStage?.attrs?.height || 1123;
-            
-            const stageW = opts.pageWidth ?? fallbackW;
-            const stageH = opts.pageHeight ?? fallbackH;
+            const stageW = opts.pageWidth ?? (konvaStage?.attrs?.width || 794);
+            const stageH = opts.pageHeight ?? (konvaStage?.attrs?.height || 1123);
 
-            // If width is suspiciously small (like 215 for F4 width in mm), assume 'mm'. Otherwise 'px'.
             const wUnit = stageW < 500 ? 'mm' : 'px';
             const hUnit = stageH < 500 ? 'mm' : 'px';
 
+            let physicalWidth = `${stageW}${wUnit}`;
+            let physicalHeight = `${stageH}${hUnit}`;
+            
+            if ((stageW >= 790 && stageW <= 800) || stageW === 210) {
+                physicalWidth = '210mm';
+                physicalHeight = '297mm';
+            } else if ((stageW >= 810 && stageW <= 820) || stageW === 215) {
+                physicalWidth = '215mm'; // Indonesian F4
+                physicalHeight = '330mm';
+            }
+
             const pdfUint8 = await page.pdf({
                 printBackground: true,
-                width: `${stageW}${wUnit}`,
-                height: `${stageH}${hUnit}`,
+                width: physicalWidth,
+                height: physicalHeight,
                 margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+                preferCSSPageSize: true
             });
 
             await page.close();
@@ -282,15 +293,40 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         }
     }
 
-    // ── HTML Template Builder ────────────────────────────────────────
+    private buildTableHtml(tableData: any): string {
+        if (!tableData) return '';
+        
+        let html = '<div class="data-table-wrapper">';
+        if (tableData.title) {
+            html += `<h3>${tableData.title}</h3>`;
+        }
+        
+        html += '<table class="data-table">';
+        
+        if (tableData.columns && tableData.columns.length) {
+            html += '<thead><tr>';
+            tableData.columns.forEach((col: any) => {
+                html += `<th style="width: ${col.width || 'auto'}">${col.label}</th>`;
+            });
+            html += '</tr></thead>';
+        }
+        
+        if (tableData.rows && tableData.rows.length) {
+            html += '<tbody>';
+            tableData.rows.forEach((row: any) => {
+                html += '<tr>';
+                tableData.columns.forEach((col: any) => {
+                    html += `<td>${row[col.key] || ''}</td>`;
+                });
+                html += '</tr>';
+            });
+            html += '</tbody>';
+        }
+        
+        html += '</table></div>';
+        return html;
+    }
 
-    /**
-     * Produces a self-contained HTML document that:
-     *  • Loads Noto Sans + Noto Naskh Arabic via @import
-     *  • Contains Konva.js
-     *  • Embeds page-break-safe table CSS
-     *  • Provides window.renderKonva() for browser-side execution
-     */
     private buildHtml(opts: PdfRenderOptions): string {
         let extraHtml = '';
         if (opts.rawHtml) {
@@ -304,79 +340,87 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
 <head>
 <meta charset="UTF-8">
 <style>
-/* ── Web Fonts ──────────────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 
-/* ── Reset ──────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
-    width: 100%;
-    font-family: 'Noto Sans', 'Noto Naskh Arabic', sans-serif;
+body {
+    background: #ffffff !important;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
     font-size: 11px;
-    color: #1a1a1a;
+    font-family: 'Noto Sans', 'Noto Naskh Arabic', sans-serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    margin: 0; 
 }
 
-/* Konva canvas wrapper */
-#konva-container { position: relative; }
+/* ── KUNCI: Hybrid Fix ── */
+#konva-container {
+    page-break-after: avoid; 
+}
 
-/* ── Table Styling with Page-Break Rules ────────────────────────── */
+#table-container {
+    position: static !important;
+    display: block !important;
+    transform: none !important;
+    width: 100% !important;
+    top: auto !important;
+    left: auto !important;
+    margin-top: 15px; 
+}
+
 .data-table-wrapper {
+    position: static !important;
+    page-break-inside: auto !important; 
+    margin-bottom: 20px;
     width: 100%;
     padding: 12px 20px;
 }
-
 .data-table-wrapper h3 {
     font-size: 14px;
     font-weight: 700;
     margin-bottom: 8px;
-    font-family: 'Noto Sans', sans-serif;
 }
-
 .data-table {
     width: 100%;
+    table-layout: auto; 
     border-collapse: collapse;
     font-size: 10px;
 }
-
 .data-table thead {
-    background: #2d3748;
-    color: #fff;
+    display: table-header-group !important; 
+    background-color: #2d3748;
+    color: white;
 }
-
-.data-table th,
-.data-table td {
+.data-table th, .data-table td {
+    overflow-wrap: break-word;
+    word-wrap: break-word; /* Legacy fallback */
+    white-space: pre-wrap; 
+    padding: 6px 10px;
     border: 1px solid #cbd5e0;
-    padding: 5px 8px;
-    text-align: left;
     vertical-align: top;
+    text-align: left;
 }
-
 .data-table th {
     font-weight: 700;
-    white-space: nowrap;
 }
-
-/* ── Critical: Prevent rows from being split across pages ──────── */
 .data-table tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    break-inside: avoid !important; 
+    page-break-inside: avoid !important;
+    page-break-after: auto;
 }
-
 .data-table tbody tr:nth-child(even) {
     background-color: #f7fafc;
 }
 
-/* ── RTL container for Arabic text blocks ──────────────────────── */
+/* RTL */
 .rtl-block {
     direction: rtl;
     text-align: right;
     font-family: 'Noto Naskh Arabic', serif;
 }
 
-/* ── QR Code Standalone Image ──────────────────────────────────── */
 .qr-standalone {
     display: inline-block;
     margin: 4px;
@@ -386,270 +430,240 @@ html, body {
     height: 120px;
 }
 </style>
-
-<!-- Konva.js (pinned version for reproducibility) -->
-<script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
+<!-- No Konva.js needed: we render as pure HTML divs, matching the editor exactly -->
 </head>
 
 <body>
-<div id="konva-container"></div>
-
-    <!-- Where table/extra content flows -->
-    <div id="table-container">
-        ${extraHtml}
-    </div>
+<div id="canvas-container" style="position:relative;width:794px;height:1123px;"></div>
+<div id="table-container">${extraHtml}</div>
 
 <script>
 /**
- * window.renderKonva
- * ──────────────────
- * Called from page.evaluate().
- *
- * @param {string}                  jsonStr     Konva Stage JSON
- * @param {Record<string,string>}   data        Placeholder values
- * @param {Record<string,string>}   qrUris      field→dataURI map
- * @param {Array<Record<string,string>>} santriList list of santri data for custom tables
+ * Pure HTML Rendering Engine
+ * Renders Konva JSON nodes as HTML divs with absolute positioning.
+ * This matches the editor's CSS-based rendering exactly,
+ * eliminating the canvas vs HTML text mismatch.
  */
 window.renderKonva = async (jsonStr, data, qrUris, santriList) => {
-
-    /* ── Helper: detect Arabic/RTL characters ─────────────────────── */
     const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/;
-    const hasArabic = (text) => ARABIC_RE.test(text);
+    const hasArabic = (t) => ARABIC_RE.test(t);
 
-    /* ── 1. Parse & Traverse ─────────────────────────────────────── */
     const stageJson = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
-    const arabicTextNodes = []; // collect for HTML overlay rendering
+    const container = document.getElementById('canvas-container');
+    const stageW = stageJson.attrs?.width || 794;
+    const stageH = stageJson.attrs?.height || 1123;
+    container.style.width = stageW + 'px';
+    container.style.height = stageH + 'px';
 
-    const processNode = (node) => {
+    // Collect all leaf nodes from the Stage JSON tree
+    const nodes = [];
+    const collectNodes = (node) => {
         if (!node) return;
-
-        /* ── Text placeholder substitution ── */
-        if (node.className === 'Text' && node.attrs && node.attrs.text) {
-            let txt = node.attrs.text;
-            for (const [key, val] of Object.entries(data)) {
-                txt = txt.replace(new RegExp('\\\\{\\\\{' + key + '\\\\}\\\\}', 'g'), val || '');
-            }
-            node.attrs.text = txt;
-
-            // Ensure usable font stack
-            if (!node.attrs.fontFamily || node.attrs.fontFamily === 'Arial') {
-                node.attrs.fontFamily = "'Noto Sans', 'Noto Naskh Arabic', sans-serif";
-            }
-
-            // Mark Arabic text nodes for HTML overlay rendering
-            if (hasArabic(txt)) {
-                arabicTextNodes.push({ ...node.attrs, _originalText: txt });
-                node.attrs._isArabicOverlay = true;
-            }
+        if (node.className && node.className !== 'Stage' && node.className !== 'Layer') {
+            nodes.push(node);
         }
-
-        /* ── Image & QR code injection ── */
-        if (node.className === 'Image' && node.attrs && node.attrs.name) {
-            const nameKey = node.attrs.name;
-            
-            if (nameKey === 'foto_santri') {
-                const photoPath = data['foto_url'];
-                if (photoPath) {
-                    // Images are already resolved to data URIs server-side,
-                    // but handle dynamic foto_santri separately
-                    if (photoPath.startsWith('data:') || photoPath.startsWith('http')) {
-                        node.attrs.src = photoPath;
-                    } else {
-                        const baseUrl = window.location.origin || 'http://localhost:3000';
-                        node.attrs.src = baseUrl + photoPath;
-                    }
-                }
-            } else if (qrUris[nameKey]) {
-                node.attrs._qrDataUri = qrUris[nameKey];
-            }
-        }
-
-        // Recurse into children (Layers, Groups)
-        if (node.children) {
-            node.children.forEach(processNode);
-        }
+        if (node.children) node.children.forEach(collectNodes);
     };
+    collectNodes(stageJson);
 
-    processNode(stageJson);
+    // Render each node as an HTML element
+    for (const node of nodes) {
+        const a = node.attrs || {};
 
-    /* ── 2. Create Stage ─────────────────────────────────────────── */
-    const stage = Konva.Node.create(stageJson, 'konva-container');
+        // ── Text Node ──
+        if (node.className === 'Text') {
+            let txt = a.text || '';
+            // Substitute {{placeholder}} with data values
+            for (const [key, val] of Object.entries(data)) {
+                txt = txt.replace(new RegExp('\\{\\{' + key + '\\}\\}', 'g'), val || '');
+            }
 
-    /* ── 3. Post-create: load images into Image nodes ────────────── */
-    const imageNodes = stage.find('Image');
-    const imageLoadPromises = [];
+            const fontSize = a.fontSize || 14;
+            const fontFamily = a.fontFamily || "'Noto Sans', sans-serif";
+            const fontStyle = a.fontStyle || 'normal';
+            const fill = a.fill || '#000000';
+            const align = a.align || 'left';
+            const isArabic = hasArabic(txt);
 
-    imageNodes.forEach((imgNode) => {
-        const qrUri = imgNode.getAttr('_qrDataUri');
-        const existingSrc = imgNode.getAttr('src') || imgNode.getAttr('imageSrc');
-
-        const src = qrUri || existingSrc;
-        if (!src) return;
-
-        imageLoadPromises.push(
-            new Promise((resolve) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => {
-                    imgNode.image(img);
-                    resolve();
-                };
-                img.onerror = () => {
-                    console.warn('Image load failed:', src.substring(0, 80));
-                    resolve(); // non-fatal
-                };
-                img.src = src;
-            }),
-        );
-    });
-
-    await Promise.all(imageLoadPromises);
-
-    /* ── 4. Arabic text: hide Konva nodes, create HTML overlays ──── */
-    const allTextNodes = stage.find('Text');
-    const container = document.getElementById('konva-container');
-
-    allTextNodes.forEach((textNode) => {
-        if (!textNode.getAttr('_isArabicOverlay')) return;
-
-        const absPos = textNode.getAbsolutePosition();
-        const text = textNode.text();
-        const fontSize = textNode.fontSize() || 14;
-        const fontFamily = textNode.fontFamily() || "'Noto Naskh Arabic', serif";
-        const fontStyle = textNode.fontStyle() || 'normal';
-        const fill = textNode.fill() || '#000000';
-        const align = textNode.align() || 'left';
-        const w = textNode.width();
-        const h = textNode.height();
-
-        // Hide the canvas text node
-        textNode.visible(false);
-
-        // Create HTML overlay
-        const div = document.createElement('div');
-        div.setAttribute('dir', 'rtl');
-        div.style.cssText = [
-            'position:absolute',
-            'left:' + absPos.x + 'px',
-            'top:' + absPos.y + 'px',
-            w ? 'width:' + w + 'px' : '',
-            h ? 'min-height:' + h + 'px' : '',
-            'font-size:' + fontSize + 'px',
-            'font-family:' + fontFamily,
-            'font-style:' + (fontStyle.includes('italic') ? 'italic' : 'normal'),
-            'font-weight:' + (fontStyle.includes('bold') ? 'bold' : 'normal'),
-            'color:' + fill,
-            'text-align:' + align,
-            'line-height:1.3',
-            'z-index:5',
-            'white-space:pre-wrap',
-            'display:flex',
-            'align-items:center',
-        ].filter(Boolean).join(';');
-        div.textContent = text;
-        container.appendChild(div);
-    });
-
-    /* ── 5. Final draw ───────────────────────────────────────────── */
-    stage.draw();
-
-    /* ── 6. Custom tables: render HTML tables positioned over the canvas ── */
-    const allNodes = stage.find('Rect');
-    allNodes.forEach((rectNode) => {
-        const tc = rectNode.getAttr('tableConfig');
-        if (!tc || tc.dataType !== 'custom' || !tc.columns) return;
-
-        const x = rectNode.x();
-        const y = rectNode.y();
-        const w = rectNode.width();
-        const cols = tc.columns || [];
-        const templateRows = tc.rows || [];
-        const border = tc.borderStyle === 'none' ? 'none' : '1px solid #000';
-        const pad = (tc.cellPadding || 6) + 'px';
-        const fSize = (tc.tableFontSize || 11) + 'px';
-        const hColor = tc.headerColor || '#cbd5e1';
-
-        // Check if any column uses DB fields
-        const hasDbCols = cols.some(c => c.type === 'db');
-
-        // Determine actual rows
-        let actualRows = templateRows;
-        if (hasDbCols && santriList && santriList.length > 0) {
-            actualRows = santriList.map((santri, idx) => {
-                const tplRow = templateRows[idx] || {};
-                return { ...tplRow, _santri: santri, _idx: idx };
-            });
+            const div = document.createElement('div');
+            if (isArabic) div.setAttribute('dir', 'rtl');
+            div.style.cssText = [
+                'position:absolute',
+                'left:' + (a.x || 0) + 'px',
+                'top:' + (a.y || 0) + 'px',
+                a.width ? 'width:' + a.width + 'px' : '',
+                a.height ? 'height:' + a.height + 'px' : '',
+                'font-size:' + fontSize + 'px',
+                'font-family:' + fontFamily,
+                'font-style:' + (fontStyle.includes('italic') ? 'italic' : 'normal'),
+                'font-weight:' + (fontStyle.includes('bold') ? 'bold' : 'normal'),
+                'color:' + fill,
+                'text-align:' + align,
+                'display:flex',
+                'align-items:' + (a.verticalAlign === 'bottom' ? 'flex-end' : (a.verticalAlign === 'middle' ? 'center' : 'flex-start')),
+                'justify-content:' + (align === 'center' ? 'center' : (align === 'right' ? 'flex-end' : 'flex-start')),
+                'line-height:1.35',
+                'white-space:pre-wrap',
+                'overflow:hidden',
+                'user-select:none',
+            ].filter(Boolean).join(';');
+            div.textContent = txt;
+            container.appendChild(div);
         }
 
-        // Build header
-        const thHtml = cols.map(c =>
-            '<th style="width:' + c.width + '%;background:' + hColor + ';padding:' + pad + ';border:' + border + ';text-align:' + (c.align||'left') + ';font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.label + '</th>'
-        ).join('');
+        // ── Image Node (photos, logos, QR codes) ──
+        else if (node.className === 'Image') {
+            const name = a.name || '';
+            let src = a.src || '';
 
-        // Build data rows
-        const trHtml = actualRows.map((row, rowIdx) => {
-            const santriData = row._santri || {};
-            const tds = cols.map(c => {
-                let cellVal = '';
-                if (c.type === 'db' && c.field) {
-                    cellVal = santriData[c.field] || data[c.field] || '';
-                } else {
-                    const cells = row.cells || {};
-                    cellVal = cells[c.id] || '';
-                    if (!cellVal && c.label && c.label.toLowerCase().includes('no')) {
-                        cellVal = String(rowIdx + 1);
-                    }
+            // QR code injection
+            if (name && qrUris[name]) {
+                src = qrUris[name];
+            }
+            // foto_santri: use data's foto_url (already resolved to base64 by backend)
+            if (name === 'foto_santri') {
+                src = data['foto_url'] || '';
+            }
+
+            if (src) {
+                const img = document.createElement('img');
+                img.src = src;
+                img.style.cssText = [
+                    'position:absolute',
+                    'left:' + (a.x || 0) + 'px',
+                    'top:' + (a.y || 0) + 'px',
+                    'width:' + (a.width || 100) + 'px',
+                    'height:' + (a.height || 100) + 'px',
+                    'object-fit:fill',
+                ].join(';');
+                container.appendChild(img);
+            }
+        }
+
+        // ── Rect Node (shapes, or table placeholders) ──
+        else if (node.className === 'Rect') {
+            const tc = a.tableConfig;
+
+            // Custom table placeholder → render as real HTML table
+            if (tc && tc.dataType === 'custom' && tc.columns) {
+                const cols = tc.columns || [];
+                const templateRows = tc.rows || [];
+                const border = tc.borderStyle === 'none' ? 'none' : '1px solid #000';
+                const pad = (tc.cellPadding || 6) + 'px';
+                const fSize = (tc.tableFontSize || 11) + 'px';
+                const hColor = tc.headerColor || '#cbd5e1';
+                const hasDbCols = cols.some(c => c.type === 'db');
+
+                let actualRows = templateRows;
+                if (hasDbCols && santriList && santriList.length > 0) {
+                    actualRows = santriList.map((santri, idx) => {
+                        const tplRow = templateRows[idx] || {};
+                        return { ...tplRow, _santri: santri, _idx: idx };
+                    });
                 }
-                const isAr = hasArabic(cellVal);
-                const dirStyle = isAr ? 'font-family: \\\'Noto Naskh Arabic\\\', serif;' : '';
-                const dirAttr = isAr ? ' dir=\\\"rtl\\\"' : '';
-                return '<td' + dirAttr + ' style=\"padding:' + pad + '; border:' + border + '; text-align:' + (c.align||'left') + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ' + dirStyle + '\">' + cellVal + '</td>';
-            }).join('');
-            return '<tr style="page-break-inside:avoid;break-inside:avoid;">' + tds + '</tr>';
-        }).join('');
 
-        const tableHtml = '<table style=\"width:' + w + 'px; border-collapse:collapse; font-size:' + fSize + '; font-family: \\\'Noto Sans\\\', \\\'Noto Naskh Arabic\\\', sans-serif; table-layout:fixed;\"><thead><tr>' + thHtml + '</tr></thead><tbody>' + trHtml + '</tbody></table>';
+                let html = '<table style="width:100%;border-collapse:collapse;font-size:' + fSize + ';font-family:inherit;">';
+                html += '<thead><tr>';
+                cols.forEach(col => {
+                    const cw = col.width ? 'width:' + col.width + '%;' : '';
+                    html += '<th style="border:' + border + ';padding:' + pad + ';background:' + hColor + ';font-weight:bold;text-align:' + (col.align || 'left') + ';' + cw + '">' + (col.header || col.label || '') + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+                actualRows.forEach((row, rIdx) => {
+                    html += '<tr>';
+                    cols.forEach(col => {
+                        let cellVal = '';
+                        if (col.type === 'index') {
+                            cellVal = String(rIdx + 1);
+                        } else if (col.type === 'db' && row._santri) {
+                            cellVal = row._santri[col.field] || '';
+                        } else {
+                            const rv = row.cells || row.values || row;
+                            cellVal = rv[col.id] || rv[col.field] || '';
+                        }
+                        html += '<td style="border:' + border + ';padding:' + pad + ';text-align:' + (col.align || 'left') + ';">' + cellVal + '</td>';
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
 
-        const div = document.createElement('div');
-        div.style.cssText = 'position:absolute;left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;z-index:10;box-sizing:border-box;';
-        div.innerHTML = tableHtml;
-        container.appendChild(div);
+                const wrapper = document.createElement('div');
+                wrapper.style.cssText = 'position:absolute;left:' + (a.x||0) + 'px;top:' + (a.y||0) + 'px;width:' + (a.width||200) + 'px;overflow:visible;';
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            }
+            // Preset table placeholder (presensi/jadwal) — skip visual, data comes from rawHtml
+            else if (a.name === 'server_table_placeholder') {
+                // Do nothing — server generates the table in #table-container
+            }
+            // Regular rectangle shape
+            else {
+                const div = document.createElement('div');
+                div.style.cssText = [
+                    'position:absolute',
+                    'left:' + (a.x || 0) + 'px',
+                    'top:' + (a.y || 0) + 'px',
+                    'width:' + (a.width || 0) + 'px',
+                    'height:' + (a.height || 0) + 'px',
+                    'background:' + (a.fill || 'transparent'),
+                    a.stroke ? 'border:' + (a.strokeWidth || 1) + 'px solid ' + a.stroke : '',
+                    a.cornerRadius ? 'border-radius:' + a.cornerRadius + 'px' : '',
+                ].filter(Boolean).join(';');
+                container.appendChild(div);
+            }
+        }
 
-        // Hide the Konva rect placeholder
-        rectNode.visible(false);
-        stage.draw();
-    });
+        // ── Ellipse / Circle ──
+        else if (node.className === 'Ellipse' || node.className === 'Circle') {
+            const rx = a.radiusX || a.radius || 0;
+            const ry = a.radiusY || a.radius || 0;
+            const div = document.createElement('div');
+            div.style.cssText = [
+                'position:absolute',
+                'left:' + ((a.x || 0) - rx) + 'px',
+                'top:' + ((a.y || 0) - ry) + 'px',
+                'width:' + (rx * 2) + 'px',
+                'height:' + (ry * 2) + 'px',
+                'border-radius:50%',
+                'background:' + (a.fill || 'transparent'),
+                a.stroke ? 'border:' + (a.strokeWidth || 1) + 'px solid ' + a.stroke : '',
+            ].filter(Boolean).join(';');
+            container.appendChild(div);
+        }
+
+        // ── Line ──
+        else if (node.className === 'Line') {
+            const pts = a.points || [];
+            if (pts.length >= 4) {
+                const x1 = pts[0], y1 = pts[1], x2 = pts[2], y2 = pts[3];
+                const len = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+                const angle = Math.atan2(y2-y1, x2-x1) * 180 / Math.PI;
+                const div = document.createElement('div');
+                const dashStyle = a.dash ? (a.dash[0] > 3 ? 'dashed' : 'dotted') : 'solid';
+                div.style.cssText = [
+                    'position:absolute',
+                    'left:' + x1 + 'px',
+                    'top:' + y1 + 'px',
+                    'width:' + len + 'px',
+                    'height:0',
+                    'border-top:' + (a.strokeWidth || 2) + 'px ' + dashStyle + ' ' + (a.stroke || '#000'),
+                    'transform-origin:0 0',
+                    'transform:rotate(' + angle + 'deg)',
+                ].join(';');
+                container.appendChild(div);
+            }
+        }
+    }
+
+    // Wait for all images to load
+    const allImgs = container.querySelectorAll('img');
+    await Promise.all(Array.from(allImgs).map(img =>
+        img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
 };
+
 </script>
 </body>
 </html>`;
-    }
-
-    // ── Table HTML Builder ───────────────────────────────────────────
-
-    private buildTableHtml(table: NonNullable<PdfRenderOptions['tableData']>): string {
-        const thCells = table.columns
-            .map((c) => `<th style="${c.width ? `width:${c.width}` : ''}">${c.label}</th>`)
-            .join('');
-
-        const bodyRows = table.rows
-            .map((row) => {
-                const tds = table.columns
-                    .map((c) => `<td>${row[c.key] ?? '-'}</td>`)
-                    .join('');
-                return `<tr>${tds}</tr>`;
-            })
-            .join('\n');
-
-        return /* html */ `
-<div class="data-table-wrapper">
-    <h3>${table.title}</h3>
-    <table class="data-table">
-        <thead><tr>${thCells}</tr></thead>
-        <tbody>
-            ${bodyRows}
-        </tbody>
-    </table>
-</div>`;
     }
 }

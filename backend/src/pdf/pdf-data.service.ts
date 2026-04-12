@@ -154,8 +154,8 @@ export class PdfDataService {
                 : '-',
             pembimbing_kamar: santri.kamar?.pembimbings?.map((p: any) => p.name).join(', ') ?? '-',
 
-            // ── QR Data (the raw santri ID — clients can encode this) ──
-            qr_data: santri.id,
+            // ── QR Data (full public profile URLs for scanning) ──
+            qr_data: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/p/santri/${santri.id}`,
             qr_nis: santri.nis,
         };
     }
