@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown, Loader2, MapPin } from 'lucide-react';
-
-const API_BASE = 'https://emsifa.github.io/api-wilayah-indonesia/api';
+import api from '../lib/api';
 
 interface Region {
     id: string;
@@ -141,9 +140,8 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
     // Load provinces on mount
     useEffect(() => {
         setLoadingProv(true);
-        fetch(`${API_BASE}/provinces.json`)
-            .then(r => r.json())
-            .then(data => setProvinces(data))
+        api.get('/wilayah/provinces')
+            .then(r => setProvinces(r.data || []))
             .catch(() => setProvinces([]))
             .finally(() => setLoadingProv(false));
     }, []);
@@ -155,9 +153,8 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
             setRegencies([]);
             setDistricts([]);
             setVillages([]);
-            fetch(`${API_BASE}/regencies/${provId}.json`)
-                .then(r => r.json())
-                .then(data => setRegencies(data))
+            api.get(`/wilayah/regencies/${provId}`)
+                .then(r => setRegencies(r.data || []))
                 .catch(() => setRegencies([]))
                 .finally(() => setLoadingReg(false));
         }
@@ -169,9 +166,8 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
             setLoadingDist(true);
             setDistricts([]);
             setVillages([]);
-            fetch(`${API_BASE}/districts/${regId}.json`)
-                .then(r => r.json())
-                .then(data => setDistricts(data))
+            api.get(`/wilayah/districts/${regId}`)
+                .then(r => setDistricts(r.data || []))
                 .catch(() => setDistricts([]))
                 .finally(() => setLoadingDist(false));
         }
@@ -182,9 +178,8 @@ export default function AddressAutocomplete({ provinsi, kotaKabupaten, kecamatan
         if (distId) {
             setLoadingVil(true);
             setVillages([]);
-            fetch(`${API_BASE}/villages/${distId}.json`)
-                .then(r => r.json())
-                .then(data => setVillages(data))
+            api.get(`/wilayah/villages/${distId}`)
+                .then(r => setVillages(r.data || []))
                 .catch(() => setVillages([]))
                 .finally(() => setLoadingVil(false));
         }

@@ -22,6 +22,7 @@ import { BackupModule } from './backup/backup.module';
 import { PdfModule } from './pdf/pdf.module';
 import { JadwalModule } from './jadwal/jadwal.module';
 import { KhidmahModule } from './khidmah/khidmah.module';
+import { WilayahModule } from './wilayah/wilayah.module';
 
 @Module({
     imports: [
@@ -48,6 +49,7 @@ import { KhidmahModule } from './khidmah/khidmah.module';
         KamarModule,
         JenjangModule,
         TingkatModule,
+        WilayahModule,
         KelasModule,
         AkademikModule,
         LaporanModule,
