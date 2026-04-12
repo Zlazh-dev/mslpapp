@@ -77,7 +77,6 @@ export class PdfDataService {
 
             // ── Core Identity (camelCase — matches frontend template editor field names) ──
             namaLengkap: santri.namaLengkap,
-            namaUser: santri.namaLengkap,
             tempatLahir: santri.tempatLahir ?? '-',
             tanggalLahir: formatDate(santri.tanggalLahir),
             noHp: santri.noHp ?? '-',

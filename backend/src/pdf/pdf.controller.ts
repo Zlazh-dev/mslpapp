@@ -3,6 +3,7 @@ import {
     Post,
     Body,
     Res,
+    Request,
     HttpStatus,
     UseGuards,
     Logger,
@@ -81,6 +82,7 @@ export class PdfController {
     async generateRaw(
         @Body() body: GenerateRawDto,
         @Res() res: Response,
+        @Request() req: any,
     ) {
         const opts: PdfRenderOptions = {
             konvaJson: body.konvaJson,
@@ -90,7 +92,7 @@ export class PdfController {
             pageHeight: body.pageHeight,
         };
 
-        return this.sendPdf(res, opts, 'document.pdf');
+        return this.sendPdf(res, opts, 'document.pdf', req.user?.name);
     }
 
     // ─── 2. Biodata — auto-fetches santri data from DB ───────────
@@ -100,6 +102,7 @@ export class PdfController {
     async generateBiodata(
         @Body() body: GenerateBiodataDto,
         @Res() res: Response,
+        @Request() req: any,
     ) {
         const biodata = await this.pdfDataService.getSantriBiodata(body.santriId);
 
@@ -111,7 +114,7 @@ export class PdfController {
             pageHeight: body.pageHeight,
         };
 
-        return this.sendPdf(res, opts, `biodata_${biodata.nis}.pdf`);
+        return this.sendPdf(res, opts, `biodata_${biodata.nis}.pdf`, req.user?.name);
     }
 
     // ─── 3. Presensi — biodata + attendance summary & table ──────
@@ -121,6 +124,7 @@ export class PdfController {
     async generatePresensi(
         @Body() body: GeneratePresensiDto,
         @Res() res: Response,
+        @Request() req: any,
     ) {
         const [biodata, presensi] = await Promise.all([
             this.pdfDataService.getSantriBiodata(body.santriId),
@@ -152,7 +156,7 @@ export class PdfController {
             pageHeight: body.pageHeight,
         };
 
-        return this.sendPdf(res, opts, `presensi_${biodata.nis}.pdf`);
+        return this.sendPdf(res, opts, `presensi_${biodata.nis}.pdf`, req.user?.name);
     }
 
     // ─── 4. Nilai / Jadwal Pembelajaran ──────────────────────────
@@ -162,6 +166,7 @@ export class PdfController {
     async generateNilai(
         @Body() body: GenerateNilaiDto,
         @Res() res: Response,
+        @Request() req: any,
     ) {
         const [biodata, nilai] = await Promise.all([
             this.pdfDataService.getSantriBiodata(body.santriId),
@@ -190,7 +195,7 @@ export class PdfController {
             pageHeight: body.pageHeight,
         };
 
-        return this.sendPdf(res, opts, `nilai_${biodata.nis}.pdf`);
+        return this.sendPdf(res, opts, `nilai_${biodata.nis}.pdf`, req.user?.name);
     }
 
     // ─── 5. Batch Print (multiple santri, same template) ─────────
@@ -200,6 +205,7 @@ export class PdfController {
     async generateBatch(
         @Body() body: GenerateBatchDto,
         @Res() res: Response,
+        @Request() req: any,
     ) {
         // For batch, we generate one PDF per santri and merge isn't trivial
         // without an extra lib. Strategy: generate the FIRST santri as a
@@ -234,12 +240,12 @@ export class PdfController {
             pageHeight: body.pageHeight,
         };
 
-        return this.sendPdf(res, opts, `batch_${firstBio.nis}.pdf`);
+        return this.sendPdf(res, opts, `batch_${firstBio.nis}.pdf`, req.user?.name);
     }
 
     @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     @Post('presensi/kelas')
-    async generatePresensiKelas(@Body() body: { konvaJson: any, kelasId: number, qrFields?: string[] }, @Res() res: Response) {
+    async generatePresensiKelas(@Body() body: { konvaJson: any, kelasId: number, qrFields?: string[] }, @Res() res: Response, @Request() req: any) {
         if (!body.konvaJson || !body.kelasId) {
             return res.status(400).json({ message: 'konvaJson and kelasId are required' });
         }
@@ -259,7 +265,7 @@ export class PdfController {
 
         const opts: PdfRenderOptions = {
             konvaJson: body.konvaJson,
-            dataParams: kelasHeader,
+            dataParams: { ...kelasHeader, namaUser: req.user?.name || '' },
             qrFields: body.qrFields,
             rawHtml: tableHtml || undefined,
             santriList,
@@ -280,7 +286,7 @@ export class PdfController {
 
     @Roles('ADMIN', 'STAF_MADRASAH', 'WALI_KELAS')
     @Post('jadwal/hari')
-    async generateJadwalHari(@Body() body: { konvaJson: any, hari: number, qrFields?: string[] }, @Res() res: Response) {
+    async generateJadwalHari(@Body() body: { konvaJson: any, hari: number, qrFields?: string[] }, @Res() res: Response, @Request() req: any) {
         if (!body.konvaJson || !body.hari) {
             return res.status(400).json({ message: 'konvaJson and hari are required' });
         }
@@ -289,7 +295,7 @@ export class PdfController {
 
         const opts: PdfRenderOptions = {
             konvaJson: body.konvaJson,
-            dataParams: jadwalData.header,
+            dataParams: { ...jadwalData.header, namaUser: req.user?.name || '' },
             qrFields: body.qrFields,
             santriList: jadwalData.rows,
         };
@@ -312,8 +318,13 @@ export class PdfController {
         res: Response,
         opts: PdfRenderOptions,
         filename: string,
+        userName?: string,
     ) {
         try {
+            // Inject logged-in user's name into every PDF
+            if (userName) {
+                opts.dataParams = { ...opts.dataParams, namaUser: userName };
+            }
             const buffer = await this.pdfService.generatePdf(opts);
 
             res.set({
